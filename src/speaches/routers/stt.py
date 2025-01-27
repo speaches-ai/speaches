@@ -204,7 +204,7 @@ def transcribe_file(
     ] = ["segment"],
     stream: Annotated[bool, Form()] = False,
     hotwords: Annotated[str | None, Form()] = None,
-    vad_filter: Annotated[bool, Form()] = False,
+    vad_filter: Annotated[bool, Form()] = True,
 ) -> Response | StreamingResponse:
     if model is None:
         model = config.whisper.model
