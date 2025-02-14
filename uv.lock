@@ -222,7 +222,7 @@ name = "click"
 version = "8.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/96/d3/f04c7bfcf5c1862a2a5b845c6b2b360488cf47af55dfa79c98f6a6bf98b5/click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de", size = 336121 }
 wheels = [
@@ -876,7 +876,7 @@ wheels = [
 
 [[package]]
 name = "kokoro-onnx"
-version = "0.3.6"
+version = "0.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorlog" },
@@ -887,9 +887,9 @@ dependencies = [
     { name = "onnxruntime" },
     { name = "phonemizer-fork" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/ac/6f59e07ac47ee8e35774d5fdacbd2e1b83ab727f201bb5f39789e71b2ca0/kokoro_onnx-0.3.6.tar.gz", hash = "sha256:e3c98ac80cf94452d40089d5ad9ba2eebee48187e806d6128d55add1914a7576", size = 85213 }
+sdist = { url = "https://files.pythonhosted.org/packages/89/55/498a6af4dc91ea2432b9d076641e2ba6c3ebd0f709c6ae7c5f3f40581771/kokoro_onnx-0.4.2.tar.gz", hash = "sha256:0577186c10edb941152bac13023b3a73dafa8f07fbf16ab128ad823913794a6e", size = 86885 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/50/e5db468119fdc4660e52a1085ecd762601ab928585effadc1bc9106b5df8/kokoro_onnx-0.3.6-py3-none-any.whl", hash = "sha256:07e26f81fc9bae1c41a79e070d71e7f919b85fe320756328cd60d43edb3f2e27", size = 10106 },
+    { url = "https://files.pythonhosted.org/packages/95/55/51745f550745fc9dac40834b45e1f8cb5c027fc2f6aa3e7912502fec1d78/kokoro_onnx-0.4.2-py3-none-any.whl", hash = "sha256:a0f0fece1bc84abf29394ad70d5e20a470a0327565554e72b01af7eefe1e5042", size = 9935 },
 ]
 
 [package.optional-dependencies]
@@ -1055,7 +1055,7 @@ version = "1.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "ghp-import" },
     { name = "jinja2" },
     { name = "markdown" },
@@ -4903,7 +4903,7 @@ requires-dist = [
     { name = "httpx-ws", specifier = ">=0.7.1" },
     { name = "huggingface-hub", extras = ["hf-transfer"], specifier = ">=0.25.1" },
     { name = "keyboard", marker = "extra == 'client'", specifier = ">=0.13.5" },
-    { name = "kokoro-onnx", extras = ["gpu"], specifier = ">=0.3.6,<0.4.0" },
+    { name = "kokoro-onnx", extras = ["gpu"], specifier = ">=0.4.2,<0.5.0" },
     { name = "mdx-truly-sane-lists", marker = "extra == 'dev'", specifier = ">=1.3" },
     { name = "mkdocs-material", marker = "extra == 'dev'", specifier = ">=9.5.39" },
     { name = "mkdocs-render-swagger-plugin", marker = "extra == 'dev'", specifier = ">=0.1.2" },
@@ -5047,7 +5047,7 @@ name = "tqdm"
 version = "4.66.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/58/83/6ba9844a41128c62e810fddddd72473201f3eacde02046066142a2d96cc5/tqdm-4.66.5.tar.gz", hash = "sha256:e1020aef2e5096702d8a025ac7d16b1577279c9d63f8375b63083e9a5f0fcbad", size = 169504 }
 wheels = [
