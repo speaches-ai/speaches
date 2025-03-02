@@ -32,12 +32,16 @@ logger = logging.getLogger(__name__)
 
 class SelfDisposingModel[T]:
     def __init__(
-        self, model_id: str, load_fn: Callable[[], T], ttl: int, unload_fn: Callable[[str], None] | None = None
+        self,
+        model_id: str,
+        load_fn: Callable[[], T],
+        ttl: int,
+        model_unloaded_callback: Callable[[str], None] | None = None,
     ) -> None:
         self.model_id = model_id
         self.load_fn = load_fn
         self.ttl = ttl
-        self.unload_fn = unload_fn
+        self.model_unloaded_callback = model_unloaded_callback
 
         self.ref_count: int = 0
         self.rlock = threading.RLock()
@@ -55,8 +59,8 @@ class SelfDisposingModel[T]:
             self.model = None
             gc.collect()
             logger.info(f"Model {self.model_id} unloaded")
-            if self.unload_fn is not None:
-                self.unload_fn(self.model_id)
+            if self.model_unloaded_callback is not None:
+                self.model_unloaded_callback(self.model_id)
 
     def _load(self) -> None:
         with self.rlock:
@@ -117,7 +121,7 @@ class WhisperModelManager:
             num_workers=self.whisper_config.num_workers,
         )
 
-    def _handle_model_unload(self, model_id: str) -> None:
+    def _handle_model_unloaded(self, model_id: str) -> None:
         with self._lock:
             if model_id in self.loaded_models:
                 del self.loaded_models[model_id]
@@ -141,7 +145,7 @@ class WhisperModelManager:
                 model_id,
                 load_fn=lambda: self._load_fn(model_id),
                 ttl=self.whisper_config.ttl,
-                unload_fn=self._handle_model_unload,
+                model_unloaded_callback=self._handle_model_unloaded,
             )
             return self.loaded_models[model_id]
 
@@ -164,7 +168,7 @@ class PiperModelManager:
         conf = PiperConfig.from_dict(json.loads(config_path.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 
-    def _handle_model_unload(self, model_id: str) -> None:
+    def _handle_model_unloaded(self, model_id: str) -> None:
         with self._lock:
             if model_id in self.loaded_models:
                 del self.loaded_models[model_id]
@@ -187,7 +191,7 @@ class PiperModelManager:
                 model_id,
                 load_fn=lambda: self._load_fn(model_id),
                 ttl=self.ttl,
-                unload_fn=self._handle_model_unload,
+                model_unloaded_callback=self._handle_model_unloaded,
             )
             return self.loaded_models[model_id]
 
@@ -205,7 +209,7 @@ class KokoroModelManager:
         inf_sess = InferenceSession(model_path, providers=ONNX_PROVIDERS)
         return Kokoro.from_session(inf_sess, str(voices_path))
 
-    def _handle_model_unload(self, model_id: str) -> None:
+    def _handle_model_unloaded(self, model_id: str) -> None:
         with self._lock:
             if model_id in self.loaded_models:
                 del self.loaded_models[model_id]
@@ -226,6 +230,6 @@ class KokoroModelManager:
                 model_id,
                 load_fn=lambda: self._load_fn(model_id),
                 ttl=self.ttl,
-                unload_fn=self._handle_model_unload,
+                model_unloaded_callback=self._handle_model_unloaded,
             )
             return self.loaded_models[model_id]
