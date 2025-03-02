@@ -32,6 +32,7 @@ def list_whisper_models() -> Generator[Model, None, None]:
             created=int(model.created_at.timestamp()),
             owned_by=model.id.split("/")[0],
             language=language,
+            task=TASK_NAME_TAG,
         )
         yield transformed_model
 
@@ -67,5 +68,6 @@ def list_local_whisper_models() -> Generator[Model, None, None]:
                 created=int(model.last_modified),
                 owned_by=model.repo_id.split("/")[0],
                 language=language,
+                task=TASK_NAME_TAG,
             )
             yield transformed_model

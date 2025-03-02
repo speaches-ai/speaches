@@ -3,7 +3,6 @@ from __future__ import annotations
 from functools import lru_cache
 import json
 import logging
-from pathlib import Path
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -15,6 +14,7 @@ from speaches.hf_utils import list_model_files
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from pathlib import Path
 
     from piper.voice import PiperVoice
 
@@ -31,11 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 def get_piper_models() -> list[Model]:
-    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0])
+    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
     return [model]
 
 
-def list_piper_models() -> Generator[Voice, None, None]:
+def list_piper_voices() -> Generator[Voice, None, None]:
     model_weights_files = list_model_files(MODEL_ID, glob_pattern="**/*.onnx")
     for model_weights_file in model_weights_files:
         yield Voice(

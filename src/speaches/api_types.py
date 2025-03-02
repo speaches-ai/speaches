@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import faster_whisper.transcribe
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, Field, computed_field
 
 from speaches.text_utils import segments_to_text
 
@@ -130,6 +130,9 @@ class ListModelsResponse(BaseModel):
     object: Literal["list"] = "list"
 
 
+ModelTask = Literal["automatic-speech-recognition", "text-to-speech"]  # TODO: add "voice-activity-detection"
+
+
 # https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L11146
 class Model(BaseModel):
     id: str
@@ -143,31 +146,7 @@ class Model(BaseModel):
     language: list[str] | None = None
     """List of ISO 639-3 supported by the model. It's possible that the list will be empty. This field is not a part of the OpenAI API spec and is added for convenience."""
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        json_schema_extra={
-            "examples": [
-                {
-                    "id": "Systran/faster-whisper-large-v3",
-                    "created": 1700732060,
-                    "object": "model",
-                    "owned_by": "Systran",
-                },
-                {
-                    "id": "Systran/faster-distil-whisper-large-v3",
-                    "created": 1711378296,
-                    "object": "model",
-                    "owned_by": "Systran",
-                },
-                {
-                    "id": "bofenghuang/whisper-large-v2-cv11-french-ct2",
-                    "created": 1687968011,
-                    "object": "model",
-                    "owned_by": "bofenghuang",
-                },
-            ]
-        },
-    )
+    task: ModelTask  # TODO: make a list?
 
 
 # https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L10909

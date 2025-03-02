@@ -86,7 +86,7 @@ Each quality has a different default sample rate:
     @model_validator(mode="after")
     def verify_voice_is_valid(self) -> Self:
         if self.model == kokoro_utils.MODEL_ID:
-            assert self.voice in kokoro_utils.VOICE_IDS
+            assert self.voice in kokoro_utils.list_kokoro_voice_names()
         elif self.model == piper_utils.MODEL_ID:
             assert self.voice in piper_utils.read_piper_voices_config()
         return self
@@ -147,18 +147,8 @@ async def synthesize(
 def list_voices(model_id: ModelId | None = None) -> list[Voice]:
     voices: list[Voice] = []
     if model_id == kokoro_utils.MODEL_ID or model_id is None:
-        kokoro_model_path = kokoro_utils.get_kokoro_model_path()
-        for voice_id in kokoro_utils.VOICE_IDS:
-            voice = Voice(
-                created=0,
-                model_path=kokoro_model_path,
-                model_id=kokoro_utils.MODEL_ID,
-                owned_by=kokoro_utils.MODEL_ID.split("/")[0],
-                sample_rate=kokoro_utils.SAMPLE_RATE,
-                voice_id=voice_id,
-            )
-            voices.append(voice)
+        voices.extend(list(kokoro_utils.list_kokoro_voices()))
     elif model_id == piper_utils.MODEL_ID or model_id is None:
-        voices.extend(list(piper_utils.list_piper_models()))
+        voices.extend(list(piper_utils.list_piper_voices()))
 
     return voices

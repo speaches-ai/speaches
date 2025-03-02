@@ -9,7 +9,7 @@ import huggingface_hub
 from kokoro_onnx import Kokoro
 import numpy as np
 
-from speaches.api_types import Model
+from speaches.api_types import Model, Voice
 from speaches.audio import resample_audio
 from speaches.hf_utils import list_model_files
 
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_kokoro_models() -> list[Model]:
-    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0])
+    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
     return [model]
 
 
@@ -64,6 +64,33 @@ def download_kokoro_model() -> None:
     voices_path = model_repo_path / "voices.bin"
     voices_path.touch(exist_ok=True)
     voices_path.write_bytes(res.content)
+
+
+def list_kokoro_voice_names() -> list[str]:
+    model_path = get_kokoro_model_path()
+    voices_path = model_path.parent / "voices.bin"
+    voices_npz = np.load(voices_path)
+    return list(voices_npz.keys())
+
+
+def list_kokoro_voices() -> list[Voice]:
+    model_path = get_kokoro_model_path()
+    voices_path = model_path.parent / "voices.bin"
+    voices_npz = np.load(voices_path)
+    voice_names: list[str] = list(voices_npz.keys())
+
+    voices = [
+        Voice(
+            model_id=MODEL_ID,
+            voice_id=voice_name,
+            created=int(voices_path.stat().st_mtime),
+            owned_by=MODEL_ID.split("/")[0],
+            sample_rate=24000,
+            model_path=model_path,  # HACK: not applicable for Kokoro
+        )
+        for voice_name in voice_names
+    ]
+    return voices
 
 
 async def generate_audio(
