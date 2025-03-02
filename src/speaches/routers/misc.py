@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import (
     APIRouter,
     Response,
@@ -8,7 +6,8 @@ import huggingface_hub
 from huggingface_hub.hf_api import RepositoryNotFoundError
 
 from speaches import hf_utils
-from speaches.dependencies import ModelManagerDependency  # noqa: TC001
+from speaches.dependencies import ModelManagerDependency
+from speaches.model_aliases import ModelId
 
 router = APIRouter()
 
@@ -23,7 +22,7 @@ def health() -> Response:
     tags=["experimental"],
     summary="Download a model from Hugging Face if it doesn't exist locally.",
 )
-def pull_model(model_id: str) -> Response:
+def pull_model(model_id: ModelId) -> Response:
     if hf_utils.does_local_model_exist(model_id):
         return Response(status_code=200, content=f"Model {model_id} already exists")
     try:
@@ -41,7 +40,7 @@ def get_running_models(
 
 
 @router.post("/api/ps/{model_id:path}", tags=["experimental"], summary="Load a model into memory.")
-def load_model_route(model_manager: ModelManagerDependency, model_id: str) -> Response:
+def load_model_route(model_manager: ModelManagerDependency, model_id: ModelId) -> Response:
     if model_id in model_manager.loaded_models:
         return Response(status_code=409, content="Model already loaded")
     with model_manager.load_model(model_id):
