@@ -20,7 +20,7 @@ def create_stt_tab(config: Config) -> None:
         recommended_models = {model for model in model_ids if model.startswith("Systran")}
         other_models = [model for model in model_ids if model not in recommended_models]
         model_ids = list(recommended_models) + other_models
-        return gr.Dropdown(choices=model_ids, label="Model", value="Systran/faster-whisper-small")
+        return gr.Dropdown(choices=model_ids, label="Model")
 
     async def audio_task(
         http_client: httpx.AsyncClient, file_path: str, endpoint: str, temperature: float, model: str
@@ -72,16 +72,8 @@ def create_stt_tab(config: Config) -> None:
 
     with gr.Tab(label="Speech-to-Text") as tab:
         audio = gr.Audio(type="filepath")
-        whisper_model_dropdown = gr.Dropdown(
-            choices=["Systran/faster-whisper-small"],  # TODO: does this need to be non-empty
-            label="Model",
-            value="Systran/faster-whisper-small",
-        )
-        task_dropdown = gr.Dropdown(
-            choices=["transcribe", "translate"],
-            label="Task",
-            value="transcribe",
-        )
+        whisper_model_dropdown = gr.Dropdown(choices=[], label="Model")
+        task_dropdown = gr.Dropdown(choices=["transcribe", "translate"], label="Task", value="transcribe")
         temperature_slider = gr.Slider(minimum=0.0, maximum=1.0, step=0.1, label="Temperature", value=0.0)
         stream_checkbox = gr.Checkbox(label="Stream", value=True)
         button = gr.Button("Generate")

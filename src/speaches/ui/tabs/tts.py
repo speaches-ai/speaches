@@ -61,16 +61,8 @@ def create_tts_tab(config: Config) -> None:
             gr.Textbox("Speech generation using `rhasspy/piper-voices` model is only supported on x86_64 machines.")
 
         text = gr.Textbox(label="Input Text", value=DEFAULT_TEXT, lines=3)
-        stt_model_dropdown = gr.Dropdown(
-            choices=model_dropdown_choices,
-            label="Model",
-            value="hexgrad/Kokoro-82M",
-        )
-        voice_dropdown = gr.Dropdown(
-            choices=["af"],
-            label="Voice",
-            value="af",
-        )
+        stt_model_dropdown = gr.Dropdown(choices=model_dropdown_choices, label="Model", value=model_dropdown_choices[0])
+        voice_dropdown = gr.Dropdown(choices=[], label="Voice")
         language_dropdown = gr.Dropdown(choices=kokoro_utils.LANGUAGES, label="Language", value="en-us", visible=True)
         stt_model_dropdown.change(
             update_voices_and_language_dropdown,

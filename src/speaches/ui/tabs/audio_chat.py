@@ -260,7 +260,7 @@ def create_audio_chat_tab(config: Config) -> None:  # noqa: C901
         chat_model_dropdown = gr.Dropdown(
             choices=[],
             label="Chat Model",
-            info="For this dropdown to be populated, you need to switch to a different tab and then come back to this tab.",  # FIXME
+            info="For this dropdown to be populated, you need to switch to a different tab and then come back to this tab.",
             value=None,
         )
         stream_checkbox = gr.Checkbox(label="Stream", value=True)
