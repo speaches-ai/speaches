@@ -9,12 +9,8 @@ from speaches import kokoro_utils
 from speaches.api_types import Voice
 from speaches.audio import convert_audio_format
 from speaches.dependencies import KokoroModelManagerDependency, PiperModelManagerDependency
-from speaches.hf_utils import (
-    get_kokoro_model_path,
-    list_piper_models,
-    read_piper_voices_config,
-)
 from speaches.model_aliases import resolve_model_id_alias
+from speaches.piper_utils import list_piper_models, read_piper_voices_config
 
 DEFAULT_MODEL_ID = "hexgrad/Kokoro-82M"
 # https://platform.openai.com/docs/api-reference/audio/createSpeech#audio-createspeech-response_format
@@ -176,7 +172,7 @@ async def synthesize(
 def list_voices(model_id: ModelId | None = None) -> list[Voice]:
     voices: list[Voice] = []
     if model_id == "hexgrad/Kokoro-82M" or model_id is None:
-        kokoro_model_path = get_kokoro_model_path()
+        kokoro_model_path = kokoro_utils.get_kokoro_model_path()
         for voice_id in kokoro_utils.VOICE_IDS:
             voice = Voice(
                 created=0,

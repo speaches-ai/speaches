@@ -1,12 +1,83 @@
-from collections.abc import Generator
+from __future__ import annotations
+
+from functools import lru_cache
+import json
 import logging
+from pathlib import Path
 import time
+from typing import TYPE_CHECKING, Any, Literal
 
-from piper.voice import PiperVoice
+from pydantic import BaseModel
 
+from speaches.api_types import Voice
 from speaches.audio import resample_audio
+from speaches.hf_utils import list_model_files
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from piper.voice import PiperVoice
+
+PiperVoiceQuality = Literal["x_low", "low", "medium", "high"]
+PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
+    "x_low": 16000,
+    "low": 22050,
+    "medium": 22050,
+    "high": 22050,
+}
 
 logger = logging.getLogger(__name__)
+
+
+def list_piper_models() -> Generator[Voice, None, None]:
+    model_id = "rhasspy/piper-voices"
+    model_weights_files = list_model_files(model_id, glob_pattern="**/*.onnx")
+    for model_weights_file in model_weights_files:
+        yield Voice(
+            created=int(model_weights_file.stat().st_mtime),
+            model_path=model_weights_file,
+            voice_id=model_weights_file.name.removesuffix(".onnx"),
+            model_id=model_id,
+            owned_by=model_id.split("/")[0],
+            sample_rate=PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[
+                model_weights_file.name.removesuffix(".onnx").split("-")[-1]
+            ],  # pyright: ignore[reportArgumentType]
+        )
+
+
+# NOTE: It's debatable whether caching should be done here or by the caller. Should be revisited.
+class PiperVoiceConfigAudio(BaseModel):
+    sample_rate: int
+    quality: int
+
+
+class PiperVoiceConfig(BaseModel):
+    audio: PiperVoiceConfigAudio
+    # NOTE: there are more fields in the config, but we don't care about them
+
+
+@lru_cache
+def read_piper_voices_config() -> dict[str, Any]:
+    voices_file = next(list_model_files("rhasspy/piper-voices", glob_pattern="**/voices.json"), None)
+    if voices_file is None:
+        raise FileNotFoundError("Could not find voices.json file")  # noqa: EM101
+    return json.loads(voices_file.read_text())
+
+
+@lru_cache
+def get_piper_voice_model_file(voice: str) -> Path:
+    model_file = next(list_model_files("rhasspy/piper-voices", glob_pattern=f"**/{voice}.onnx"), None)
+    if model_file is None:
+        raise FileNotFoundError(f"Could not find model file for '{voice}' voice")
+    return model_file
+
+
+@lru_cache
+def read_piper_voice_config(voice: str) -> PiperVoiceConfig:
+    model_config_file = next(list_model_files("rhasspy/piper-voices", glob_pattern=f"**/{voice}.onnx.json"), None)
+    if model_config_file is None:
+        raise FileNotFoundError(f"Could not find config file for '{voice}' voice")
+    return PiperVoiceConfig.model_validate_json(model_config_file.read_text())
 
 
 # TODO: async generator https://github.com/mikeshardmind/async-utils/blob/354b93a276572aa54c04212ceca5ac38fedf34ab/src/async_utils/gen_transform.py#L147

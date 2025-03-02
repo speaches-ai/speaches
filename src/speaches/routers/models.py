@@ -14,7 +14,7 @@ from speaches.api_types import (
     ListModelsResponse,
     Model,
 )
-from speaches.hf_utils import list_local_whisper_models, list_whisper_models
+from speaches.whisper_utils import list_local_whisper_models, list_whisper_models
 
 if TYPE_CHECKING:
     from huggingface_hub.hf_api import ModelInfo
