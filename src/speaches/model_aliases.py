@@ -22,6 +22,7 @@ ModelId = Annotated[
     str,
     BeforeValidator(resolve_model_id_alias),
     Field(
+        min_length=1,
         description="The ID of the model. You can get a list of available models by calling `/v1/models`.",
         examples=[
             "Systran/faster-distil-whisper-large-v3",

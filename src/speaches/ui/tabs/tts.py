@@ -1,5 +1,4 @@
 from pathlib import Path
-import platform
 from tempfile import NamedTemporaryFile
 
 import gradio as gr
@@ -19,8 +18,14 @@ DEFAULT_TEXT = "A rainbow is an optical phenomenon caused by refraction, interna
 
 
 def create_tts_tab(config: Config) -> None:
+    async def update_model_dropdown(request: gr.Request) -> gr.Dropdown:
+        openai_client = openai_client_from_gradio_req(request, config)
+        models = (await openai_client.models.list(extra_query={"task": "text-to-speech"})).data
+        model_ids: list[str] = [model.id for model in models]
+        return gr.Dropdown(choices=model_ids, label="Model")
+
     async def update_voices_and_language_dropdown(model_id: str | None, request: gr.Request) -> dict:
-        params = httpx.QueryParams({"model_id": model_id})
+        params = httpx.QueryParams({"model_id": model_id}) if model_id is not None else None
         http_client = http_client_from_gradio_req(request, config)
         res = (await http_client.get("/v1/audio/speech/voices", params=params)).raise_for_status()
         voice_ids = [Voice.model_validate(x).voice_id for x in res.json()]
@@ -55,13 +60,8 @@ def create_tts_tab(config: Config) -> None:
         return file_path
 
     with gr.Tab(label="Text-to-Speech") as tab:
-        model_dropdown_choices = ["hexgrad/Kokoro-82M", "rhasspy/piper-voices"]
-        if platform.machine() != "x86_64":
-            model_dropdown_choices.remove("rhasspy/piper-voices")
-            gr.Textbox("Speech generation using `rhasspy/piper-voices` model is only supported on x86_64 machines.")
-
         text = gr.Textbox(label="Input Text", value=DEFAULT_TEXT, lines=3)
-        stt_model_dropdown = gr.Dropdown(choices=model_dropdown_choices, label="Model", value=model_dropdown_choices[0])
+        stt_model_dropdown = gr.Dropdown(choices=[], label="Model")
         voice_dropdown = gr.Dropdown(choices=[], label="Voice")
         language_dropdown = gr.Dropdown(choices=kokoro_utils.LANGUAGES, label="Language", value="en-us", visible=True)
         stt_model_dropdown.change(
@@ -102,6 +102,7 @@ Default: None (No resampling)
             output,
         )
 
+        tab.select(update_model_dropdown, inputs=None, outputs=stt_model_dropdown)
         tab.select(
             update_voices_and_language_dropdown,
             inputs=[stt_model_dropdown],
