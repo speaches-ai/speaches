@@ -190,12 +190,7 @@ class Voice(BaseModel):
     model_id: str
     voice_id: str
     created: int
-    owned_by: str = Field(
-        examples=[
-            "hexgrad",
-            "rhaaspy",
-        ]
-    )
+    owned_by: str
     sample_rate: int
     model_path: Path = Field(
         examples=[
