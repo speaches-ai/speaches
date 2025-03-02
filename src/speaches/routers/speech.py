@@ -26,7 +26,7 @@ OPENAI_SUPPORTED_SPEECH_MODEL = ("tts-1", "tts-1-hd")
 
 # https://platform.openai.com/docs/api-reference/audio/createSpeech#audio-createspeech-voice
 # https://platform.openai.com/docs/guides/text-to-speech/voice-options
-OPENAI_SUPPORTED_SPEECH_VOICE_NAMES = ("alloy", "echo", "fable", "onyx", "nova", "shimmer")
+OPENAI_SUPPORTED_SPEECH_VOICE_NAMES = ("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
 
 # https://platform.openai.com/docs/guides/text-to-speech/supported-output-formats
 type ResponseFormat = Literal["mp3", "flac", "wav", "pcm"]
