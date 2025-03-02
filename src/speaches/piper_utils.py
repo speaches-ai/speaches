@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel
 
-from speaches.api_types import Voice
+from speaches.api_types import Model, Voice
 from speaches.audio import resample_audio
 from speaches.hf_utils import list_model_files
 
@@ -28,6 +28,11 @@ PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
 }
 
 logger = logging.getLogger(__name__)
+
+
+def get_piper_models() -> list[Model]:
+    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0])
+    return [model]
 
 
 def list_piper_models() -> Generator[Voice, None, None]:

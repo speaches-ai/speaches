@@ -134,13 +134,13 @@ class ListModelsResponse(BaseModel):
 class Model(BaseModel):
     id: str
     """The model identifier, which can be referenced in the API endpoints."""
-    created: int
+    created: int = 0
     """The Unix timestamp (in seconds) when the model was created."""
-    object_: Literal["model"] = Field(serialization_alias="object")
+    object: Literal["model"] = "model"
     """The object type, which is always "model"."""
     owned_by: str
     """The organization that owns the model."""
-    language: list[str] = Field(default_factory=list)
+    language: list[str] | None = None
     """List of ISO 639-3 supported by the model. It's possible that the list will be empty. This field is not a part of the OpenAI API spec and is added for convenience."""
 
     model_config = ConfigDict(

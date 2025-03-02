@@ -9,6 +9,7 @@ import huggingface_hub
 from kokoro_onnx import Kokoro
 import numpy as np
 
+from speaches.api_types import Model
 from speaches.audio import resample_audio
 from speaches.hf_utils import list_model_files
 
@@ -36,6 +37,11 @@ VOICE_IDS = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+def get_kokoro_models() -> list[Model]:
+    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0])
+    return [model]
 
 
 def get_kokoro_model_path() -> Path:
