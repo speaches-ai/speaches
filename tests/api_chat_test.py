@@ -19,6 +19,7 @@ FILE_PATH = Path("audio.wav")  # transcription: Hello world
 B64_AUDIO_DATA = base64.b64encode(FILE_PATH.read_bytes()).decode("utf-8")
 
 OPENAI_MODEL = "gpt-4o-audio-preview"
+TEXT_ONLY_MODEL = "gpt-4o-mini"
 AUDIO_PARAM = ChatCompletionAudioParam(voice="alloy", format="wav")
 
 # TODO: for non-streaming: validate audio format matches the one sent
@@ -116,11 +117,11 @@ class AudioChatStreamingSessionArchive(BaseModel):
 @pytest.mark.asyncio
 @pytest.mark.requires_openai
 @pytest.mark.parametrize("target", ["openai", "speaches"])
-async def test_audio_chat_text(dynamic_openai_client: AsyncOpenAI, target: str) -> None:  # noqa: ARG001
+async def test_audio_chat_text(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 
     body = CompletionCreateParamsNonStreaming(
-        model=OPENAI_MODEL,
+        model=OPENAI_MODEL if target == "openai" else TEXT_ONLY_MODEL,
         modalities=["text"],
         audio={"voice": "alloy", "format": "wav"},  # TODO: is this needed
         stream=False,
@@ -142,11 +143,11 @@ async def test_audio_chat_text(dynamic_openai_client: AsyncOpenAI, target: str) 
 @pytest.mark.asyncio
 @pytest.mark.requires_openai
 @pytest.mark.parametrize("target", ["openai", "speaches"])
-async def test_audio_chat_text_audio(dynamic_openai_client: AsyncOpenAI, target: str) -> None:  # noqa: ARG001
+async def test_audio_chat_text_audio(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 
     body = CompletionCreateParamsNonStreaming(
-        model=OPENAI_MODEL,
+        model=OPENAI_MODEL if target == "openai" else TEXT_ONLY_MODEL,
         modalities=["text", "audio"],
         audio={"voice": "alloy", "format": "wav"},
         stream=False,
@@ -168,11 +169,11 @@ async def test_audio_chat_text_audio(dynamic_openai_client: AsyncOpenAI, target:
 @pytest.mark.asyncio
 @pytest.mark.requires_openai
 @pytest.mark.parametrize("target", ["openai", "speaches"])
-async def test_audio_chat_text_stream(dynamic_openai_client: AsyncOpenAI, target: str) -> None:  # noqa: ARG001
+async def test_audio_chat_text_stream(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 
     body = CompletionCreateParamsStreaming(
-        model=OPENAI_MODEL,
+        model=OPENAI_MODEL if target == "openai" else TEXT_ONLY_MODEL,
         modalities=["text"],
         audio={"voice": "alloy", "format": "pcm16"},  # NOTE: is `audio`  necessary when modality is text only?
         stream=True,
@@ -196,11 +197,11 @@ async def test_audio_chat_text_stream(dynamic_openai_client: AsyncOpenAI, target
 @pytest.mark.asyncio
 @pytest.mark.requires_openai
 @pytest.mark.parametrize("target", ["openai", "speaches"])
-async def test_audio_chat_text_audio_stream(dynamic_openai_client: AsyncOpenAI, target: str) -> None:  # noqa: ARG001
+async def test_audio_chat_text_audio_stream(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 
     body = CompletionCreateParamsStreaming(
-        model=OPENAI_MODEL,
+        model=OPENAI_MODEL if target == "openai" else TEXT_ONLY_MODEL,
         modalities=["text", "audio"],
         audio={"voice": "alloy", "format": "pcm16"},  # TODO: add a test ensuring this is the only supported format
         stream=True,

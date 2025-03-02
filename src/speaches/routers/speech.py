@@ -107,7 +107,7 @@ async def synthesize(
     kokoro_model_manager: KokoroModelManagerDependency,
     body: CreateSpeechRequestBody,
 ) -> StreamingResponse:
-    if kokoro_utils.MODEL_ID:
+    if body.model == kokoro_utils.MODEL_ID:
         # TODO: download the `voices.bin` file
         with kokoro_model_manager.load_model(body.voice) as tts:
             audio_generator = kokoro_utils.generate_audio(
@@ -126,7 +126,7 @@ async def synthesize(
                     async for audio_bytes in audio_generator
                 )
             return StreamingResponse(audio_generator, media_type=f"audio/{body.response_format}")
-    elif piper_utils.MODEL_ID:
+    elif body.model == piper_utils.MODEL_ID:
         with piper_model_manager.load_model(body.voice) as piper_tts:
             # TODO: async generator
             audio_generator = piper_utils.generate_audio(

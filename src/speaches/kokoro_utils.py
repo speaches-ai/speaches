@@ -45,7 +45,7 @@ def get_kokoro_models() -> list[Model]:
 
 
 def get_kokoro_model_path() -> Path:
-    onnx_files = list(list_model_files(MODEL_ID, glob_pattern=FILE_NAME))
+    onnx_files = list(list_model_files(MODEL_ID, glob_pattern=f"**/{FILE_NAME}"))
     if len(onnx_files) == 0:
         raise ValueError(f"Could not find {FILE_NAME} file for '{MODEL_ID}' model")
     return onnx_files[0]
