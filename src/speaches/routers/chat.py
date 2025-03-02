@@ -64,6 +64,7 @@ def generate_chat_completion_id() -> str:
     return "chatcmpl-" + str(uuid4())
 
 
+# TODO: support model aliasing
 class CompletionCreateParamsBase(OpenAICompletionCreateParamsBase):
     stream: bool = False
     trancription_model: str = DEFAULT_TRANSCRIPTION_MODEL

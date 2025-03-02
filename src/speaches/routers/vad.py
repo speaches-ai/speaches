@@ -11,13 +11,15 @@ from fastapi import (
     Form,
 )
 from faster_whisper.vad import VadOptions, get_speech_timestamps
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator
 
 from speaches.dependencies import AudioFileDependency  # noqa: TC001
+from speaches.model_aliases import resolve_model_id_alias
 
 # NOTE: this should match the default value in `decode_audio` which gets called by `AudioFileDependency`
 SAMPLE_RATE = 16000
 MS_SAMPLE_RATE = SAMPLE_RATE // 1000
+MODEL_ID = "silero_vad_v5"
 
 
 logger = logging.getLogger(__name__)
@@ -37,13 +39,22 @@ def to_ms_speech_timestamps(speech_timestamps: list[SpeechTimestamp]) -> list[Sp
     return speech_timestamps
 
 
+ModelId = Annotated[
+    Literal["silero_vad_v5"],
+    BeforeValidator(resolve_model_id_alias),
+    Form(
+        description="The ID of the model.",
+    ),
+]
+
+
 # TODO: adapt parameter names from here https://platform.openai.com/docs/api-reference/realtime-sessions/create#realtime-sessions-create-turn_detection
 # TODO: use model manager
 # TODO: use CudaExecutionProvider
 @router.post("/v1/audio/speech/timestamps")
 def detect_speech_timestamps(
     audio: AudioFileDependency,
-    model: Annotated[Literal["silero_vad_v5"], Form(description="Model name")] = "silero_vad_v5",  # noqa: ARG001
+    model: ModelId = MODEL_ID,
     threshold: Annotated[
         float,
         Form(
@@ -88,6 +99,7 @@ def detect_speech_timestamps(
         int, Form(ge=0, description="""Final speech chunks are padded by speech_pad_ms each side""")
     ] = 0,
 ) -> list[SpeechTimestamp]:
+    assert model == "silero_vad_v5", "Only 'silero_vad_v5' model is supported"
     vad_options = VadOptions(
         threshold=threshold,
         neg_threshold=neg_threshold,  # pyright: ignore[reportArgumentType]

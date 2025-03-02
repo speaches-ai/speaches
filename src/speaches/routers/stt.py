@@ -11,7 +11,7 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from faster_whisper.transcribe import BatchedInferencePipeline, TranscriptionInfo
-from pydantic import Field
+from pydantic import BeforeValidator, Field
 
 from speaches.api_types import (
     DEFAULT_TIMESTAMP_GRANULARITIES,
@@ -22,6 +22,7 @@ from speaches.api_types import (
     TranscriptionSegment,
 )
 from speaches.dependencies import AudioFileDependency, ConfigDependency, ModelManagerDependency
+from speaches.model_aliases import resolve_model_id_alias
 from speaches.text_utils import segments_to_srt, segments_to_text, segments_to_vtt
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,7 @@ def segments_to_streaming_response(
 
 ModelId = Annotated[
     str,
+    BeforeValidator(resolve_model_id_alias),
     Field(
         description="The ID of the model. You can get a list of available models by calling `/v1/models`.",
         examples=[

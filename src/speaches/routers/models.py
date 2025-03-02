@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 router = APIRouter(tags=["models"])
 
+# TODO: should model aliases be listed?
+
 
 @router.get("/v1/models")
 def get_models() -> ListModelsResponse:

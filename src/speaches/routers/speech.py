@@ -14,6 +14,7 @@ from speaches.hf_utils import (
     list_piper_models,
     read_piper_voices_config,
 )
+from speaches.model_aliases import resolve_model_id_alias
 
 DEFAULT_MODEL_ID = "hexgrad/Kokoro-82M"
 # https://platform.openai.com/docs/api-reference/audio/createSpeech#audio-createspeech-response_format
@@ -51,6 +52,7 @@ def handle_openai_supported_model_ids(model_id: str) -> str:
 
 ModelId = Annotated[
     Literal["hexgrad/Kokoro-82M", "rhasspy/piper-voices"],
+    BeforeValidator(resolve_model_id_alias),
     BeforeValidator(handle_openai_supported_model_ids),
     Field(
         description="The ID of the model",
