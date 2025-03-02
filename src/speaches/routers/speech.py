@@ -5,14 +5,13 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, BeforeValidator, Field, model_validator
 
-from speaches import kokoro_utils
+from speaches import kokoro_utils, piper_utils
 from speaches.api_types import Voice
 from speaches.audio import convert_audio_format
 from speaches.dependencies import KokoroModelManagerDependency, PiperModelManagerDependency
 from speaches.model_aliases import resolve_model_id_alias
-from speaches.piper_utils import list_piper_models, read_piper_voices_config
 
-DEFAULT_MODEL_ID = "hexgrad/Kokoro-82M"
+DEFAULT_MODEL_ID = kokoro_utils.MODEL_ID
 # https://platform.openai.com/docs/api-reference/audio/createSpeech#audio-createspeech-response_format
 DEFAULT_RESPONSE_FORMAT = "mp3"
 DEFAULT_VOICE_ID = "af"  # TODO: make configurable
@@ -50,10 +49,7 @@ ModelId = Annotated[
     Literal["hexgrad/Kokoro-82M", "rhasspy/piper-voices"],
     BeforeValidator(resolve_model_id_alias),
     BeforeValidator(handle_openai_supported_model_ids),
-    Field(
-        description="The ID of the model",
-        examples=["hexgrad/Kokoro-82M", "rhasspy/piper-voices"],
-    ),
+    Field(description="The ID of the model"),
 ]
 
 
@@ -108,17 +104,17 @@ Each quality has a different default sample rate:
 
     @model_validator(mode="after")
     def verify_voice_is_valid(self) -> Self:
-        if self.model == "hexgrad/Kokoro-82M":
+        if self.model == kokoro_utils.MODEL_ID:
             assert self.voice in kokoro_utils.VOICE_IDS
-        elif self.model == "rhasspy/piper-voices":
-            assert self.voice in read_piper_voices_config()
+        elif self.model == piper_utils.MODEL_ID:
+            assert self.voice in piper_utils.read_piper_voices_config()
         return self
 
     @model_validator(mode="after")
     def validate_speed(self) -> Self:
-        if self.model == "hexgrad/Kokoro-82M":
+        if self.model == kokoro_utils.MODEL_ID:
             assert 0.5 <= self.speed <= 2.0
-        if self.model == "rhasspy/piper-voices":
+        if self.model == piper_utils.MODEL_ID:
             assert 0.25 <= self.speed <= 4.0
         return self
 
@@ -131,7 +127,7 @@ async def synthesize(
     body: CreateSpeechRequestBody,
 ) -> StreamingResponse:
     match body.model:
-        case "hexgrad/Kokoro-82M":
+        case kokoro_utils.MODEL_ID:
             # TODO: download the `voices.bin` file
             with kokoro_model_manager.load_model(body.voice) as tts:
                 audio_generator = kokoro_utils.generate_audio(
@@ -150,9 +146,7 @@ async def synthesize(
                         async for audio_bytes in audio_generator
                     )
                 return StreamingResponse(audio_generator, media_type=f"audio/{body.response_format}")
-        case "rhasspy/piper-voices":
-            from speaches import piper_utils
-
+        case piper_utils.MODEL_ID:
             with piper_model_manager.load_model(body.voice) as piper_tts:
                 # TODO: async generator
                 audio_generator = piper_utils.generate_audio(
@@ -171,19 +165,19 @@ async def synthesize(
 @router.get("/v1/audio/speech/voices")
 def list_voices(model_id: ModelId | None = None) -> list[Voice]:
     voices: list[Voice] = []
-    if model_id == "hexgrad/Kokoro-82M" or model_id is None:
+    if model_id == kokoro_utils.MODEL_ID or model_id is None:
         kokoro_model_path = kokoro_utils.get_kokoro_model_path()
         for voice_id in kokoro_utils.VOICE_IDS:
             voice = Voice(
                 created=0,
                 model_path=kokoro_model_path,
-                model_id="hexgrad/Kokoro-82M",
-                owned_by="hexgrad",
+                model_id=kokoro_utils.MODEL_ID,
+                owned_by=kokoro_utils.MODEL_ID.split("/")[0],
                 sample_rate=kokoro_utils.SAMPLE_RATE,
                 voice_id=voice_id,
             )
             voices.append(voice)
-    elif model_id == "rhasspy/piper-voices" or model_id is None:
-        voices.extend(list(list_piper_models()))
+    elif model_id == piper_utils.MODEL_ID or model_id is None:
+        voices.extend(list(piper_utils.list_piper_models()))
 
     return voices

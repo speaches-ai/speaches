@@ -13,6 +13,10 @@ from speaches.audio import resample_audio
 from speaches.hf_utils import list_model_files
 
 KOKORO_REVISION = "c97b7bbc3e60f447383c79b2f94fee861ff156ac"
+MODEL_ID = "hexgrad/Kokoro-82M"
+FILE_NAME = "kokoro-v0_19.onnx"
+VOICES_FILE_SOURCE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.bin"
+
 SAMPLE_RATE = 24000  # the default sample rate for Kokoro
 Language = Literal["en-us", "en-gb", "fr-fr", "ja", "ko", "cmn"]
 LANGUAGES: list[Language] = ["en-us", "en-gb", "fr-fr", "ja", "ko", "cmn"]
@@ -35,27 +39,22 @@ logger = logging.getLogger(__name__)
 
 
 def get_kokoro_model_path() -> Path:
-    file_name = "kokoro-v0_19.onnx"
-    onnx_files = list(list_model_files("hexgrad/Kokoro-82M", glob_pattern=f"**/{file_name}"))
+    onnx_files = list(list_model_files(MODEL_ID, glob_pattern=FILE_NAME))
     if len(onnx_files) == 0:
-        raise ValueError(f"Could not find {file_name} file for 'hexgrad/Kokoro-82M' model")
+        raise ValueError(f"Could not find {FILE_NAME} file for '{MODEL_ID}' model")
     return onnx_files[0]
 
 
 def download_kokoro_model() -> None:
-    model_id = "hexgrad/Kokoro-82M"
     model_repo_path = Path(
         huggingface_hub.snapshot_download(
-            model_id,
+            MODEL_ID,
             repo_type="model",
-            allow_patterns=["kokoro-v0_19.onnx"],
+            allow_patterns=MODEL_ID,
             revision=KOKORO_REVISION,
         )
     )
-    # HACK
-    res = httpx.get(
-        "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.bin", follow_redirects=True
-    ).raise_for_status()
+    res = httpx.get(VOICES_FILE_SOURCE, follow_redirects=True).raise_for_status()  # HACK
     voices_path = model_repo_path / "voices.bin"
     voices_path.touch(exist_ok=True)
     voices_path.write_bytes(res.content)
