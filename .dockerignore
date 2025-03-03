@@ -2,3 +2,4 @@
 !src/speaches
 !pyproject.toml
 !uv.lock
+!model_aliases.json
