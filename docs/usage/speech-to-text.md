@@ -42,13 +42,16 @@ curl http://localhost:8000/v1/audio/transcriptions -F "file=@audio.wav"
 === "Python"
 
     ```python
-    import httpx
+    from pathlib import Path
 
-    with open('audio.wav', 'rb') as f:
-        files = {'file': ('audio.wav', f)}
-        response = httpx.post('http://localhost:8000/v1/audio/transcriptions', files=files)
+    from openai import OpenAI
 
-    print(response.text)
+    client = OpenAI()
+
+    with Path("audio.wav").open("rb") as audio_file:
+        transcription = client.audio.transcriptions.create(model="Systran/faster-whisper-small", file=audio_file)
+
+    print(transcription.text)
     ```
 
 === "CLI"
