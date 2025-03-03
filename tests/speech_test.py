@@ -1,15 +1,10 @@
 import io
-import platform
 
 from openai import AsyncOpenAI, UnprocessableEntityError
 import pytest
 import soundfile as sf
 
-platform_machine = platform.machine()
-if platform_machine != "x86_64":
-    pytest.skip("Only supported on x86_64", allow_module_level=True)
-
-from speaches.routers.speech import (  # noqa: E402
+from speaches.routers.speech import (
     DEFAULT_MODEL_ID,
     DEFAULT_RESPONSE_FORMAT,
     DEFAULT_VOICE_ID,

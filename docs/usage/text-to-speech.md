@@ -1,7 +1,3 @@
-!!! warning
-
-    `rhasspy/piper-voices` is only supported on x86_64. I was unable to build [piper-phonemize](https://github.com/rhasspy/piper-phonemize) for ARM. If you have experience building Python packages with third-party C++ dependencies, please consider contributing. See [#234](https://github.com/speaches-ai/speaches/issues/234) for more information.
-
 !!! note
 
     Before proceeding, you should be familiar with the [OpenAI Text-to-Speech](https://platform.openai.com/docs/guides/text-to-speech) and the relevant [OpenAI API reference](https://platform.openai.com/docs/api-reference/audio/createSpeech)

@@ -10,8 +10,8 @@ dependencies = [
     "huggingface-hub[hf-transfer]>=0.25.1",
     "kokoro-onnx[gpu]>=0.4.2,<0.5.0",
     "numpy>=2.1.1",
-    "piper-phonemize ; platform_machine == 'x86_64'",
-    "piper-tts>=1.2.0 ; platform_machine == 'x86_64'",
+    "piper-phonemize ; sys_platform == 'linux'",
+    "piper-tts>=1.2.0 ; sys_platform == 'linux'",
     "pydantic-settings>=2.5.2",
     "pydantic>=2.10.0",
     "python-multipart>=0.0.10",
@@ -150,7 +150,10 @@ markers = [
 constraint-dependencies = ["llvmlite>=0.40.0"]
 
 [tool.uv.sources]
-piper-phonemize = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl" }
+piper-phonemize = [
+  { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
+  { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
 
 [[tool.uv.dependency-metadata]]
 name = "piper-tts"

@@ -1,5 +1,11 @@
 version = 1
 requires-python = "==3.12.*"
+resolution-markers = [
+    "platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux'",
+    "sys_platform != 'linux'",
+]
 
 [manifest]
 constraints = [{ name = "llvmlite", specifier = ">=0.40.0" }]
@@ -1383,12 +1389,12 @@ name = "onnxruntime-gpu"
 version = "1.20.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "coloredlogs" },
-    { name = "flatbuffers" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "protobuf" },
-    { name = "sympy" },
+    { name = "coloredlogs", marker = "sys_platform != 'linux' or platform_machine == 'x86_64'" },
+    { name = "flatbuffers", marker = "sys_platform != 'linux' or platform_machine == 'x86_64'" },
+    { name = "numpy", marker = "sys_platform != 'linux' or platform_machine == 'x86_64'" },
+    { name = "packaging", marker = "sys_platform != 'linux' or platform_machine == 'x86_64'" },
+    { name = "protobuf", marker = "sys_platform != 'linux' or platform_machine == 'x86_64'" },
+    { name = "sympy", marker = "sys_platform != 'linux' or platform_machine == 'x86_64'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/91/a8/6984a2fb070be372a866108e3e85c9eb6e8f0378a8567a66967d80befb75/onnxruntime_gpu-1.20.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1951f96cd534c6151721e552606d0d792ea6a4c3e57e2f10eed17cca8105e953", size = 291510989 },
@@ -1863,8 +1869,30 @@ wheels = [
 
 [[package]]
 name = "piper-phonemize"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux'",
+]
+
+[[package]]
+name = "piper-phonemize"
+version = "1.2.0"
+source = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl" }
+resolution-markers = [
+    "platform_machine == 'aarch64' and sys_platform == 'linux'",
+]
+wheels = [
+    { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:c8f52790737af7ce6ca660bb33d9539aaeed05e9a477cf4cb49082bb142bcd13" },
+]
+
+[[package]]
+name = "piper-phonemize"
 version = "1.2.0"
 source = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl" }
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
 wheels = [
     { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:13bfd07550572042c5e6dd8d40076bf24101a930af0c7a1265427217275225b3" },
 ]
@@ -1874,7 +1902,9 @@ name = "piper-tts"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "piper-phonemize" },
+    { name = "piper-phonemize", version = "1.1.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux'" },
+    { name = "piper-phonemize", version = "1.2.0", source = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
+    { name = "piper-phonemize", version = "1.2.0", source = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/aa/215bced0725cf5b5afe939f86b177c8ddb0d38292a94e85c55b3fcf6d46d/piper_tts-1.2.0-py3-none-any.whl", hash = "sha256:f3410aea0f8051d8a118050a5b954faeb36f6ac0da6d10fc2f8a043a8eaf27b5", size = 29454 },
@@ -2543,8 +2573,10 @@ dependencies = [
     { name = "kokoro-onnx", extra = ["gpu"] },
     { name = "numpy" },
     { name = "openai", extra = ["realtime"] },
-    { name = "piper-phonemize", marker = "platform_machine == 'x86_64'" },
-    { name = "piper-tts", marker = "platform_machine == 'x86_64'" },
+    { name = "piper-phonemize", version = "1.1.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux'" },
+    { name = "piper-phonemize", version = "1.2.0", source = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
+    { name = "piper-phonemize", version = "1.2.0", source = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "piper-tts", marker = "sys_platform == 'linux'" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -2633,8 +2665,10 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-threading", marker = "extra == 'opentelemetry'", specifier = "==0.50b0" },
     { name = "opentelemetry-instrumentation-urllib", marker = "extra == 'opentelemetry'", specifier = "==0.50b0" },
     { name = "opentelemetry-instrumentation-urllib3", marker = "extra == 'opentelemetry'", specifier = "==0.50b0" },
-    { name = "piper-phonemize", marker = "platform_machine == 'x86_64'", url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl" },
-    { name = "piper-tts", marker = "platform_machine == 'x86_64'", specifier = ">=1.2.0" },
+    { name = "piper-phonemize", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl" },
+    { name = "piper-phonemize", marker = "platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux'" },
+    { name = "piper-phonemize", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl" },
+    { name = "piper-tts", marker = "sys_platform == 'linux'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0.1" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pydantic-settings", specifier = ">=2.5.2" },
