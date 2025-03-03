@@ -1,4 +1,3 @@
-# TODO: https://docs.astral.sh/uv/guides/integration/docker/#configuring-watch-with-docker-compose
 services:
   speaches:
     container_name: speaches
@@ -11,6 +10,13 @@ services:
     restart: unless-stopped
     ports:
       - 8000:8000
+    develop:
+      watch:
+        - action: rebuild
+          path: ./uv.lock
+        - action: sync+restart
+          path: ./src
+          target: /home/ubuntu/speaches/src
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://0.0.0.0:8000/health"]
       interval: 30s
