@@ -7,6 +7,8 @@ from fastapi import (
     FastAPI,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.responses import RedirectResponse
 
 from speaches.dependencies import ApiKeyDependency, get_config
 from speaches.logger import setup_logger
@@ -74,6 +76,10 @@ def create_app() -> FastAPI:
     app.include_router(realtime_ws_router)
     app.include_router(speech_router)
     app.include_router(vad_router)
+
+    # HACK: move this elsewhere
+    app.get("/v1/realtime", include_in_schema=False)(lambda: RedirectResponse(url="/v1/realtime/"))
+    app.mount("/v1/realtime", StaticFiles(directory="realtime-console/dist", html=True))
 
     if config.allow_origins is not None:
         app.add_middleware(

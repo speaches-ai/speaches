@@ -1,5 +1,6 @@
 *
-!src/speaches
+!src
 !pyproject.toml
 !uv.lock
 !model_aliases.json
+!realtime-console
