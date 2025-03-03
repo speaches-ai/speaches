@@ -1,6 +1,6 @@
 !!! note
 
-    This project was previously named `faster-whisper-server`. I've decided to change the name from `faster-whisper-server`, as the project has evolved to support more than just transcription.
+    This project was previously named `faster-whisper-server`. I've decided to change the name from `faster-whisper-server`, as the project has evolved to support more than just ASR.
 
 !!! note
 
@@ -23,11 +23,15 @@
 - GPU and CPU support.
 - [Deployable via Docker Compose / Docker](https://speaches.ai/installation/)
 - [Highly configurable](https://speaches.ai/configuration/)
-- [Coming soon](https://github.com/speaches-ai/speaches/issues/115): Realtime API | [OpenAI Documentation](https://platform.openai.com/docs/guides/realtime)
+- [Realtime API](https://speaches.ai/configuration/)
 
 Please create an issue if you find a bug, have a question, or a feature suggestion.
 
 ## Demos
+
+### Realtime API
+
+TODO
 
 ### Audio Chat
 

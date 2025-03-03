@@ -42,6 +42,7 @@ plugins:
 nav:
   - Introduction: index.md
   - Usage / Capabilities:
+      - Realtime API: usage/realtime-api.md
       - Text-to-Speech: usage/text-to-speech.md
       - Speech-to-Text: usage/speech-to-text.md
       - Voice Chat: usage/voice-chat.md
