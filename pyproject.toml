@@ -148,8 +148,6 @@ markers = [
 
 [tool.uv]
 constraint-dependencies = ["llvmlite>=0.40.0"]
-# TODO: create an issue on https://github.com/thewh1teagle/kokoro-onnx regarding this
-override-dependencies = ["onnxruntime-gpu>=1.20.1 ; platform_machine == 'x86_64'"]
 
 [tool.uv.sources]
 piper-phonemize = { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl" }
