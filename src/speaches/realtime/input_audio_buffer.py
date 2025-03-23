@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 from io import BytesIO
+import logging
+import time
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -28,6 +30,8 @@ if TYPE_CHECKING:
 SAMPLE_RATE = 16000
 MS_SAMPLE_RATE = 16
 MAX_VAD_WINDOW_SIZE_SAMPLES = 3000 * MS_SAMPLE_RATE
+
+logger = logging.getLogger(__name__)
 
 
 # NOTE not in `src/speaches/realtime/input_audio_buffer_event_router.py` due to circular import
@@ -118,12 +122,14 @@ class InputAudioBufferTranscriber:
             endian="LITTLE",
             format="wav",
         )
+        start = time.perf_counter()
         transcript = await self.transcription_client.create(
             file=file,
             model=self.session.input_audio_transcription.model,
             response_format="text",
             language=self.session.input_audio_transcription.language or NotGiven(),
         )
+        logger.info(f"Transcription generation took {time.perf_counter() - start:.2f} seconds")
         content_item.transcript = transcript
         self.pubsub.publish_nowait(
             ConversationItemInputAudioTranscriptionCompletedEvent(item_id=item.id, transcript=transcript)

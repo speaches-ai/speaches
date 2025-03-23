@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 import logging
+import time
 from typing import Annotated, Self
 from uuid import uuid4
 
@@ -141,6 +142,7 @@ class AudioChatStream:
         self.created: int
 
     async def text_chat_completion_chunk_stream(self) -> AsyncGenerator[ChatCompletionChunk]:
+        start = time.perf_counter()
         async for chunk in self.chat_completion_chunk_stream:
             if len(chunk.choices) == 0:
                 logger.warning(f"Received a chunk with no choices: {chunk}")
@@ -161,10 +163,12 @@ class AudioChatStream:
             # if choice.finish_reason is None:
             yield chunk
         self.sentence_chunker.close()
+        logger.info(f"Text generation took {time.perf_counter() - start:.2f} seconds")
 
     async def audio_chat_completion_chunk_stream(self) -> AsyncGenerator[ChatCompletionChunk]:
         assert self.body.audio is not None
 
+        start = time.perf_counter()
         # TODO: parallelize
         async for sentence in self.sentence_chunker:
             res = await self.speech_client.create(
@@ -189,6 +193,7 @@ class AudioChatStream:
                 model=self.body.speech_model,
                 object="chat.completion.chunk",
             )
+        logger.info(f"Audio generation took {time.perf_counter() - start:.2f} seconds")
 
     async def __aiter__(self) -> AsyncGenerator[ChatCompletionChunk]:
         assert self.body.modalities is not None
@@ -199,8 +204,11 @@ class AudioChatStream:
             )
             # without stream I got warning
             async with merged_stream.stream() as stream:
-                async for chunk in stream:
-                    yield chunk
+                try:
+                    async for chunk in stream:
+                        yield chunk
+                except openai.APIStatusError:
+                    logger.exception("Audio chat generation failed yooo")
         else:
             async for chunk in self.text_chat_completion_chunk_stream():
                 yield chunk
