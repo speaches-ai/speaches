@@ -1,31 +1,31 @@
-import asyncio
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 import logging
 from pathlib import Path
 import time
 from typing import Literal
 
-from httpx import AsyncClient
 import huggingface_hub
 from kokoro_onnx import Kokoro
 import numpy as np
 from pydantic import BaseModel
 
-from speaches.api_types import Model, Voice
+from speaches.api_types import Model
 from speaches.audio import resample_audio
-from speaches.hf_utils import list_model_files
-
-KOKORO_REVISION = "c97b7bbc3e60f447383c79b2f94fee861ff156ac"
-MODEL_ID = "hexgrad/Kokoro-82M"
-FILE_NAME = "kokoro-v0_19.onnx"
-VOICES_FILE_SOURCE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.bin"
+from speaches.hf_utils import (
+    HfModelFilter,
+    extract_language_list,
+    get_cached_model_repos_info,
+    get_model_card_data_from_cached_repo_info,
+    list_model_files,
+)
+from speaches.model_registry import (
+    ModelRegistry,
+)
 
 SAMPLE_RATE = 24000  # the default sample rate for Kokoro
-Language = Literal["en-us", "en-gb", "fr-fr", "ja", "ko", "cmn"]
-LANGUAGES: list[Language] = ["en-us", "en-gb", "fr-fr", "ja", "ko", "cmn"]
-
-
-logger = logging.getLogger(__name__)
+LIBRARY_NAME = "onnx"
+TASK_NAME_TAG = "text-to-speech"
+TAGS = {"speaches", "kokoro"}
 
 
 class KokoroModelFiles(BaseModel):
@@ -33,82 +33,144 @@ class KokoroModelFiles(BaseModel):
     voices: Path
 
 
-async def download_kokoro_model_files_if_not_exist(model_id: str = MODEL_ID) -> None:
-    try:
-        get_kokoro_model_files(model_id)
-    except ValueError:
-        await download_kokoro_model_files(model_id)
+class KokoroModelVoice(BaseModel):
+    name: str
+    language: str
+    gender: Literal["male", "female"]
 
 
-def list_kokoro_remote_models() -> list[Model]:
-    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
-    return [model]
+VOICES = [
+    # American English
+    KokoroModelVoice(name="af_heart", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_alloy", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_aoede", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_bella", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_jessica", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_kore", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_nicole", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_nova", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_river", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_sarah", language="en-us", gender="female"),
+    KokoroModelVoice(name="af_sky", language="en-us", gender="female"),
+    KokoroModelVoice(name="am_adam", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_echo", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_eric", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_fenrir", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_liam", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_michael", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_onyx", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_puck", language="en-us", gender="male"),
+    KokoroModelVoice(name="am_santa", language="en-us", gender="male"),
+    # British English
+    KokoroModelVoice(name="bf_alice", language="en-gb", gender="female"),
+    KokoroModelVoice(name="bf_emma", language="en-gb", gender="female"),
+    KokoroModelVoice(name="bf_isabella", language="en-gb", gender="female"),
+    KokoroModelVoice(name="bf_lily", language="en-gb", gender="female"),
+    KokoroModelVoice(name="bm_daniel", language="en-gb", gender="male"),
+    KokoroModelVoice(name="bm_fable", language="en-gb", gender="male"),
+    KokoroModelVoice(name="bm_george", language="en-gb", gender="male"),
+    KokoroModelVoice(name="bm_lewis", language="en-gb", gender="male"),
+    # Japanese
+    KokoroModelVoice(name="jf_alpha", language="ja", gender="female"),
+    KokoroModelVoice(name="jf_gongitsune", language="ja", gender="female"),
+    KokoroModelVoice(name="jf_nezumi", language="ja", gender="female"),
+    KokoroModelVoice(name="jf_tebukuro", language="ja", gender="female"),
+    KokoroModelVoice(name="jm_kumo", language="ja", gender="male"),
+    # Mandarin Chinese
+    KokoroModelVoice(name="zf_xiaobei", language="zh", gender="female"),
+    KokoroModelVoice(name="zf_xiaoni", language="zh", gender="female"),
+    KokoroModelVoice(name="zf_xiaoxiao", language="zh", gender="female"),
+    KokoroModelVoice(name="zf_xiaoyi", language="zh", gender="female"),
+    KokoroModelVoice(name="zm_yunjian", language="zh", gender="male"),
+    KokoroModelVoice(name="zm_yunxi", language="zh", gender="male"),
+    KokoroModelVoice(name="zm_yunxia", language="zh", gender="male"),
+    KokoroModelVoice(name="zm_yunyang", language="zh", gender="male"),
+    # Spanish
+    KokoroModelVoice(name="ef_dora", language="es", gender="female"),
+    KokoroModelVoice(name="em_alex", language="es", gender="male"),
+    KokoroModelVoice(name="em_santa", language="es", gender="male"),
+    # French
+    KokoroModelVoice(name="ff_siwis", language="fr-fr", gender="female"),
+    # Hindi
+    KokoroModelVoice(name="hf_alpha", language="hi", gender="female"),
+    KokoroModelVoice(name="hf_beta", language="hi", gender="female"),
+    KokoroModelVoice(name="hm_omega", language="hi", gender="male"),
+    KokoroModelVoice(name="hm_psi", language="hi", gender="male"),
+    # Italian
+    KokoroModelVoice(name="if_sara", language="it", gender="female"),
+    KokoroModelVoice(name="im_nicola", language="it", gender="male"),
+    # Brazilian Portuguese
+    KokoroModelVoice(name="pf_dora", language="pt-br", gender="female"),
+    KokoroModelVoice(name="pm_alex", language="pt-br", gender="male"),
+    KokoroModelVoice(name="pm_santa", language="pt-br", gender="male"),
+]
 
 
-# TODO: rework
-def list_kokoro_local_models() -> list[Model]:
-    try:
-        get_kokoro_model_files()
-        return [Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")]
-    except ValueError:
-        return []
+class KokoroModel(Model):
+    sample_rate: int
+    voices: list[KokoroModelVoice]
 
 
-def get_kokoro_model_files(model_id: str = MODEL_ID) -> KokoroModelFiles:
-    assert model_id == MODEL_ID
-    onnx_files = list(list_model_files(model_id, glob_pattern=f"**/{FILE_NAME}"))
-    if len(onnx_files) == 0:
-        raise ValueError(f"Could not find {FILE_NAME} file for '{model_id}' model")
-    if len(onnx_files) > 1:
-        raise ValueError(f"Found multiple {FILE_NAME} files for '{model_id}' model: {onnx_files}")
-    model_path = onnx_files[0]
-    voices_path = model_path.parent / "voices.bin"
-    if not voices_path.exists():
-        raise ValueError(f"Could not find voices.bin file for '{model_id}' model")
-    return KokoroModelFiles(model=model_path, voices=voices_path)
+hf_model_filter = HfModelFilter(
+    library_name=LIBRARY_NAME,
+    task=TASK_NAME_TAG,
+    tags=TAGS,
+)
 
 
-async def download_kokoro_model_files(model_id: str = MODEL_ID) -> None:
-    assert model_id == MODEL_ID
-    model_repo_path = Path(
-        await asyncio.to_thread(
-            huggingface_hub.snapshot_download,
-            model_id,
-            repo_type="model",
-            allow_patterns=[FILE_NAME],
-            revision=KOKORO_REVISION,
+logger = logging.getLogger(__name__)
+
+
+class KokoroModelRegistry(ModelRegistry):
+    def list_remote_models(self) -> Generator[KokoroModel, None, None]:
+        models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
+        for model in models:
+            assert model.created_at is not None and model.card_data is not None, model
+            yield KokoroModel(
+                id=model.id,
+                created=int(model.created_at.timestamp()),
+                owned_by=model.id.split("/")[0],
+                language=extract_language_list(model.card_data),
+                task=TASK_NAME_TAG,
+                sample_rate=SAMPLE_RATE,
+                voices=VOICES,
+            )
+
+    def list_local_models(self) -> Generator[KokoroModel, None, None]:
+        cached_model_repos_info = get_cached_model_repos_info()
+        for cached_repo_info in cached_model_repos_info:
+            model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
+            if model_card_data is None:
+                continue
+            if self.hf_model_filter.passes_filter(model_card_data):
+                yield KokoroModel(
+                    id=cached_repo_info.repo_id,
+                    created=int(cached_repo_info.last_modified),
+                    owned_by=cached_repo_info.repo_id.split("/")[0],
+                    language=extract_language_list(model_card_data),
+                    task=TASK_NAME_TAG,
+                    sample_rate=SAMPLE_RATE,
+                    voices=VOICES,
+                )
+
+    def get_model_files(self, model_id: str) -> KokoroModelFiles:
+        model_files = list_model_files(model_id)
+
+        model_file_path = next(file_path for file_path in model_files if file_path.name == "model.onnx")
+        voices_file_path = next(file_path for file_path in model_files if file_path.name == "voices.bin")
+
+        return KokoroModelFiles(
+            model=model_file_path,
+            voices=voices_file_path,
         )
-    )
-    res = await AsyncClient().get(VOICES_FILE_SOURCE, follow_redirects=True)
-    res = res.raise_for_status()  # HACK
-    voices_path = model_repo_path / "voices.bin"
-    voices_path.touch(exist_ok=True)
-    voices_path.write_bytes(res.content)
 
-
-def list_kokoro_voice_names() -> list[str]:
-    model_files = get_kokoro_model_files()
-    voices_npz = np.load(model_files.voices)
-    return list(voices_npz.keys())
-
-
-def list_kokoro_voices() -> list[Voice]:
-    model_files = get_kokoro_model_files()
-    voices_npz = np.load(model_files.voices)
-    voice_names: list[str] = list(voices_npz.keys())
-
-    voices = [
-        Voice(
-            model_id=MODEL_ID,
-            voice_id=voice_name,
-            created=int(model_files.voices.stat().st_mtime),
-            owned_by=MODEL_ID.split("/")[0],
-            sample_rate=SAMPLE_RATE,
-            model_path=model_files.model,  # HACK: not applicable for Kokoro
+    def download_model_files(self, model_id: str) -> None:
+        _model_repo_path_str = huggingface_hub.snapshot_download(
+            repo_id=model_id, repo_type="model", allow_patterns=["model.onnx", "voices.bin", "README.md"]
         )
-        for voice_name in voice_names
-    ]
-    return voices
+
+
+model_registry = KokoroModelRegistry(hf_model_filter=hf_model_filter)
 
 
 async def generate_audio(
@@ -116,14 +178,14 @@ async def generate_audio(
     text: str,
     voice: str,
     *,
-    language: Language = "en-us",
     speed: float = 1.0,
     sample_rate: int | None = None,
 ) -> AsyncGenerator[bytes, None]:
     if sample_rate is None:
         sample_rate = SAMPLE_RATE
+    voice_language = next(v.language for v in VOICES if v.name == voice)
     start = time.perf_counter()
-    async for audio_data, _ in kokoro_tts.create_stream(text, voice, lang=language, speed=speed):
+    async for audio_data, _ in kokoro_tts.create_stream(text, voice, lang=voice_language, speed=speed):
         assert isinstance(audio_data, np.ndarray) and audio_data.dtype == np.float32 and isinstance(sample_rate, int)
         normalized_audio_data = (audio_data * np.iinfo(np.int16).max).astype(np.int16)
         audio_bytes = normalized_audio_data.tobytes()

@@ -1,5 +1,5 @@
 {
-    "tts-1": "hexgrad/Kokoro-82M",
-    "tts-1-hd": "hexgrad/Kokoro-82M",
+    "tts-1": "speaches-ai/Kokoro-82M-v1.0-ONNX",
+    "tts-1-hd": "speaches-ai/Kokoro-82M-v1.0-ONNX",
     "whisper-1": "Systran/faster-whisper-large-v3"
 }

@@ -2,7 +2,7 @@ import gradio as gr
 
 from speaches.config import Config
 from speaches.ui.tabs.audio_chat import create_audio_chat_tab
-from speaches.ui.tabs.stt import create_stt_tab  # , update_whisper_model_dropdown
+from speaches.ui.tabs.stt import create_stt_tab
 from speaches.ui.tabs.tts import create_tts_tab
 
 # NOTE: `gr.Request` seems to be passed in as the last positional (not keyword) argument

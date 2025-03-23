@@ -6,7 +6,6 @@ import httpx
 
 from speaches.api_types import Voice
 from speaches.config import Config
-from speaches.executors.kokoro import utils as kokoro_utils
 from speaches.routers.speech import (
     MAX_SAMPLE_RATE,
     MIN_SAMPLE_RATE,
@@ -24,15 +23,12 @@ def create_tts_tab(config: Config) -> None:
         model_ids: list[str] = [model.id for model in models]
         return gr.Dropdown(choices=model_ids, label="Model")
 
-    async def update_voices_and_language_dropdown(model_id: str | None, request: gr.Request) -> dict:
+    async def update_voices_dropdown(model_id: str | None, request: gr.Request) -> gr.Dropdown:
         params = httpx.QueryParams({"model_id": model_id}) if model_id is not None else None
         http_client = http_client_from_gradio_req(request, config)
         res = (await http_client.get("/v1/audio/speech/voices", params=params)).raise_for_status()
         voice_ids = [Voice.model_validate(x).voice_id for x in res.json()]
-        return {
-            voice_dropdown: gr.update(choices=voice_ids, value=voice_ids[0]),
-            language_dropdown: gr.update(visible=model_id == "hexgrad/Kokoro-82M"),
-        }
+        return gr.Dropdown(choices=voice_ids, label="Voice")
 
     async def handle_audio_speech(
         text: str,
@@ -63,11 +59,10 @@ def create_tts_tab(config: Config) -> None:
         text = gr.Textbox(label="Input Text", value=DEFAULT_TEXT, lines=3)
         stt_model_dropdown = gr.Dropdown(choices=[], label="Model")
         voice_dropdown = gr.Dropdown(choices=[], label="Voice")
-        language_dropdown = gr.Dropdown(choices=kokoro_utils.LANGUAGES, label="Language", value="en-us", visible=True)
         stt_model_dropdown.change(
-            update_voices_and_language_dropdown,
+            update_voices_dropdown,
             inputs=[stt_model_dropdown],
-            outputs=[voice_dropdown, language_dropdown],
+            outputs=[voice_dropdown],
         )
         response_fromat_dropdown = gr.Dropdown(
             choices=SUPPORTED_RESPONSE_FORMATS,
@@ -94,7 +89,6 @@ Default: None (No resampling)
                 text,
                 stt_model_dropdown,
                 voice_dropdown,
-                language_dropdown,
                 response_fromat_dropdown,
                 speed_slider,
                 sample_rate_slider,
@@ -104,7 +98,7 @@ Default: None (No resampling)
 
         tab.select(update_model_dropdown, inputs=None, outputs=stt_model_dropdown)
         tab.select(
-            update_voices_and_language_dropdown,
+            update_voices_dropdown,
             inputs=[stt_model_dropdown],
-            outputs=[voice_dropdown, language_dropdown],
+            outputs=[voice_dropdown],
         )

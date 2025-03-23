@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import faster_whisper.transcribe
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from speaches.text_utils import segments_to_text
 
@@ -124,17 +124,13 @@ class CreateTranscriptionResponseVerboseJson(BaseModel):
         )
 
 
-# https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L8730
-class ListModelsResponse(BaseModel):
-    data: list["Model"]
-    object: Literal["list"] = "list"
-
-
 ModelTask = Literal["automatic-speech-recognition", "text-to-speech"]  # TODO: add "voice-activity-detection"
 
 
 # https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L11146
 class Model(BaseModel):
+    """There may be additional fields in the response that are specific to the model type."""
+
     id: str
     """The model identifier, which can be referenced in the API endpoints."""
     created: int = 0
@@ -147,6 +143,14 @@ class Model(BaseModel):
     """List of ISO 639-3 supported by the model. It's possible that the list will be empty. This field is not a part of the OpenAI API spec and is added for convenience."""
 
     task: ModelTask  # TODO: make a list?
+
+    model_config = ConfigDict(extra="allow")
+
+
+# https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L8730
+class ListModelsResponse(BaseModel):
+    data: list[Model]
+    object: Literal["list"] = "list"
 
 
 # https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L10909

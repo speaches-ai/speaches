@@ -5,7 +5,7 @@ import threading
 from kokoro_onnx import Kokoro
 from onnxruntime import InferenceSession, get_available_providers
 
-from speaches.executors.kokoro.utils import get_kokoro_model_files
+from speaches.executors.kokoro.utils import model_registry
 from speaches.model_manager import SelfDisposingModel
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class KokoroModelManager:
         self._lock = threading.Lock()
 
     def _load_fn(self, model_id: str) -> Kokoro:
-        model_files = get_kokoro_model_files(model_id)
+        model_files = model_registry.get_model_files(model_id)
         available_providers: list[str] = (
             get_available_providers()
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)

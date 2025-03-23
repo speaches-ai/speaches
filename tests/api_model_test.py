@@ -7,10 +7,11 @@ MODEL_THAT_DOES_NOT_EXIST = "i-do-not-exist"
 MIN_EXPECTED_NUMBER_OF_MODELS = 70  # At the time of the test creation there are 89 models
 
 
-@pytest.mark.asyncio
-async def test_list_models(openai_client: AsyncOpenAI) -> None:
-    models = (await openai_client.models.list()).data
-    assert len(models) > MIN_EXPECTED_NUMBER_OF_MODELS
+# TODO: re-enable this test. Was disabled as `POST /v1/models` only lists local models
+# @pytest.mark.asyncio
+# async def test_list_models(openai_client: AsyncOpenAI) -> None:
+#     models = (await openai_client.models.list()).data
+#     assert len(models) > MIN_EXPECTED_NUMBER_OF_MODELS
 
 
 @pytest.mark.asyncio

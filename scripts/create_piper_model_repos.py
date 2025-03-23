@@ -77,7 +77,7 @@ def voice_to_repo(repo_path: Path, voice: Voice) -> None:
     repo_id = "speaches-ai" + "/" + "piper-" + voice.key
     model_card_data = huggingface_hub.ModelCardData(
         # license="MIT",
-        library="onnx",
+        library_name="onnx",
         pipeline_tag="text-to-speech",
         tags=["speaches", "piper"],
         language=language,
@@ -106,7 +106,7 @@ Run this model using [speaches](https://github.com/speaches-ai/speaches)
             continue
         shutil.copy(file_path, dest_path)
 
-    huggingface_hub.create_repo(repo_id=repo_id, exist_ok=True, private=False)
+    # huggingface_hub.create_repo(repo_id=repo_id, exist_ok=True, private=False)
     huggingface_hub.upload_folder(
         repo_id=repo_id,
         folder_path=repo_id,
@@ -128,7 +128,7 @@ def main() -> None:
             continue
         voice_to_repo(repo_path, voice)
         print(f"Processed voice {i + 1}/{len(voices)}: {voice.key}")
-        sleep(5)  # to avoid rate limiting. Could probably be lowered
+        sleep(3)  # to avoid rate limiting. Could probably be lowered
 
 
 if __name__ == "__main__":

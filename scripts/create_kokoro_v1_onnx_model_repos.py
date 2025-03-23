@@ -54,7 +54,7 @@ async def create_local_model_repo(repo_id: str, model_url: str) -> None:
 
     model_card_data = huggingface_hub.ModelCardData(
         # license="MIT",
-        library="onnx",
+        library_name="onnx",
         pipeline_tag="text-to-speech",
         tags=["speaches", "kokoro"],  # TODO
         language="multilingual",  # TODO
@@ -72,7 +72,7 @@ async def main() -> None:
     for model_name, model_url in MODEL_NAME_ONNX_FILE_MAP.items():
         repo_id = f"speaches-ai/{model_name}"
         print(f"Creating repo {repo_id}...")
-        # await create_local_model_repo(repo_id, model_url)
+        await create_local_model_repo(repo_id, model_url)
 
         huggingface_hub.create_repo(repo_id=repo_id, exist_ok=True, private=False)
         huggingface_hub.upload_folder(
@@ -83,7 +83,6 @@ async def main() -> None:
             create_pr=False,
         )
         print(f"Repo {repo_id} created.")
-        break
 
 
 if __name__ == "__main__":

@@ -1,16 +1,22 @@
 from __future__ import annotations
 
-from functools import lru_cache
-import json
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
+import huggingface_hub
 from pydantic import BaseModel
 
-from speaches.api_types import Model, Voice
+from speaches.api_types import Model
 from speaches.audio import resample_audio
-from speaches.hf_utils import get_model_path, list_model_files
+from speaches.hf_utils import (
+    HfModelFilter,
+    extract_language_list,
+    get_cached_model_repos_info,
+    get_model_card_data_from_cached_repo_info,
+    list_model_files,
+)
+from speaches.model_registry import ModelRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -18,7 +24,7 @@ if TYPE_CHECKING:
 
     from piper.voice import PiperVoice
 
-MODEL_ID = "rhasspy/piper-voices"
+
 PiperVoiceQuality = Literal["x_low", "low", "medium", "high"]
 PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
     "x_low": 16000,
@@ -27,70 +33,111 @@ PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
     "high": 22050,
 }
 
+
+LIBRARY_NAME = "onnx"
+TASK_NAME_TAG = "text-to-speech"
+TAGS = {"speaches", "piper"}
+
+
+class PiperModelFiles(BaseModel):
+    model: Path
+    config: Path
+
+
+class PiperModelVoice(BaseModel):
+    name: str
+    language: str
+
+
+class PiperModel(Model):
+    sample_rate: int
+    voices: list[PiperModelVoice]
+
+
+hf_model_filter = HfModelFilter(
+    library_name=LIBRARY_NAME,
+    task=TASK_NAME_TAG,
+    tags=TAGS,
+)
+
+
 logger = logging.getLogger(__name__)
 
 
-def list_piper_remote_models() -> list[Model]:
-    model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
-    return [model]
+class PiperModelRegistry(ModelRegistry):
+    def list_remote_models(self) -> Generator[PiperModel, None, None]:
+        models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
+        for model in models:
+            assert model.created_at is not None and model.card_data is not None, model
+            model_id_parts = model.id.split("/")[-1].split("-")
+            assert len(model_id_parts) == 4, model.id
+            # HACK: all of the `speaches-ai` piper models have a prefix of `piper-`. That's why there are 4 parts.
+            _prefix, _language_and_region, name, quality = model_id_parts
+            assert quality in PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP, model
+            languages = extract_language_list(model.card_data)
+            assert len(languages) == 1, model
+            yield PiperModel(
+                id=model.id,
+                created=int(model.created_at.timestamp()),
+                owned_by=model.id.split("/")[0],
+                language=languages,
+                task=TASK_NAME_TAG,
+                sample_rate=PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[quality],
+                voices=[
+                    PiperModelVoice(
+                        name=name,
+                        language=languages[0],
+                    )
+                ],
+            )
 
+    def list_local_models(self) -> Generator[PiperModel, None, None]:
+        cached_model_repos_info = get_cached_model_repos_info()
+        for cached_repo_info in cached_model_repos_info:
+            model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
+            if model_card_data is None:
+                continue
+            if self.hf_model_filter.passes_filter(model_card_data):
+                repo_id_parts = cached_repo_info.repo_id.split("-")
+                assert len(repo_id_parts) == 3, cached_repo_info.repo_id
+                _language_and_region, name, quality = repo_id_parts
+                assert quality in PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP, cached_repo_info.repo_id
+                sample_rate = PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[quality]
+                languages = extract_language_list(model_card_data)
+                assert len(languages) == 1, model_card_data
+                yield PiperModel(
+                    id=cached_repo_info.repo_id,
+                    created=int(cached_repo_info.last_modified),
+                    owned_by=cached_repo_info.repo_id.split("/")[0],
+                    language=extract_language_list(model_card_data),
+                    task=TASK_NAME_TAG,
+                    sample_rate=sample_rate,
+                    voices=[
+                        PiperModelVoice(
+                            name=name,
+                            language=languages[0],
+                        )
+                    ],
+                )
 
-def list_piper_local_models() -> list[Model]:
-    try:
-        get_model_path(MODEL_ID)
-        return [Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")]
-    except ValueError:
-        return []
+    def get_model_files(self, model_id: str) -> PiperModelFiles:
+        model_files = list_model_files(model_id)
 
+        model_file_path = next(file_path for file_path in model_files if file_path.name == "model.onnx")
+        config_file_path = next(file_path for file_path in model_files if file_path.name == "config.json")
 
-def list_piper_voices() -> Generator[Voice, None, None]:
-    model_weights_files = list_model_files(MODEL_ID, glob_pattern="**/*.onnx")
-    for model_weights_file in model_weights_files:
-        yield Voice(
-            created=int(model_weights_file.stat().st_mtime),
-            model_path=model_weights_file,
-            voice_id=model_weights_file.name.removesuffix(".onnx"),
-            model_id=MODEL_ID,
-            owned_by=MODEL_ID.split("/")[0],
-            sample_rate=PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[
-                model_weights_file.name.removesuffix(".onnx").split("-")[-1]
-            ],  # pyright: ignore[reportArgumentType]
+        return PiperModelFiles(
+            model=model_file_path,
+            config=config_file_path,
+        )
+
+    def download_model_files(self, model_id: str) -> None:
+        _model_repo_path_str = huggingface_hub.snapshot_download(
+            repo_id=model_id, repo_type="model", allow_patterns=["model.onnx", "config.json", "README.md"]
         )
 
 
-# NOTE: It's debatable whether caching should be done here or by the caller. Should be revisited.
-class PiperVoiceConfigAudio(BaseModel):
-    sample_rate: int
-    quality: int
-
-
-class PiperVoiceConfig(BaseModel):
-    audio: PiperVoiceConfigAudio
-    # NOTE: there are more fields in the config, but we don't care about them
-
-
-@lru_cache
-def read_piper_voices_config() -> dict[str, Any]:
-    voices_file = next(list_model_files(MODEL_ID, glob_pattern="**/voices.json"), None)
-    if voices_file is None:
-        raise FileNotFoundError("Could not find voices.json file")  # noqa: EM101
-    return json.loads(voices_file.read_text())
-
-
-@lru_cache
-def get_piper_voice_model_file(voice: str) -> Path:
-    model_file = next(list_model_files(MODEL_ID, glob_pattern=f"**/{voice}.onnx"), None)
-    if model_file is None:
-        raise FileNotFoundError(f"Could not find model file for '{voice}' voice")
-    return model_file
-
-
-@lru_cache
-def read_piper_voice_config(voice: str) -> PiperVoiceConfig:
-    model_config_file = next(list_model_files(MODEL_ID, glob_pattern=f"**/{voice}.onnx.json"), None)
-    if model_config_file is None:
-        raise FileNotFoundError(f"Could not find config file for '{voice}' voice")
-    return PiperVoiceConfig.model_validate_json(model_config_file.read_text())
+model_registry = PiperModelRegistry(hf_model_filter=hf_model_filter)
 
 
 # TODO: async generator https://github.com/mikeshardmind/async-utils/blob/354b93a276572aa54c04212ceca5ac38fedf34ab/src/async_utils/gen_transform.py#L147

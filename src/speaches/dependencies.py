@@ -45,7 +45,7 @@ def get_model_manager() -> WhisperModelManager:
     return WhisperModelManager(config.whisper)
 
 
-ModelManagerDependency = Annotated[WhisperModelManager, Depends(get_model_manager)]
+WhisperModelManagerDependency = Annotated[WhisperModelManager, Depends(get_model_manager)]
 
 
 @lru_cache

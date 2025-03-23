@@ -3,13 +3,12 @@ from __future__ import annotations
 from collections import OrderedDict
 import json
 import logging
-from pathlib import Path
 import threading
 from typing import TYPE_CHECKING
 
 from onnxruntime import InferenceSession, get_available_providers
 
-from speaches.executors.piper.utils import get_piper_voice_model_file
+from speaches.executors.piper.utils import model_registry
 from speaches.model_manager import SelfDisposingModel
 
 if TYPE_CHECKING:
@@ -28,15 +27,14 @@ class PiperModelManager:
     def _load_fn(self, model_id: str) -> PiperVoice:
         from piper.voice import PiperConfig, PiperVoice
 
-        model_path = get_piper_voice_model_file(model_id)
+        model_files = model_registry.get_model_files(model_id)
         available_providers: list[str] = (
             get_available_providers()
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
         if "TensorrtExecutionProvider" in available_providers:
             available_providers.remove("TensorrtExecutionProvider")
-        inf_sess = InferenceSession(model_path, providers=available_providers)
-        config_path = Path(str(model_path) + ".json")
-        conf = PiperConfig.from_dict(json.loads(config_path.read_text()))
+        inf_sess = InferenceSession(model_files.model, providers=available_providers)
+        conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 
     def _handle_model_unloaded(self, model_id: str) -> None:
