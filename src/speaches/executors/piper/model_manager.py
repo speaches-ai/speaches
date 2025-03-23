@@ -32,6 +32,8 @@ class PiperModelManager:
         available_providers: list[str] = (
             get_available_providers()
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
+        if "TensorrtExecutionProvider" in available_providers:
+            available_providers.remove("TensorrtExecutionProvider")
         inf_sess = InferenceSession(model_path, providers=available_providers)
         config_path = Path(str(model_path) + ".json")
         conf = PiperConfig.from_dict(json.loads(config_path.read_text()))

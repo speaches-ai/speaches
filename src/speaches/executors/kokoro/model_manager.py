@@ -22,6 +22,8 @@ class KokoroModelManager:
         available_providers: list[str] = (
             get_available_providers()
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
+        if "TensorrtExecutionProvider" in available_providers:
+            available_providers.remove("TensorrtExecutionProvider")
         inf_sess = InferenceSession(model_files.model, providers=available_providers)
         return Kokoro.from_session(inf_sess, str(model_files.voices))
 
