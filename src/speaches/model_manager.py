@@ -13,8 +13,8 @@ from faster_whisper import WhisperModel
 from kokoro_onnx import Kokoro
 from onnxruntime import InferenceSession
 
-from speaches.kokoro_utils import get_kokoro_model_path
-from speaches.piper_utils import get_piper_voice_model_file
+from speaches.executors.kokoro.utils import get_kokoro_model_path
+from speaches.executors.piper.utils import get_piper_voice_model_file
 
 if TYPE_CHECKING:
     from collections.abc import Callable

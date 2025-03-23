@@ -4,9 +4,9 @@ from tempfile import NamedTemporaryFile
 import gradio as gr
 import httpx
 
-from speaches import kokoro_utils
 from speaches.api_types import Voice
 from speaches.config import Config
+from speaches.executors.kokoro import utils as kokoro_utils
 from speaches.routers.speech import (
     MAX_SAMPLE_RATE,
     MIN_SAMPLE_RATE,

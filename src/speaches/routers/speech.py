@@ -5,10 +5,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, BeforeValidator, Field, model_validator
 
-from speaches import kokoro_utils, piper_utils
 from speaches.api_types import Voice
 from speaches.audio import convert_audio_format
 from speaches.dependencies import KokoroModelManagerDependency, PiperModelManagerDependency
+from speaches.executors.kokoro import utils as kokoro_utils
+from speaches.executors.piper import utils as piper_utils
 from speaches.model_aliases import ModelId
 
 DEFAULT_MODEL_ID = kokoro_utils.MODEL_ID
