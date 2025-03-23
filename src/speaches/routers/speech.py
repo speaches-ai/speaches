@@ -110,7 +110,7 @@ async def synthesize(
 ) -> StreamingResponse:
     if body.model == kokoro_utils.MODEL_ID:
         # TODO: download the `voices.bin` file
-        with kokoro_model_manager.load_model(body.voice) as tts:
+        with kokoro_model_manager.load_model(body.model) as tts:
             audio_generator = kokoro_utils.generate_audio(
                 tts,
                 body.input,

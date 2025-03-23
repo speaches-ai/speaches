@@ -30,7 +30,7 @@ PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
 logger = logging.getLogger(__name__)
 
 
-def get_piper_models() -> list[Model]:
+def list_piper_models() -> list[Model]:
     model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
     return [model]
 

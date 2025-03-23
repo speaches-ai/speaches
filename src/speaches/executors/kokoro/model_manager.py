@@ -3,15 +3,12 @@ import logging
 import threading
 
 from kokoro_onnx import Kokoro
-from onnxruntime import InferenceSession
+from onnxruntime import InferenceSession, get_available_providers
 
-from speaches.executors.kokoro.utils import get_kokoro_model_path
+from speaches.executors.kokoro.utils import get_kokoro_model_files
 from speaches.model_manager import SelfDisposingModel
 
 logger = logging.getLogger(__name__)
-
-
-ONNX_PROVIDERS = ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
 
 class KokoroModelManager:
@@ -20,12 +17,13 @@ class KokoroModelManager:
         self.loaded_models: OrderedDict[str, SelfDisposingModel[Kokoro]] = OrderedDict()
         self._lock = threading.Lock()
 
-    # TODO
-    def _load_fn(self, _model_id: str) -> Kokoro:
-        model_path = get_kokoro_model_path()
-        voices_path = model_path.parent / "voices.bin"
-        inf_sess = InferenceSession(model_path, providers=ONNX_PROVIDERS)
-        return Kokoro.from_session(inf_sess, str(voices_path))
+    def _load_fn(self, model_id: str) -> Kokoro:
+        model_files = get_kokoro_model_files(model_id)
+        available_providers: list[str] = (
+            get_available_providers()
+        )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
+        inf_sess = InferenceSession(model_files.model, providers=available_providers)
+        return Kokoro.from_session(inf_sess, str(model_files.voices))
 
     def _handle_model_unloaded(self, model_id: str) -> None:
         with self._lock:

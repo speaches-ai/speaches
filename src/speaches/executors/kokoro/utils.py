@@ -1,13 +1,15 @@
+import asyncio
 from collections.abc import AsyncGenerator
 import logging
 from pathlib import Path
 import time
 from typing import Literal
 
-import httpx
+from httpx import AsyncClient
 import huggingface_hub
 from kokoro_onnx import Kokoro
 import numpy as np
+from pydantic import BaseModel
 
 from speaches.api_types import Model, Voice
 from speaches.audio import resample_audio
@@ -22,71 +24,78 @@ SAMPLE_RATE = 24000  # the default sample rate for Kokoro
 Language = Literal["en-us", "en-gb", "fr-fr", "ja", "ko", "cmn"]
 LANGUAGES: list[Language] = ["en-us", "en-gb", "fr-fr", "ja", "ko", "cmn"]
 
-VOICE_IDS = [
-    "af",  # Default voice is a 50-50 mix of Bella & Sarah
-    "af_bella",
-    "af_sarah",
-    "am_adam",
-    "am_michael",
-    "bf_emma",
-    "bf_isabella",
-    "bm_george",
-    "bm_lewis",
-    "af_nicole",
-    "af_sky",
-]
 
 logger = logging.getLogger(__name__)
 
 
-def get_kokoro_models() -> list[Model]:
+class KokoroModelFiles(BaseModel):
+    model: Path
+    voices: Path
+
+
+async def download_kokoro_model_files_if_not_exist(model_id: str = MODEL_ID) -> None:
+    try:
+        get_kokoro_model_files(model_id)
+    except ValueError:
+        await download_kokoro_model_files(model_id)
+
+
+def list_kokoro_models() -> list[Model]:
     model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
     return [model]
 
 
-def get_kokoro_model_path() -> Path:
-    onnx_files = list(list_model_files(MODEL_ID, glob_pattern=f"**/{FILE_NAME}"))
+def get_kokoro_model_files(model_id: str = MODEL_ID) -> KokoroModelFiles:
+    assert model_id == MODEL_ID
+    onnx_files = list(list_model_files(model_id, glob_pattern=f"**/{FILE_NAME}"))
     if len(onnx_files) == 0:
-        raise ValueError(f"Could not find {FILE_NAME} file for '{MODEL_ID}' model")
-    return onnx_files[0]
+        raise ValueError(f"Could not find {FILE_NAME} file for '{model_id}' model")
+    if len(onnx_files) > 1:
+        raise ValueError(f"Found multiple {FILE_NAME} files for '{model_id}' model: {onnx_files}")
+    model_path = onnx_files[0]
+    voices_path = model_path.parent / "voices.bin"
+    if not voices_path.exists():
+        raise ValueError(f"Could not find voices.bin file for '{model_id}' model")
+    return KokoroModelFiles(model=model_path, voices=voices_path)
 
 
-def download_kokoro_model() -> None:
+async def download_kokoro_model_files(model_id: str = MODEL_ID) -> None:
+    assert model_id == MODEL_ID
     model_repo_path = Path(
-        huggingface_hub.snapshot_download(
-            MODEL_ID,
+        await asyncio.to_thread(
+            huggingface_hub.snapshot_download,
+            model_id,
             repo_type="model",
-            allow_patterns=MODEL_ID,
+            allow_patterns=[FILE_NAME],
             revision=KOKORO_REVISION,
         )
     )
-    res = httpx.get(VOICES_FILE_SOURCE, follow_redirects=True).raise_for_status()  # HACK
+    res = await AsyncClient().get(VOICES_FILE_SOURCE, follow_redirects=True)
+    res = res.raise_for_status()  # HACK
     voices_path = model_repo_path / "voices.bin"
     voices_path.touch(exist_ok=True)
     voices_path.write_bytes(res.content)
 
 
 def list_kokoro_voice_names() -> list[str]:
-    model_path = get_kokoro_model_path()
-    voices_path = model_path.parent / "voices.bin"
-    voices_npz = np.load(voices_path)
+    model_files = get_kokoro_model_files()
+    voices_npz = np.load(model_files.voices)
     return list(voices_npz.keys())
 
 
 def list_kokoro_voices() -> list[Voice]:
-    model_path = get_kokoro_model_path()
-    voices_path = model_path.parent / "voices.bin"
-    voices_npz = np.load(voices_path)
+    model_files = get_kokoro_model_files()
+    voices_npz = np.load(model_files.voices)
     voice_names: list[str] = list(voices_npz.keys())
 
     voices = [
         Voice(
             model_id=MODEL_ID,
             voice_id=voice_name,
-            created=int(voices_path.stat().st_mtime),
+            created=int(model_files.voices.stat().st_mtime),
             owned_by=MODEL_ID.split("/")[0],
-            sample_rate=24000,
-            model_path=model_path,  # HACK: not applicable for Kokoro
+            sample_rate=SAMPLE_RATE,
+            model_path=model_files.model,  # HACK: not applicable for Kokoro
         )
         for voice_name in voice_names
     ]

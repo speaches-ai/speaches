@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncGenerator, Generator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 import logging
@@ -15,7 +16,7 @@ from pytest_mock import MockerFixture
 
 from speaches.config import Config, WhisperConfig
 from speaches.dependencies import get_config
-from speaches.executors.kokoro.utils import download_kokoro_model
+from speaches.executors.kokoro.utils import download_kokoro_model_files
 from speaches.main import create_app
 
 DISABLE_LOGGERS = ["multipart.multipart", "faster_whisper"]
@@ -118,4 +119,4 @@ async def dynamic_openai_client(
 
 @pytest.fixture(scope="session", autouse=True)
 def download_kokoro() -> None:
-    download_kokoro_model()
+    asyncio.run(download_kokoro_model_files())  # HACK: test if works

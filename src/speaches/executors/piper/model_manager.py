@@ -7,7 +7,7 @@ from pathlib import Path
 import threading
 from typing import TYPE_CHECKING
 
-from onnxruntime import InferenceSession
+from onnxruntime import InferenceSession, get_available_providers
 
 from speaches.executors.piper.utils import get_piper_voice_model_file
 from speaches.model_manager import SelfDisposingModel
@@ -17,9 +17,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-ONNX_PROVIDERS = ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
 
 class PiperModelManager:
@@ -32,7 +29,10 @@ class PiperModelManager:
         from piper.voice import PiperConfig, PiperVoice
 
         model_path = get_piper_voice_model_file(model_id)
-        inf_sess = InferenceSession(model_path, providers=ONNX_PROVIDERS)
+        available_providers: list[str] = (
+            get_available_providers()
+        )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
+        inf_sess = InferenceSession(model_path, providers=available_providers)
         config_path = Path(str(model_path) + ".json")
         conf = PiperConfig.from_dict(json.loads(config_path.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
