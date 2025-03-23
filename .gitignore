@@ -170,3 +170,4 @@ tests/data
 .secrets
 .ruff_cache
 .aider*
+.DS_Store
