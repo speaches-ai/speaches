@@ -41,7 +41,11 @@ def setup_logger(log_level: str) -> None:
                 "level": "INFO",
                 "handlers": ["stdout"],
             },
-            "aiortc.rtcrtpreceiver": {
+            "aiortc": {
+                "level": "INFO",
+                "handlers": ["stdout"],
+            },
+            "aioice": {
                 "level": "INFO",
                 "handlers": ["stdout"],
             },
