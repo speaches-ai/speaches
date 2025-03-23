@@ -161,3 +161,6 @@ piper-phonemize = [
 name = "piper-tts"
 version = "1.2.0"
 requires-dist = ["piper-phonemize"]
+
+[tool.uv.workspace]
+members = ["packages/speaches-cli"]

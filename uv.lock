@@ -8,6 +8,10 @@ resolution-markers = [
 ]
 
 [manifest]
+members = [
+    "speaches",
+    "speaches-cli",
+]
 constraints = [{ name = "llvmlite", specifier = ">=0.40.0" }]
 overrides = [
     { name = "onnxruntime", marker = "platform_machine != 'x86_64'", specifier = ">=1.20.1" },
@@ -2515,6 +2519,21 @@ requires-dist = [
     { name = "srt", marker = "extra == 'dev'", specifier = ">=3.5.3" },
     { name = "uvicorn", specifier = ">=0.30.6" },
     { name = "webvtt-py", marker = "extra == 'dev'", specifier = ">=0.5.1" },
+]
+
+[[package]]
+name = "speaches-cli"
+version = "0.1.0"
+source = { editable = "packages/speaches-cli" }
+dependencies = [
+    { name = "httpx" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27.2" },
+    { name = "typer", specifier = ">=0.12.5" },
 ]
 
 [[package]]

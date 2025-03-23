@@ -2,60 +2,50 @@
 
     Before proceeding, you should be familiar with the [OpenAI Text-to-Speech](https://platform.openai.com/docs/guides/text-to-speech) and the relevant [OpenAI API reference](https://platform.openai.com/docs/api-reference/audio/createSpeech)
 
-## Prerequisite
-
-Download the Kokoro model and voices.
-
-```bash
-export KOKORO_REVISION=c97b7bbc3e60f447383c79b2f94fee861ff156ac
-# Download the ONNX model (~346 MBs)
-docker exec -it speaches huggingface-cli download hexgrad/Kokoro-82M --include 'kokoro-v0_19.onnx' --revision $KOKORO_REVISION
-# Download the voices.bin (~5.5 MBs) file
-docker exec -it speaches curl --location --output /home/ubuntu/.cache/huggingface/hub/models--hexgrad--Kokoro-82M/snapshots/$KOKORO_REVISION/voices.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.bin
-```
-
-!!! note
-
-    `rhasspy/piper-voices` audio samples can be found [here](https://rhasspy.github.io/piper-samples/)
-
-Download the piper voices from [HuggingFace model repository](https://huggingface.co/rhasspy/piper-voices)
-
-```bash
-# Download all voices (~15 minutes / 7.7 GBs)
-docker exec -it speaches huggingface-cli download rhasspy/piper-voices
-# Download all English voices (~4.5 minutes)
-docker exec -it speaches huggingface-cli download rhasspy/piper-voices --include 'en/**/*' 'voices.json'
-# Download all qualities of a specific voice (~4 seconds)
-docker exec -it speaches huggingface-cli download rhasspy/piper-voices --include 'en/en_US/amy/**/*' 'voices.json'
-# Download specific quality of a specific voice (~2 seconds)
-docker exec -it speaches huggingface-cli download rhasspy/piper-voices --include 'en/en_US/amy/medium/*' 'voices.json'
-```
-
 ## Usage
 
 ### Curl
 
 ```bash
+export SPEACHES_BASE_URL="http://localhost:8000"
+
+
+# Listing all available TTS models
+curl -s "$SPEACHES_BASE_URL/v1/registry?task=text-to-speech"
+
+# Downloading a TTS model
+export MODEL_ID="speaches-ai/Kokoro-82M-v1.0-ONNX"
+curl -s -X POST "$SPEACHES_BASE_URL/v1/models" \
+  -H "Content-Type: application/json" \
+  --data "{\"id\": \"$MODEL_ID\"}"
+
+# Check that the model has been installed
+curl -s "$SPEACHES_BASE_URL/v1/models/$MODEL_ID"
+
+# List available voices
+# TODO
+export VOICE_ID="af_heart"
+
 # Generate speech from text using the default values (model="hexgrad/Kokoro-82M", voice="af", response_format="mp3", speed=1.0, etc.)
-curl http://localhost:8000/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!"}' --output audio.mp3
+curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!"}' --output audio.mp3
 # Specifying the output format
-curl http://localhost:8000/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "response_format": "wav"}' --output audio.wav
+curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "response_format": "wav"}' --output audio.wav
 # Specifying the audio speed
-curl http://localhost:8000/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "speed": 2.0}' --output audio.mp3
+curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "speed": 2.0}' --output audio.mp3
 
 # List available (downloaded) voices
-curl --silent http://localhost:8000/v1/audio/speech/voices
+curl --silent $SPEACHES_BASE_URL/v1/audio/speech/voices
 # List just the voice names
-curl --silent http://localhost:8000/v1/audio/speech/voices | jq --raw-output '.[] | .voice_id'
+curl --silent $SPEACHES_BASE_URL/v1/audio/speech/voices | jq --raw-output '.[] | .voice_id'
 # List just the rhasspy/piper-voices voice names
-curl --silent 'http://localhost:8000/v1/audio/speech/voices?model_id=rhasspy/piper-voices' | jq --raw-output '.[] | .voice_id'
+curl --silent '$SPEACHES_BASE_URL/v1/audio/speech/voices?model_id=rhasspy/piper-voices' | jq --raw-output '.[] | .voice_id'
 # List just the hexgrad/Kokoro-82M voice names
-curl --silent 'http://localhost:8000/v1/audio/speech/voices?model_id=hexgrad/Kokoro-82M' | jq --raw-output '.[] | .voice_id'
+curl --silent '$SPEACHES_BASE_URL/v1/audio/speech/voices?model_id=hexgrad/Kokoro-82M' | jq --raw-output '.[] | .voice_id'
 
 # List just the voices in your language (piper)
-curl --silent http://localhost:8000/v1/audio/speech/voices | jq --raw-output '.[] | select(.voice | startswith("en")) | .voice_id'
+curl --silent $SPEACHES_BASE_URL/v1/audio/speech/voices | jq --raw-output '.[] | select(.voice | startswith("en")) | .voice_id'
 
-curl http://localhost:8000/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "voice": "af_sky"}' --output audio.mp3
+curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "voice": "af_sky"}' --output audio.mp3
 ```
 
 ### Python
@@ -116,4 +106,4 @@ curl http://localhost:8000/v1/audio/speech --header "Content-Type: application/j
 ## Limitations
 
 - `response_format`: `opus` and `aac` are not supported
-- Maximum audio generation length is 10 seconds for `rhasspy/piper-voices` and 30 seconds for `hexgrad/Kokoro-82M`
+- Maximum audio generation length is 10 seconds for Piper models
