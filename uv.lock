@@ -10,6 +10,7 @@ resolution-markers = [
 
 [manifest]
 constraints = [{ name = "llvmlite", specifier = ">=0.40.0" }]
+overrides = [{ name = "onnxruntime-gpu", marker = "platform_machine == 'x86_64'", specifier = ">=1.20.1" }]
 
 [[manifest.dependency-metadata]]
 name = "piper-tts"
@@ -963,7 +964,7 @@ wheels = [
 
 [package.optional-dependencies]
 gpu = [
-    { name = "onnxruntime-gpu", marker = "platform_machine == 'x86_64' and sys_platform != 'darwin'" },
+    { name = "onnxruntime-gpu", marker = "platform_machine == 'x86_64'" },
 ]
 
 [[package]]
