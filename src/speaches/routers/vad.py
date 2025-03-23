@@ -1,10 +1,9 @@
 # Resources:
 # - https://github.com/snakers4/silero-vad
 
-from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
@@ -13,10 +12,8 @@ from fastapi import (
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 from pydantic import BaseModel
 
-from speaches.dependencies import AudioFileDependency  # noqa: TC001
-
-if TYPE_CHECKING:
-    from speaches.model_aliases import ModelId
+from speaches.dependencies import AudioFileDependency
+from speaches.model_aliases import ModelId
 
 # NOTE: this should match the default value in `decode_audio` which gets called by `AudioFileDependency`
 SAMPLE_RATE = 16000
@@ -92,7 +89,7 @@ def detect_speech_timestamps(
         int, Form(ge=0, description="""Final speech chunks are padded by speech_pad_ms each side""")
     ] = 0,
 ) -> list[SpeechTimestamp]:
-    assert model == "silero_vad_v5", "Only 'silero_vad_v5' model is supported"
+    assert model == MODEL_ID, f"Only '{MODEL_ID}' model is supported"
     vad_options = VadOptions(
         threshold=threshold,
         neg_threshold=neg_threshold,  # pyright: ignore[reportArgumentType]
