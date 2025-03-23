@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from speaches.api_types import Model, Voice
 from speaches.audio import resample_audio
-from speaches.hf_utils import list_model_files
+from speaches.hf_utils import get_model_path, list_model_files
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -30,9 +30,17 @@ PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
 logger = logging.getLogger(__name__)
 
 
-def list_piper_models() -> list[Model]:
+def list_piper_remote_models() -> list[Model]:
     model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
     return [model]
+
+
+def list_piper_local_models() -> list[Model]:
+    try:
+        get_model_path(MODEL_ID)
+        return [Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")]
+    except ValueError:
+        return []
 
 
 def list_piper_voices() -> Generator[Voice, None, None]:

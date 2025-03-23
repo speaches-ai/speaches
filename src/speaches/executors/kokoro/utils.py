@@ -40,9 +40,18 @@ async def download_kokoro_model_files_if_not_exist(model_id: str = MODEL_ID) -> 
         await download_kokoro_model_files(model_id)
 
 
-def list_kokoro_models() -> list[Model]:
+def list_kokoro_remote_models() -> list[Model]:
     model = Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")
     return [model]
+
+
+# TODO: rework
+def list_kokoro_local_models() -> list[Model]:
+    try:
+        get_kokoro_model_files()
+        return [Model(id=MODEL_ID, owned_by=MODEL_ID.split("/")[0], task="text-to-speech")]
+    except ValueError:
+        return []
 
 
 def get_kokoro_model_files(model_id: str = MODEL_ID) -> KokoroModelFiles:

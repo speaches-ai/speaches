@@ -13,7 +13,7 @@ TASK_NAME_TAG = "automatic-speech-recognition"
 logger = logging.getLogger(__name__)
 
 
-def list_whisper_models() -> Generator[Model, None, None]:
+def list_whisper_remote_models() -> Generator[Model, None, None]:
     models = huggingface_hub.list_models(library=LIBRARY_NAME, tags=TASK_NAME_TAG, cardData=True)
     models = list(models)
     models.sort(key=lambda model: model.downloads or -1, reverse=True)
@@ -37,7 +37,7 @@ def list_whisper_models() -> Generator[Model, None, None]:
         yield transformed_model
 
 
-def list_local_whisper_models() -> Generator[Model, None, None]:
+def list_whisper_local_models() -> Generator[Model, None, None]:
     hf_cache = huggingface_hub.scan_cache_dir()
     hf_models = [repo for repo in list(hf_cache.repos) if repo.repo_type == "model"]
     for model in hf_models:
