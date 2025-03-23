@@ -10,6 +10,8 @@ from speaches.model_manager import SelfDisposingModel
 
 logger = logging.getLogger(__name__)
 
+ORT_PROVIDERS_BLACKLIST = {"TensorrtExecutionProvider"}
+
 
 class KokoroModelManager:
     def __init__(self, ttl: int) -> None:
@@ -19,12 +21,13 @@ class KokoroModelManager:
 
     def _load_fn(self, model_id: str) -> Kokoro:
         model_files = model_registry.get_model_files(model_id)
-        available_providers: list[str] = (
+        available_providers: set[str] = set(
             get_available_providers()
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
+        available_providers = available_providers - ORT_PROVIDERS_BLACKLIST
         if "TensorrtExecutionProvider" in available_providers:
             available_providers.remove("TensorrtExecutionProvider")
-        inf_sess = InferenceSession(model_files.model, providers=available_providers)
+        inf_sess = InferenceSession(model_files.model, providers=list(available_providers))
         return Kokoro.from_session(inf_sess, str(model_files.voices))
 
     def _handle_model_unloaded(self, model_id: str) -> None:

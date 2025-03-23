@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from piper.voice import PiperVoice
 
 
+ORT_PROVIDERS_BLACKLIST = {"TensorrtExecutionProvider"}
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,12 +30,11 @@ class PiperModelManager:
         from piper.voice import PiperConfig, PiperVoice
 
         model_files = model_registry.get_model_files(model_id)
-        available_providers: list[str] = (
+        available_providers: set[str] = set(
             get_available_providers()
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
-        if "TensorrtExecutionProvider" in available_providers:
-            available_providers.remove("TensorrtExecutionProvider")
-        inf_sess = InferenceSession(model_files.model, providers=available_providers)
+        available_providers = available_providers - ORT_PROVIDERS_BLACKLIST
+        inf_sess = InferenceSession(model_files.model, providers=list(available_providers))
         conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 
