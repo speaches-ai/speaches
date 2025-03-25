@@ -9,12 +9,30 @@ TODO: add a note about vad
 
     Before proceeding, you should be familiar with the [OpenAI Speech-to-Text](https://platform.openai.com/docs/guides/speech-to-text) and the relevant [OpenAI API reference](https://platform.openai.com/docs/api-reference/audio/createTranscription)
 
+## Download a STT model
+
+```bash
+export SPEACHES_BASE_URL="http://localhost:8000"
+
+# Listing all available STT models
+uvx speaches-cli registry ls --task automatic-speech-recognition | jq '.data | [].id'
+
+# Downloading a Systran/faster-distil-whisper-small.en model
+uvx speaches-cli model download Systran/faster-distil-whisper-small.en
+
+# Check that the model has been installed
+uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == "Systran/faster-distil-whisper-small.en"))'
+```
+
 ## Usage
 
 ### Curl
 
 ```bash
-curl http://localhost:8000/v1/audio/transcriptions -F "file=@audio.wav"
+export SPEACHES_BASE_URL="http://localhost:8000"
+export MODEL_ID="Systran/faster-distil-whisper-small.en"
+
+curl -s http://localhost:8000/v1/audio/transcriptions -F "file=@audio.wav" -F "model=$MODEL_ID"
 ```
 
 ### Python

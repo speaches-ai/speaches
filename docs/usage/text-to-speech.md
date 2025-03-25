@@ -2,50 +2,66 @@
 
     Before proceeding, you should be familiar with the [OpenAI Text-to-Speech](https://platform.openai.com/docs/guides/text-to-speech) and the relevant [OpenAI API reference](https://platform.openai.com/docs/api-reference/audio/createSpeech)
 
+## Download a TTS model
+
+```bash
+export SPEACHES_BASE_URL="http://localhost:8000"
+
+# Listing all available TTS models
+uvx speaches-cli registry ls --task text-to-speech | jq '.data | [].id'
+
+# Downloading a TTS model
+uvx speaches-cli model download speaches-ai/Kokoro-82M-v1.0-ONNX
+
+# Check that the model has been installed
+uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == "speaches-ai/Kokoro-82M-v1.0-ONNX"))'
+```
+
 ## Usage
 
 ### Curl
 
 ```bash
 export SPEACHES_BASE_URL="http://localhost:8000"
-
-
-# Listing all available TTS models
-curl -s "$SPEACHES_BASE_URL/v1/registry?task=text-to-speech"
-
-# Downloading a TTS model
 export MODEL_ID="speaches-ai/Kokoro-82M-v1.0-ONNX"
-curl -s -X POST "$SPEACHES_BASE_URL/v1/models" \
-  -H "Content-Type: application/json" \
-  --data "{\"id\": \"$MODEL_ID\"}"
-
-# Check that the model has been installed
-curl -s "$SPEACHES_BASE_URL/v1/models/$MODEL_ID"
 
 # List available voices
 # TODO
+
 export VOICE_ID="af_heart"
 
-# Generate speech from text using the default values (model="hexgrad/Kokoro-82M", voice="af", response_format="mp3", speed=1.0, etc.)
-curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!"}' --output audio.mp3
-# Specifying the output format
-curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "response_format": "wav"}' --output audio.wav
-# Specifying the audio speed
-curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "speed": 2.0}' --output audio.mp3
+# Generate speech
+curl "$SPEACHES_BASE_URL/v1/audio/speech" -s -H "Content-Type: application/json" \
+  --output audio.mp3 \
+  --data @- << EOF
+{
+  "input": "Hello World!",
+  "model": "$MODEL_ID",
+  "voice": "$VOICE_ID"
+}
+EOF
 
-# List available (downloaded) voices
-curl --silent $SPEACHES_BASE_URL/v1/audio/speech/voices
-# List just the voice names
-curl --silent $SPEACHES_BASE_URL/v1/audio/speech/voices | jq --raw-output '.[] | .voice_id'
-# List just the rhasspy/piper-voices voice names
-curl --silent '$SPEACHES_BASE_URL/v1/audio/speech/voices?model_id=rhasspy/piper-voices' | jq --raw-output '.[] | .voice_id'
-# List just the hexgrad/Kokoro-82M voice names
-curl --silent '$SPEACHES_BASE_URL/v1/audio/speech/voices?model_id=hexgrad/Kokoro-82M' | jq --raw-output '.[] | .voice_id'
+curl "$SPEACHES_BASE_URL/v1/audio/speech" -s -H "Content-Type: application/json" \
+  --output audio.wav \
+  --data @- << EOF
+{
+  "input": "Hello World!",
+  "model": "$MODEL_ID",
+  "voice": "$VOICE_ID",
+  "response_format": "wav"
+}
+EOF
 
-# List just the voices in your language (piper)
-curl --silent $SPEACHES_BASE_URL/v1/audio/speech/voices | jq --raw-output '.[] | select(.voice | startswith("en")) | .voice_id'
-
-curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json" --data '{"input": "Hello World!", "voice": "af_sky"}' --output audio.mp3
+curl "$SPEACHES_BASE_URL/v1/audio/speech" -s -H "Content-Type: application/json" \
+  --output audio.mp3 \
+  --data @- << EOF
+{
+  "input": "Hello World!",
+  "model": "$MODEL_ID",
+  "voice": "$VOICE_ID",
+  "speed": 2.0
+}
+EOF
 ```
 
 ### Python
@@ -58,11 +74,13 @@ curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json
     import httpx
 
     client = httpx.Client(base_url="http://localhost:8000/")
+    model_id = "speaches-ai/Kokoro-82M-v1.0-ONNX"
+    voice_id = "af_heart"
     res = client.post(
         "v1/audio/speech",
         json={
-            "model": "hexgrad/Kokoro-82M",
-            "voice": "af",
+            "model": model_id,
+            "voice": voice_id,
             "input": "Hello, world!",
             "response_format": "mp3",
             "speed": 1,
@@ -88,9 +106,11 @@ curl $SPEACHES_BASE_URL/v1/audio/speech --header "Content-Type: application/json
     from openai import OpenAI
 
     openai = OpenAI(base_url="http://localhost:8000/v1", api_key="cant-be-empty")
+    model_id = "speaches-ai/Kokoro-82M-v1.0-ONNX"
+    voice_id = "af_heart"
     res = openai.audio.speech.create(
-        model="hexgrad/Kokoro-82M",
-        voice="af",  # pyright: ignore[reportArgumentType]
+        model=model_id,
+        voice=voice_id,
         input="Hello, world!",
         response_format="mp3",
         speed=1,
