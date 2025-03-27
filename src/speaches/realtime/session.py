@@ -12,7 +12,8 @@ def create_session_object_configuration(model: str) -> Session:
         model=model,
         modalities=["audio", "text"],
         instructions=OPENAI_REALTIME_INSTRUCTIONS,
-        voice="alloy",
+        speech_model="speaches-ai/Kokoro-82M-v1.0-ONNX",
+        voice="af_heart",
         input_audio_format="pcm16",
         output_audio_format="pcm16",
         input_audio_transcription=InputAudioTranscription(

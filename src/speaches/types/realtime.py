@@ -295,6 +295,7 @@ class Session(BaseModel):
     tool_choice: ToolChoice
     tools: list[Tool]
     turn_detection: TurnDetection | None
+    speech_model: str
     voice: str
 
 
@@ -310,6 +311,7 @@ class PartialSession(BaseModel):
     tool_choice: ToolChoice | NotGiven = NOT_GIVEN
     tools: list[Tool] | NotGiven = NOT_GIVEN
     turn_detection: TurnDetection | NotGiven = NOT_GIVEN
+    speech_model: str | NotGiven = NOT_GIVEN
     voice: str | NotGiven = NOT_GIVEN
 
 
