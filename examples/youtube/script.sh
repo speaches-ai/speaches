@@ -3,7 +3,7 @@
 set -e
 
 # NOTE: do not use any distil-* model other than the large ones as they don't work on long audio files for some reason.
-export TRANSCRIPTION_MODEL=Systran/faster-distil-whisper-large-v3 # or Systran/faster-whisper-tiny.en if you are running on a CPU for a faster inference.
+export TRANSCRIPTION_MODEL=deepdml/faster-distil-whisper-large-v3.5 # or Systran/faster-whisper-tiny.en if you are running on a CPU for a faster inference.
 
 # Ensure you have `speaches` running. If this is your first time running it expect to wait up-to a minute for the model to be downloaded and loaded into memory. You can run `curl localhost:8000/health` to check if the server is ready or watch the logs with `docker logs -f <container_id>`.
 docker run --detach --gpus=all --publish 8000:8000 --volume hf-hub-cache:/home/ubuntu/.cache/huggingface/hub ghcr.io/speaches-ai/speaches:latest-cuda
