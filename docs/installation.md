@@ -1,6 +1,6 @@
 !!! warning
 
-    Additional steps are required to use the text-to-speech feature. Please see the [Text-to-Speech](/usage/text-to-speech/#Prerequisite).
+    Additional steps are required to use the text-to-speech feature. Please see the [Text-to-Speech](/usage/text-to-speech/#prerequisite).
 
 ## Docker Compose (Recommended)
 
