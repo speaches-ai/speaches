@@ -27,7 +27,7 @@ def create_tts_tab(config: Config) -> None:
     async def update_voices_and_language_dropdown(model_id: str | None, request: gr.Request) -> dict:
         params = httpx.QueryParams({"model_id": model_id}) if model_id is not None else None
         http_client = http_client_from_gradio_req(request, config)
-        res = (await http_client.get("/v1/audio/speech/voices", params=params)).raise_for_status()
+        res = (await http_client.get("/v1/audio/speech/voices", params=params, follow_redirects=True)).raise_for_status()
         voice_ids = [Voice.model_validate(x).voice_id for x in res.json()]
         return {
             voice_dropdown: gr.update(choices=voice_ids, value=voice_ids[0]),

@@ -46,7 +46,11 @@ def get_kokoro_models() -> list[Model]:
 
 def get_kokoro_model_path() -> Path:
     onnx_files = list(list_model_files(MODEL_ID, glob_pattern=f"**/{FILE_NAME}"))
-    if len(onnx_files) == 0:
+    if not onnx_files:
+        download_kokoro_model()
+        onnx_files = list(list_model_files(MODEL_ID, glob_pattern=f"**/{FILE_NAME}"))
+    
+    if not onnx_files:
         raise ValueError(f"Could not find {FILE_NAME} file for '{MODEL_ID}' model")
     return onnx_files[0]
 
@@ -56,7 +60,6 @@ def download_kokoro_model() -> None:
         huggingface_hub.snapshot_download(
             MODEL_ID,
             repo_type="model",
-            allow_patterns=MODEL_ID,
             revision=KOKORO_REVISION,
         )
     )

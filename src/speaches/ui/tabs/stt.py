@@ -34,6 +34,7 @@ def create_stt_tab(config: Config) -> None:
                     "response_format": "text",
                     "temperature": temperature,
                 },
+                follow_redirects=True
             )
 
         response.raise_for_status()
@@ -52,7 +53,7 @@ def create_stt_tab(config: Config) -> None:
                     "stream": True,
                 },
             }
-            async with aconnect_sse(http_client, "POST", endpoint, **kwargs) as event_source:
+            async with aconnect_sse(http_client, "POST", endpoint, follow_redirects=True, **kwargs) as event_source:
                 async for event in event_source.aiter_sse():
                     yield event.data
 
