@@ -34,7 +34,7 @@ def create_stt_tab(config: Config) -> None:
                     "response_format": "text",
                     "temperature": temperature,
                 },
-                follow_redirects=True
+                follow_redirects=True,
             )
 
         response.raise_for_status()

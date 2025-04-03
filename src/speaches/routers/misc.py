@@ -4,12 +4,22 @@ from fastapi import (
 )
 import huggingface_hub
 from huggingface_hub.hf_api import RepositoryNotFoundError
+from pydantic import BaseModel
 
 from speaches import hf_utils
 from speaches.dependencies import ModelManagerDependency
+from speaches.kokoro_utils import MODEL_ID as KOKORO_MODEL_ID
+from speaches.kokoro_utils import download_kokoro_model
 from speaches.model_aliases import ModelId
+from speaches.piper_utils import MODEL_ID as PIPER_MODEL_ID
+from speaches.piper_utils import download_piper_model
 
 router = APIRouter()
+
+
+class PullParams(BaseModel):
+    allow_patterns: list[str] | None = None
+    ignore_patterns: list[str] | None = None
 
 
 @router.get("/health", tags=["diagnostic"])
@@ -22,11 +32,20 @@ def health() -> Response:
     tags=["experimental"],
     summary="Download a model from Hugging Face if it doesn't exist locally.",
 )
-def pull_model(model_id: ModelId) -> Response:
+def pull_model(model_id: ModelId, pull_params: PullParams = None) -> Response:
     if hf_utils.does_local_model_exist(model_id):
         return Response(status_code=200, content=f"Model {model_id} already exists")
     try:
-        huggingface_hub.snapshot_download(model_id, repo_type="model")
+        allow_patterns = pull_params.allow_patterns if pull_params else None
+        ignore_patterns = pull_params.ignore_patterns if pull_params else None
+        if model_id == KOKORO_MODEL_ID:
+            download_kokoro_model(allow_patterns=allow_patterns, ignore_patterns=ignore_patterns)
+        elif model_id == PIPER_MODEL_ID:
+            download_piper_model(allow_patterns=allow_patterns, ignore_patterns=ignore_patterns)
+        else:
+            huggingface_hub.snapshot_download(
+                model_id, repo_type="model", allow_patterns=allow_patterns, ignore_patterns=ignore_patterns
+            )
     except RepositoryNotFoundError as e:
         return Response(status_code=404, content=str(e))
     return Response(status_code=201, content=f"Model {model_id} downloaded")

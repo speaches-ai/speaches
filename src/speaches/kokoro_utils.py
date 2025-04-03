@@ -47,20 +47,18 @@ def get_kokoro_models() -> list[Model]:
 def get_kokoro_model_path() -> Path:
     onnx_files = list(list_model_files(MODEL_ID, glob_pattern=f"**/{FILE_NAME}"))
     if not onnx_files:
-        download_kokoro_model()
-        onnx_files = list(list_model_files(MODEL_ID, glob_pattern=f"**/{FILE_NAME}"))
-    
-    if not onnx_files:
         raise ValueError(f"Could not find {FILE_NAME} file for '{MODEL_ID}' model")
     return onnx_files[0]
 
 
-def download_kokoro_model() -> None:
+def download_kokoro_model(allow_patterns: list[str] | None = None, ignore_patterns: list[str] | None = None) -> None:
     model_repo_path = Path(
         huggingface_hub.snapshot_download(
             MODEL_ID,
             repo_type="model",
             revision=KOKORO_REVISION,
+            allow_patterns=allow_patterns,
+            ignore_patterns=ignore_patterns,
         )
     )
     res = httpx.get(VOICES_FILE_SOURCE, follow_redirects=True).raise_for_status()  # HACK
@@ -77,7 +75,10 @@ def list_kokoro_voice_names() -> list[str]:
 
 
 def list_kokoro_voices() -> list[Voice]:
-    model_path = get_kokoro_model_path()
+    try:
+        model_path = get_kokoro_model_path()
+    except ValueError:
+        return []
     voices_path = model_path.parent / "voices.bin"
     voices_npz = np.load(voices_path)
     voice_names: list[str] = list(voices_npz.keys())
