@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
@@ -14,9 +14,6 @@ from faster_whisper.vad import VadOptions, get_speech_timestamps
 from pydantic import BaseModel
 
 from speaches.dependencies import AudioFileDependency  # noqa: TC001
-
-if TYPE_CHECKING:
-    from speaches.model_aliases import ModelId
 
 # NOTE: this should match the default value in `decode_audio` which gets called by `AudioFileDependency`
 SAMPLE_RATE = 16000
@@ -47,7 +44,7 @@ def to_ms_speech_timestamps(speech_timestamps: list[SpeechTimestamp]) -> list[Sp
 @router.post("/v1/audio/speech/timestamps")
 def detect_speech_timestamps(
     audio: AudioFileDependency,
-    model: Annotated[ModelId, Form()] = MODEL_ID,
+    model: Annotated[str, Form()] = MODEL_ID,
     threshold: Annotated[
         float,
         Form(

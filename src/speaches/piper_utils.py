@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from functools import lru_cache
 import json
 import logging
+from pathlib import Path
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
+import huggingface_hub
 from pydantic import BaseModel
 
 from speaches.api_types import Model, Voice
@@ -14,11 +17,11 @@ from speaches.hf_utils import list_model_files
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from pathlib import Path
 
     from piper.voice import PiperVoice
 
 MODEL_ID = "rhasspy/piper-voices"
+PIPER_REVISION = "293cad0539066f86e6bce3b9780c472cc9157489"
 PiperVoiceQuality = Literal["x_low", "low", "medium", "high"]
 PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
     "x_low": 16000,
@@ -26,6 +29,15 @@ PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
     "medium": 22050,
     "high": 22050,
 }
+
+
+class PiperDownloadOptions(StrEnum):
+    ALL_VOICES = "All Voices"
+    ENGLISH_ONLY = "English Only"
+    US_ENGLISH_ONLY = "US English Only"
+    US_ENGLISH_AMY = "US English - Amy voice"
+    CUSTOM = "Custom"
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +48,9 @@ def get_piper_models() -> list[Model]:
 
 
 def list_piper_voices() -> Generator[Voice, None, None]:
-    model_weights_files = list_model_files(MODEL_ID, glob_pattern="**/*.onnx")
+    model_weights_files = list(list_model_files(MODEL_ID, glob_pattern="**/*.onnx"))
+    if not model_weights_files:
+        return []
     for model_weights_file in model_weights_files:
         yield Voice(
             created=int(model_weights_file.stat().st_mtime),
@@ -97,3 +111,18 @@ def generate_audio(
             audio_bytes = resample_audio(audio_bytes, piper_tts.config.sample_rate, sample_rate)  # noqa: PLW2901
         yield audio_bytes
     logger.info(f"Generated audio for {len(text)} characters in {time.perf_counter() - start}s")
+
+
+def download_piper_model(allow_patterns: list[str] | None = None, ignore_patterns: list[str] | None = None) -> None:
+    if allow_patterns:
+        allow_patterns.append("voices.json")
+    Path(
+        huggingface_hub.snapshot_download(
+            MODEL_ID,
+            repo_type="model",
+            revision=PIPER_REVISION,
+            resume_download=True,
+            allow_patterns=allow_patterns,
+            ignore_patterns=ignore_patterns,
+        )
+    )
