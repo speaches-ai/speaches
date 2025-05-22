@@ -51,7 +51,7 @@ services:
       timeout: 5s
       retries: 3
   grafana:
-    image: grafana/grafana:11.6.1
+    image: grafana/grafana:11.6.2
     volumes:
       - ./configuration/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - grafana-data:/var/lib/grafana
