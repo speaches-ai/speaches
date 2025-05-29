@@ -40,9 +40,10 @@ TAGS = {"speaches", "piper"}
 
 
 class PiperModelFiles(BaseModel):
-    model: Path
-    config: Path
+    model: str 
+    config: str 
 
+PiperModelFiles.model_rebuild()
 
 class PiperModelVoice(BaseModel):
     name: str
@@ -98,9 +99,9 @@ class PiperModelRegistry(ModelRegistry):
             if model_card_data is None:
                 continue
             if self.hf_model_filter.passes_filter(model_card_data):
-                repo_id_parts = cached_repo_info.repo_id.split("-")
-                assert len(repo_id_parts) == 3, cached_repo_info.repo_id
-                _language_and_region, name, quality = repo_id_parts
+                repo_id_parts = cached_repo_info.repo_id.split("/")[-1].split("-")
+                assert len(repo_id_parts) == 4, cached_repo_info.repo_id
+                _prefix, _language_and_region, name, quality = repo_id_parts
                 assert quality in PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP, cached_repo_info.repo_id
                 sample_rate = PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[quality]
                 languages = extract_language_list(model_card_data)
@@ -127,8 +128,8 @@ class PiperModelRegistry(ModelRegistry):
         config_file_path = next(file_path for file_path in model_files if file_path.name == "config.json")
 
         return PiperModelFiles(
-            model=model_file_path,
-            config=config_file_path,
+            model=str(model_file_path),
+            config=str(config_file_path),
         )
 
     def download_model_files(self, model_id: str) -> None:
