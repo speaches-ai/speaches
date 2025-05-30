@@ -216,7 +216,7 @@ class AudioChatStream:
                     async for chunk in stream:
                         yield chunk
                 except openai.APIStatusError:
-                    logger.exception("Audio chat generation failed yooo")
+                    logger.exception("Audio chat generation failed")
         else:
             async for chunk in self.text_chat_completion_chunk_stream():
                 yield chunk
