@@ -5,8 +5,6 @@
 
 `speaches` is an OpenAI API-compatible server supporting streaming transcription, translation, and speech generation. Speach-to-Text is powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and for Text-to-Speech [piper](https://github.com/rhasspy/piper) and [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) are used. This project aims to be Ollama, but for TTS/STT models.
 
-Try it out on the [HuggingFace Space](https://huggingface.co/spaces/speaches-ai/speaches)
-
 See the documentation for installation instructions and usage: [speaches.ai](https://speaches.ai/)
 
 ## Features:
@@ -26,7 +24,13 @@ See the documentation for installation instructions and usage: [speaches.ai](htt
 
 Please create an issue if you find a bug, have a question, or a feature suggestion.
 
-## Demo
+## Demos
+
+### Realtime API
+
+https://github.com/user-attachments/assets/ee9220c4-be6c-4728-a25c-3bddfd66ab34
+
+(Excuse the breathing lol. Didn't have enough time to record a better demo)
 
 ### Streaming Transcription
 

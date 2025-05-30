@@ -2,10 +2,6 @@
 
     This project was previously named `faster-whisper-server`. I've decided to change the name from `faster-whisper-server`, as the project has evolved to support more than just ASR.
 
-!!! note
-
-    These docs are a work in progress.
-
 # Speaches
 
 `speaches` is an OpenAI API-compatible server supporting streaming transcription, translation, and speech generation. Speach-to-Text is powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and for Text-to-Speech [piper](https://github.com/rhasspy/piper) and [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) are used. This project aims to be Ollama, but for TTS/STT models.
@@ -22,7 +18,7 @@
 - Text-to-Speech via `kokoro`(Ranked #1 in the [TTS Arena](https://huggingface.co/spaces/Pendrokar/TTS-Spaces-Arena)) and `piper` models.
 - GPU and CPU support.
 - [Deployable via Docker Compose / Docker](https://speaches.ai/installation/)
-- [Highly configurable](https://speaches.ai/configuration/)
+- [Highly configurable](https://speaches.ai/usage/realtime-api)
 - [Realtime API](https://speaches.ai/configuration/)
 
 Please create an issue if you find a bug, have a question, or a feature suggestion.
@@ -31,11 +27,11 @@ Please create an issue if you find a bug, have a question, or a feature suggesti
 
 ### Realtime API
 
-TODO
+<video width="100%" controls>
+  <source src="https://github.com/user-attachments/assets/ee9220c4-be6c-4728-a25c-3bddfd66ab34" type="video/webm">
+</video>
 
-### Audio Chat
-
-TODO
+(Excuse the breathing lol. Didn't have enough time to record a better demo)
 
 ### Streaming Transcription
 

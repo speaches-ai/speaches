@@ -17,8 +17,6 @@
         members_order: source
         filters:
             - "!model_config"
-            - "!speech_*"
-            - "!transcription_*"
 
 ::: speaches.config.WhisperConfig
 

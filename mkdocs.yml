@@ -41,13 +41,13 @@ plugins:
       default_handler: python
 nav:
   - Introduction: index.md
-  - Usage / Capabilities:
-      - Realtime API: usage/realtime-api.md
-      - Text-to-Speech: usage/text-to-speech.md
-      - Speech-to-Text: usage/speech-to-text.md
-      - Voice Chat: usage/voice-chat.md
-      - Open WebUI Integration: usage/open-webui-integration.md
   - Installation: installation.md
+  - Usage / Capabilities:
+      - Speech-to-Text: usage/speech-to-text.md
+      - Text-to-Speech: usage/text-to-speech.md
+      - Voice Chat: usage/voice-chat.md
+      - Realtime API: usage/realtime-api.md
+      - Open WebUI Integration: usage/open-webui-integration.md
   - Configuration: configuration.md
   - API: api.md
 markdown_extensions:
