@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from pathlib import Path
 import json
 import logging
 import threading
@@ -35,7 +36,7 @@ class PiperModelManager:
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
         available_providers = available_providers - ORT_PROVIDERS_BLACKLIST
         inf_sess = InferenceSession(model_files.model, providers=list(available_providers))
-        conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
+        conf = PiperConfig.from_dict(json.loads(Path(model_files.config).read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 
     def _handle_model_unloaded(self, model_id: str) -> None:
