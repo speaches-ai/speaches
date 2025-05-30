@@ -8,7 +8,7 @@ TODO
 
 !!! warning
 
-    Real-time performance can only be achieved when using CUDA for TTS and STT inference and an LLM model which has a high TPS (tokens per second) rate and low latency.
+    Real-time performance can only be achieved when using CUDA for TTS and STT inference and an LLM provider with a high TPS (tokens per second) rate and low TTFT (time to first token).
 
 ## Prerequisites
 

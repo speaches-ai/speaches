@@ -246,7 +246,7 @@ type Modality = Literal["text", "audio"]
 
 class Tool(BaseModel):
     name: str
-    description: str
+    description: str | None = None
     parameters: dict
     type: Literal["function"] = "function"
 
