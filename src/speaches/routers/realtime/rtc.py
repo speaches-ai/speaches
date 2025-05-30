@@ -40,11 +40,14 @@ from speaches.realtime.response_event_router import event_router as response_eve
 from speaches.realtime.rtc.audio_stream_track import AudioStreamTrack
 from speaches.realtime.session import create_session_object_configuration
 from speaches.realtime.session_event_router import event_router as session_event_router
+from speaches.realtime.utils import generate_event_id
 from speaches.routers.realtime.ws import event_listener
 from speaches.types.realtime import (
     SERVER_EVENT_TYPES,
     ErrorEvent,
+    FullMessageEvent,
     InputAudioBufferAppendEvent,
+    PartialMessageEvent,
     SessionCreatedEvent,
     client_event_type_adapter,
     server_event_type_adapter,
@@ -71,10 +74,58 @@ event_router.include_router(session_event_router)
 
 rtc_session_tasks: dict[str, set[asyncio.Task[None]]] = {}
 
+# Maximum size in bytes for each message fragment (just under 1 KiB)
+MAX_FRAGMENT_SIZE = 900
+
+
+def send_fragmented_message(channel: RTCDataChannel, message: str, event_id: str) -> None:
+    """Send a message over the data channel, fragmenting it if necessary.
+
+    Args:
+        channel: The RTCDataChannel to send the message on
+        message: The string message to send
+        event_id: A unique ID to identify this message and its fragments
+
+    """
+    message_size = len(message)
+    logger.debug(f"Processing message ({message_size} bytes)")
+
+    if message_size <= MAX_FRAGMENT_SIZE:
+        # Send as a full message
+        full_message = FullMessageEvent(
+            id=event_id, data=base64.b64encode(message.encode("utf-8")).decode("utf-8")
+        ).model_dump_json()
+        channel.send(full_message)
+        logger.info(f"Sent full message ({len(full_message)} bytes)")
+    else:
+        # Encode the original message
+        encoded_message = base64.b64encode(message.encode("utf-8")).decode("utf-8")
+        # Calculate how many fragments we need
+        fragment_size = MAX_FRAGMENT_SIZE - 100  # Account for the fragment metadata
+        total_fragments = (len(encoded_message) + fragment_size - 1) // fragment_size
+
+        logger.info(f"Fragmenting message into {total_fragments} fragments")
+
+        # Split and send as fragments
+        for i in range(total_fragments):
+            start_pos = i * fragment_size
+            end_pos = min((i + 1) * fragment_size, len(encoded_message))
+            fragment_data = encoded_message[start_pos:end_pos]
+
+            fragment = PartialMessageEvent(
+                id=event_id, data=fragment_data, fragment_index=i, total_fragments=total_fragments
+            ).model_dump_json()
+
+            channel.send(fragment)
+            logger.debug(f"Sent fragment {i + 1}/{total_fragments} ({len(fragment)} bytes)")
+
+        logger.info(f"Sent all {total_fragments} fragments")
+
 
 async def rtc_datachannel_sender(ctx: SessionContext, channel: RTCDataChannel) -> None:
     logger.info("Sender task started")
     q = ctx.pubsub.subscribe()
+
     try:
         while True:
             event = await q.get()
@@ -84,10 +135,18 @@ async def rtc_datachannel_sender(ctx: SessionContext, channel: RTCDataChannel) -
             if server_event.type == "response.audio.delta":
                 logger.debug("Skipping response.audio.delta event")
                 continue
+
+            # Get JSON representation of the event
             message = server_event.model_dump_json()
-            logger.debug(f"Sending {event.type} event message ({len(message)} bytes)")
-            channel.send(message)
-            logger.info(f"Sent {event.type} event message ({len(message)} bytes)")
+
+            # Generate a unique ID for this message (for tracking fragments)
+            event_id = str(event.event_id) if hasattr(event, "event_id") else generate_event_id()
+
+            # Send the message, fragmenting if necessary
+            logger.debug(f"Processing {event.type} event message ({len(message)} bytes)")
+            send_fragmented_message(channel, message, event_id)
+            logger.info(f"Sent {event.type} event message")
+
     except BaseException:
         logger.exception("Sender task failed")
         ctx.pubsub.subscribers.remove(q)
@@ -145,10 +204,20 @@ async def audio_receiver(ctx: SessionContext, track: RemoteStreamTrack) -> None:
 
 def datachannel_handler(ctx: SessionContext, channel: RTCDataChannel) -> None:
     logger.info(f"Data channel created: {channel}")
-    channel.send(SessionCreatedEvent(session=ctx.session).model_dump_json())
 
+    # Send the session created event - use the fragmentation logic for consistency
+    session_created_event = SessionCreatedEvent(session=ctx.session)
+    session_message = session_created_event.model_dump_json()
+
+    # Send the session created event using our helper function
+    logger.debug(f"Sending session.created event message ({len(session_message)} bytes)")
+    send_fragmented_message(channel, session_message, str(session_created_event.event_id))
+    logger.info("Sent session.created event message")
+
+    # Start the data channel sender task
     rtc_session_tasks[ctx.session.id].add(asyncio.create_task(rtc_datachannel_sender(ctx, channel)))
 
+    # Set up the message handler
     channel.on("message")(lambda message: message_handler(ctx, message))
 
     @channel.on("open")
