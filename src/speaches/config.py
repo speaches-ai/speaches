@@ -83,5 +83,3 @@ class Config(BaseSettings):
     # TODO: document the below configuration options
     chat_completion_base_url: str = "http://localhost:11434/v1"
     chat_completion_api_key: SecretStr = SecretStr("cant-be-empty")
-
-    realtime_datachannel_server_message_compression: Literal["gzip"] | None = "gzip"

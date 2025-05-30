@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import json
 import logging
 import time
 from typing import Annotated
@@ -16,7 +15,6 @@ from aiortc.rtcrtpreceiver import RemoteStreamTrack
 from aiortc.sdp import SessionDescription
 from av.audio.frame import AudioFrame
 from av.audio.resampler import AudioResampler
-import brotli
 from fastapi import (
     APIRouter,
     Query,
@@ -74,7 +72,7 @@ event_router.include_router(session_event_router)
 rtc_session_tasks: dict[str, set[asyncio.Task[None]]] = {}
 
 
-async def rtc_datachannel_sender(ctx: SessionContext, channel: RTCDataChannel, compress_message: bool) -> None:
+async def rtc_datachannel_sender(ctx: SessionContext, channel: RTCDataChannel) -> None:
     logger.info("Sender task started")
     q = ctx.pubsub.subscribe()
     try:
@@ -86,18 +84,10 @@ async def rtc_datachannel_sender(ctx: SessionContext, channel: RTCDataChannel, c
             if server_event.type == "response.audio.delta":
                 logger.debug("Skipping response.audio.delta event")
                 continue
-            message_dict = server_event.model_dump()
-            # specifying `separators` removes the whitespace, reducing the size of the message
-            message_str = json.dumps(message_dict, separators=(",", ":"))
-            final_message: str | bytes
-            if compress_message:
-                final_message = brotli.compress(message_str.encode("utf-8"), mode=brotli.MODE_TEXT, quality=11)
-            else:
-                final_message = message_str
-
-            logger.debug(f"Sending {event.type} event message ({len(final_message)}/{len(message_str)} bytes)")
-            channel.send(final_message)
-            logger.info(f"Sent {event.type} event message ({len(final_message)}/{len(message_str)} bytes)")
+            message = server_event.model_dump_json()
+            logger.debug(f"Sending {event.type} event message ({len(message)} bytes)")
+            channel.send(message)
+            logger.info(f"Sent {event.type} event message ({len(message)} bytes)")
     except BaseException:
         logger.exception("Sender task failed")
         ctx.pubsub.subscribers.remove(q)
@@ -153,11 +143,11 @@ async def audio_receiver(ctx: SessionContext, track: RemoteStreamTrack) -> None:
                 buffer = np.array([], dtype=np.int16)
 
 
-def datachannel_handler(ctx: SessionContext, channel: RTCDataChannel, compress_message: bool) -> None:
+def datachannel_handler(ctx: SessionContext, channel: RTCDataChannel) -> None:
     logger.info(f"Data channel created: {channel}")
     channel.send(SessionCreatedEvent(session=ctx.session).model_dump_json())
 
-    rtc_session_tasks[ctx.session.id].add(asyncio.create_task(rtc_datachannel_sender(ctx, channel, compress_message)))
+    rtc_session_tasks[ctx.session.id].add(asyncio.create_task(rtc_datachannel_sender(ctx, channel)))
 
     channel.on("message")(lambda message: message_handler(ctx, message))
 
@@ -227,12 +217,7 @@ async def realtime_webrtc(
     rtc_configuration = RTCConfiguration(iceServers=[])
     pc = RTCPeerConnection(rtc_configuration)
 
-    pc.on(
-        "datachannel",
-        lambda channel: datachannel_handler(
-            ctx, channel, compress_message=bool(config.realtime_datachannel_server_message_compression)
-        ),
-    )
+    pc.on("datachannel", lambda channel: datachannel_handler(ctx, channel))
     pc.on("iceconnectionstatechange", lambda: iceconnectionstatechange_handler(ctx, pc))
     pc.on("track", lambda track: track_handler(ctx, track))
     pc.on(

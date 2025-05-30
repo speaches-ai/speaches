@@ -23,7 +23,6 @@ dependencies = [
     "cachetools>=5.5.1",
     "httpx-ws>=0.7.1",
     "aiortc>=1.10.1",
-    "brotli>=1.1.0",
 ]
 
 [project.optional-dependencies]
