@@ -26,8 +26,11 @@ class HfModelFilter(BaseModel):
     def passes_filter(self, model_card_data: huggingface_hub.ModelCardData) -> bool:
         # convert None to an empty set so it's easier to work with
         model_card_data_tags = set(model_card_data.tags) if model_card_data.tags is not None else set()
-        if self.library_name is not None and model_card_data.library_name != self.library_name:
-            return False
+        if self.library_name is not None:
+            # Handle both 'library_name' (correct) and 'library' (legacy/incorrect) fields
+            model_library = model_card_data.library_name or getattr(model_card_data, "library", None)
+            if model_library != self.library_name:
+                return False
         if self.task is not None and (
             self.task != model_card_data.pipeline_tag and self.task not in model_card_data_tags
         ):
