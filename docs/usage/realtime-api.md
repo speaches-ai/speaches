@@ -16,7 +16,7 @@
 
 ## Prerequisites
 
-Follow the prerequisites in the [voice chat](./voice-chat.md.md) guide.
+Follow the prerequisites in the [voice chat](./voice-chat.md) guide.
 
 ## Architecture
 
