@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path  # noqa: TC003
 import time
 from typing import TYPE_CHECKING, Literal
 
@@ -20,7 +21,6 @@ from speaches.model_registry import ModelRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from pathlib import Path
 
     from piper.voice import PiperVoice
 
@@ -98,9 +98,10 @@ class PiperModelRegistry(ModelRegistry):
             if model_card_data is None:
                 continue
             if self.hf_model_filter.passes_filter(model_card_data):
-                repo_id_parts = cached_repo_info.repo_id.split("-")
-                assert len(repo_id_parts) == 3, cached_repo_info.repo_id
-                _language_and_region, name, quality = repo_id_parts
+                repo_id_parts = cached_repo_info.repo_id.split("/")[-1].split("-")
+                # HACK: all of the `speaches-ai` piper models have a prefix of `piper-`. That's why there are 4 parts.
+                assert len(repo_id_parts) == 4, repo_id_parts
+                _prefix, _language_and_region, name, quality = repo_id_parts
                 assert quality in PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP, cached_repo_info.repo_id
                 sample_rate = PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[quality]
                 languages = extract_language_list(model_card_data)
@@ -122,7 +123,6 @@ class PiperModelRegistry(ModelRegistry):
 
     def get_model_files(self, model_id: str) -> PiperModelFiles:
         model_files = list(list_model_files(model_id))
-
         model_file_path = next(file_path for file_path in model_files if file_path.name == "model.onnx")
         config_file_path = next(file_path for file_path in model_files if file_path.name == "config.json")
 
