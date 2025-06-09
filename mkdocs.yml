@@ -43,6 +43,7 @@ nav:
   - Introduction: index.md
   - Installation: installation.md
   - Usage / Capabilities:
+      - Model Discovery: usage/model-discovery.md
       - Speech-to-Text: usage/speech-to-text.md
       - Text-to-Speech: usage/text-to-speech.md
       - Voice Chat: usage/voice-chat.md
