@@ -47,6 +47,7 @@ nav:
       - Text-to-Speech: usage/text-to-speech.md
       - Voice Chat: usage/voice-chat.md
       - Realtime API: usage/realtime-api.md
+      - VAD: usage/vad.md
       - Open WebUI Integration: usage/open-webui-integration.md
   - Configuration: configuration.md
   - API: api.md
