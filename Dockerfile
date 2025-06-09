@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+ARG BASE_IMAGE=nvidia/cuda:12.9.0-cudnn-runtime-ubuntu24.04
 # hadolint ignore=DL3006
 FROM ${BASE_IMAGE}
 LABEL org.opencontainers.image.source="https://github.com/speaches-ai/speaches"
@@ -20,7 +20,7 @@ ENV HOME=/home/ubuntu \
 WORKDIR $HOME/speaches
 # https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
 COPY --chown=ubuntu --from=ghcr.io/astral-sh/uv:0.7.8 /uv /bin/uv
-# NOTE: per https://docs.astral.sh/uv/guides/install-python, `uv` will automatically install the necessary python version 
+# NOTE: per https://docs.astral.sh/uv/guides/install-python, `uv` will automatically install the necessary python version
 # https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 # https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
 # TODO: figure out if `/home/ubuntu/.cache/uv` should be used instead of `/root/.cache/uv`

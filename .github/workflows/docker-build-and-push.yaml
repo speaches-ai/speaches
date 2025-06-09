@@ -16,10 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         # https://hub.docker.com/r/nvidia/cuda/tags
-        base-image: ['nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04', 'nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04', 'ubuntu:24.04']
+        base-image: ['nvidia/cuda:12.9.0-cudnn-runtime-ubuntu24.04', 'nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04', 'nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04', 'ubuntu:24.04']
         include:
-          - base-image: nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+          - base-image: nvidia/cuda:12.9.0-cudnn-runtime-ubuntu24.04
             tag-suffix: -cuda
+          - base-image: nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+            tag-suffix: -cuda-12.6.3
           - base-image: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
             tag-suffix: -cuda-12.4.1
           - base-image: ubuntu:24.04
