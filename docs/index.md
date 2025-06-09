@@ -28,7 +28,7 @@ Please create an issue if you find a bug, have a question, or a feature suggesti
 ### Realtime API
 
 <video width="100%" controls>
-  <source src="https://github.com/user-attachments/assets/ee9220c4-be6c-4728-a25c-3bddfd66ab34" type="video/webm">
+  <source src="https://github.com/user-attachments/assets/457a736d-4c29-4b43-984b-05cc4d9995bc" type="video/webm">
 </video>
 
 (Excuse the breathing lol. Didn't have enough time to record a better demo)
