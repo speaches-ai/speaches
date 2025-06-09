@@ -619,11 +619,13 @@ ServerEvent = Annotated[
 
 server_event_type_adapter = TypeAdapter[ServerEvent](ServerEvent)
 
+
 # Message fragmentation types for WebRTC
 class FullMessageEvent(BaseModel):
     id: str
     type: Literal["full_message"] = "full_message"
     data: str
+
 
 class PartialMessageEvent(BaseModel):
     id: str
@@ -631,6 +633,7 @@ class PartialMessageEvent(BaseModel):
     data: str
     fragment_index: int
     total_fragments: int
+
 
 type MessageFragment = FullMessageEvent | PartialMessageEvent
 

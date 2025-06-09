@@ -1,5 +1,4 @@
 # https://github.com/grafana/loki/blob/811f5f015cd5da4e25d800307b905c3385406be3/docs/sources/configure/examples/configuration-examples.md
-
 auth_enabled: false # default: true
 # https://grafana.com/docs/loki/latest/configure/#server
 server:
