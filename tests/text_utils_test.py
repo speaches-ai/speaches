@@ -1,3 +1,7 @@
+import asyncio
+
+import pytest
+
 from speaches.text_utils import (
     EOFTextChunker,
     srt_format_timestamp,
@@ -46,11 +50,6 @@ def test_strip_markdown_emphasis() -> None:
     assert strip_markdown_emphasis("Nested **bold *with italic* inside**") == "Nested bold with italic inside"
 
 
-import asyncio
-
-import pytest
-
-
 @pytest.mark.asyncio
 async def test_eof_text_chunker() -> None:
     # Test that the chunker only yields when closed
@@ -63,9 +62,9 @@ async def test_eof_text_chunker() -> None:
     # Create task to iterate through chunks
     results = []
 
-    async def collect_chunks():
+    async def collect_chunks() -> None:
         async for chunk in chunker:
-            results.append(chunk)
+            results.append(chunk)  # noqa: PERF401
 
     task = asyncio.create_task(collect_chunks())
 
@@ -94,9 +93,9 @@ async def test_eof_text_chunker_empty() -> None:
 
     results = []
 
-    async def collect_chunks():
+    async def collect_chunks() -> None:
         async for chunk in chunker:
-            results.append(chunk)
+            results.append(chunk)  # noqa: PERF401
 
     task = asyncio.create_task(collect_chunks())
 

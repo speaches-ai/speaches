@@ -20,7 +20,7 @@ class ModelRegistry[ModelT: Model, ModelFilesT: BaseModel]:
     def download_model_files_if_not_exist(self, model_id: str) -> bool:
         try:
             self.get_model_files(model_id)
-        except Exception:
+        except Exception:  # noqa: BLE001
             self.download_model_files(model_id)
             return True
         return False
