@@ -32,7 +32,7 @@ uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == 
 export SPEACHES_BASE_URL="http://localhost:8000"
 export MODEL_ID="Systran/faster-distil-whisper-small.en"
 
-curl -s http://localhost:8000/v1/audio/transcriptions -F "file=@audio.wav" -F "model=$MODEL_ID"
+curl -s "$SPEACHES_BASE_URL/v1/audio/transcriptions" -F "file=@audio.wav" -F "model=$MODEL_ID"
 ```
 
 ### Python
