@@ -15,7 +15,6 @@ from pytest_mock import MockerFixture
 
 from speaches.config import Config, WhisperConfig
 from speaches.dependencies import get_config
-from speaches.executors.kokoro import utils as kokoro_utils
 from speaches.main import create_app
 
 DISABLE_LOGGERS = ["multipart.multipart", "faster_whisper"]
@@ -116,6 +115,30 @@ async def dynamic_openai_client(
 #     snapshot_download("rhasspy/piper-voices", allow_patterns=["voices.json", "en/en_US/amy/**"])
 
 
-@pytest.fixture(scope="session", autouse=True)
-def download_kokoro() -> None:
-    kokoro_utils.model_registry.download_model_files_if_not_exist("speaches-ai/Kokoro-82M-v1.0-ONNX")
+# @pytest_asyncio.fixture()
+# async def parameterized_fixt(request: pytest.FixtureRequest) -> str:
+#     """A parameterized fixture that returns the value of the `target` parameter."""
+#     print(f"Running test with target: {request.param}")
+#     return request.param
+#
+#
+# @pytest.mark.parametrize("parameterized_fixt", ["speaches", "openai"], indirect=True)
+# @pytest.mark.asyncio
+# async def test_parametirized_fixt(parameterized_fixt: str) -> None:
+#     """Generate tests for the `dynamic_openai_client` fixture."""
+
+
+@pytest_asyncio.fixture()
+async def pull_model_without_cleanup(request: pytest.FixtureRequest, aclient: AsyncClient) -> None:
+    res = await aclient.post(f"/v1/models/{request.param}")
+    res.raise_for_status()
+
+
+# NOTE: not being used anywhere. Technically more correct than `pull_model_without_cleanup` as it cleans up after itself but the overhead of pulling the model for each test is too high.
+@pytest_asyncio.fixture()
+async def pull_model_with_cleanup(request: pytest.FixtureRequest, aclient: AsyncClient) -> AsyncGenerator[None, None]:
+    res = await aclient.post(f"/v1/models/{request.param}")
+    res.raise_for_status()
+    yield
+    res = await aclient.delete(f"/v1/models/{request.param}")
+    res.raise_for_status()

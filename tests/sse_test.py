@@ -14,7 +14,7 @@ from speaches.api_types import (
     CreateTranscriptionResponseVerboseJson,
 )
 
-MODEL = "Systran/faster-whisper-tiny.en"
+MODEL_ID = "Systran/faster-whisper-tiny.en"
 FILE_PATHS = ["audio.wav"]  # HACK
 ENDPOINTS = [
     "/v1/audio/transcriptions",
@@ -26,6 +26,8 @@ parameters = [(file_path, endpoint) for endpoint in ENDPOINTS for file_path in F
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.parametrize(("file_path", "endpoint"), parameters)
 async def test_streaming_transcription_text(aclient: AsyncClient, file_path: str, endpoint: str) -> None:
     extension = Path(file_path).suffix[1:]
@@ -33,7 +35,7 @@ async def test_streaming_transcription_text(aclient: AsyncClient, file_path: str
         data = await f.read()
     kwargs = {
         "files": {"file": (f"audio.{extension}", data, f"audio/{extension}")},
-        "data": {"model": MODEL, "response_format": "text", "stream": True},
+        "data": {"model": MODEL_ID, "response_format": "text", "stream": True},
     }
     async with aconnect_sse(aclient, "POST", endpoint, **kwargs) as event_source:
         async for event in event_source.aiter_sse():
@@ -42,6 +44,8 @@ async def test_streaming_transcription_text(aclient: AsyncClient, file_path: str
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.parametrize(("file_path", "endpoint"), parameters)
 async def test_streaming_transcription_json(aclient: AsyncClient, file_path: str, endpoint: str) -> None:
     extension = Path(file_path).suffix[1:]
@@ -49,7 +53,7 @@ async def test_streaming_transcription_json(aclient: AsyncClient, file_path: str
         data = await f.read()
     kwargs = {
         "files": {"file": (f"audio.{extension}", data, f"audio/{extension}")},
-        "data": {"model": MODEL, "response_format": "json", "stream": True},
+        "data": {"model": MODEL_ID, "response_format": "json", "stream": True},
     }
     async with aconnect_sse(aclient, "POST", endpoint, **kwargs) as event_source:
         async for event in event_source.aiter_sse():
@@ -57,6 +61,8 @@ async def test_streaming_transcription_json(aclient: AsyncClient, file_path: str
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.parametrize(("file_path", "endpoint"), parameters)
 async def test_streaming_transcription_verbose_json(aclient: AsyncClient, file_path: str, endpoint: str) -> None:
     extension = Path(file_path).suffix[1:]
@@ -64,20 +70,22 @@ async def test_streaming_transcription_verbose_json(aclient: AsyncClient, file_p
         data = await f.read()
     kwargs = {
         "files": {"file": (f"audio.{extension}", data, f"audio/{extension}")},
-        "data": {"model": MODEL, "response_format": "verbose_json", "stream": True},
+        "data": {"model": MODEL_ID, "response_format": "verbose_json", "stream": True},
     }
     async with aconnect_sse(aclient, "POST", endpoint, **kwargs) as event_source:
         async for event in event_source.aiter_sse():
             CreateTranscriptionResponseVerboseJson(**json.loads(event.data))
 
 
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
 async def test_transcription_vtt(aclient: AsyncClient) -> None:
     async with await anyio.open_file("audio.wav", "rb") as f:
         data = await f.read()
     kwargs = {
         "files": {"file": ("audio.wav", data, "audio/wav")},
-        "data": {"model": MODEL, "response_format": "vtt", "stream": False},
+        "data": {"model": MODEL_ID, "response_format": "vtt", "stream": False},
     }
     response = await aclient.post("/v1/audio/transcriptions", **kwargs)
     assert response.status_code == 200
@@ -89,13 +97,15 @@ async def test_transcription_vtt(aclient: AsyncClient) -> None:
         webvtt.from_string(text)
 
 
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
 async def test_transcription_srt(aclient: AsyncClient) -> None:
     async with await anyio.open_file("audio.wav", "rb") as f:
         data = await f.read()
     kwargs = {
         "files": {"file": ("audio.wav", data, "audio/wav")},
-        "data": {"model": MODEL, "response_format": "srt", "stream": False},
+        "data": {"model": MODEL_ID, "response_format": "srt", "stream": False},
     }
     response = await aclient.post("/v1/audio/transcriptions", **kwargs)
     assert response.status_code == 200

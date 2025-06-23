@@ -6,9 +6,11 @@ import pytest
 from speaches.config import Config, WhisperConfig
 from tests.conftest import AclientFactory
 
-MODEL = "Systran/faster-whisper-tiny.en"
+MODEL_ID = "Systran/faster-whisper-tiny.en"
 
 
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
 async def test_model_unloaded_after_ttl(aclient_factory: AclientFactory) -> None:
     ttl = 5
@@ -16,7 +18,7 @@ async def test_model_unloaded_after_ttl(aclient_factory: AclientFactory) -> None
     async with aclient_factory(config) as aclient:
         res = (await aclient.get("/api/ps")).json()
         assert len(res["models"]) == 0
-        await aclient.post(f"/api/ps/{MODEL}")
+        await aclient.post(f"/api/ps/{MODEL_ID}")
         res = (await aclient.get("/api/ps")).json()
         assert len(res["models"]) == 1
         await asyncio.sleep(ttl + 1)  # wait for the model to be unloaded
@@ -24,12 +26,14 @@ async def test_model_unloaded_after_ttl(aclient_factory: AclientFactory) -> None
         assert len(res["models"]) == 0
 
 
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
 async def test_ttl_resets_after_usage(aclient_factory: AclientFactory) -> None:
     ttl = 5
     config = Config(whisper=WhisperConfig(ttl=ttl), enable_ui=False)
     async with aclient_factory(config) as aclient:
-        await aclient.post(f"/api/ps/{MODEL}")
+        await aclient.post(f"/api/ps/{MODEL_ID}")
         res = (await aclient.get("/api/ps")).json()
         assert len(res["models"]) == 1
         await asyncio.sleep(ttl - 2)  # sleep for less than the ttl. The model should not be unloaded
@@ -42,7 +46,7 @@ async def test_ttl_resets_after_usage(aclient_factory: AclientFactory) -> None:
             await aclient.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("audio.wav", data, "audio/wav")},
-                data={"model": MODEL},
+                data={"model": MODEL_ID},
             )
         ).json()
         res = (await aclient.get("/api/ps")).json()
@@ -61,11 +65,13 @@ async def test_ttl_resets_after_usage(aclient_factory: AclientFactory) -> None:
             await aclient.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("audio.wav", data, "audio/wav")},
-                data={"model": MODEL},
+                data={"model": MODEL_ID},
             )
         ).json()
 
 
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
 async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory) -> None:
     ttl = 0
@@ -76,11 +82,11 @@ async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory)
 
         task = asyncio.create_task(
             aclient.post(
-                "/v1/audio/transcriptions", files={"file": ("audio.wav", data, "audio/wav")}, data={"model": MODEL}
+                "/v1/audio/transcriptions", files={"file": ("audio.wav", data, "audio/wav")}, data={"model": MODEL_ID}
             )
         )
         await asyncio.sleep(0.1)  # wait for the server to start processing the request
-        res = await aclient.delete(f"/api/ps/{MODEL}")
+        res = await aclient.delete(f"/api/ps/{MODEL_ID}")
         assert res.status_code == 409
 
         await task
@@ -88,19 +94,23 @@ async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory)
         assert len(res["models"]) == 0
 
 
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
 async def test_model_cant_be_loaded_twice(aclient_factory: AclientFactory) -> None:
     ttl = -1
     config = Config(whisper=WhisperConfig(ttl=ttl), enable_ui=False)
     async with aclient_factory(config) as aclient:
-        res = await aclient.post(f"/api/ps/{MODEL}")
+        res = await aclient.post(f"/api/ps/{MODEL_ID}")
         assert res.status_code == 201
-        res = await aclient.post(f"/api/ps/{MODEL}")
+        res = await aclient.post(f"/api/ps/{MODEL_ID}")
         assert res.status_code == 409
         res = (await aclient.get("/api/ps")).json()
         assert len(res["models"]) == 1
 
 
+@pytest.mark.parametrize("pull_model_without_cleanup", [MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
 async def test_model_is_unloaded_after_request_when_ttl_is_zero(aclient_factory: AclientFactory) -> None:
     ttl = 0
