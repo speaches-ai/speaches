@@ -39,6 +39,7 @@ from speaches.types.chat import (
 from speaches.types.chat import (
     CompletionCreateParamsBase as OpenAICompletionCreateParamsBase,
 )
+from speaches.utils import APIProxyError
 
 # Resources:
 # - https://platform.openai.com/docs/guides/audio
@@ -220,16 +221,6 @@ class AudioChatStream:
         else:
             async for chunk in self.text_chat_completion_chunk_stream():
                 yield chunk
-
-
-# Custom exception for API proxy errors
-class APIProxyError(Exception):
-    def __init__(self, message, status_code=500, hint=None, suggestions=None, debug=None):
-        self.message = message
-        self.status_code = status_code
-        self.hint = hint
-        self.suggestions = suggestions or []
-        self.debug = debug
 
 
 # TODO: maybe propagate 400 errors
