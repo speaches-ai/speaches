@@ -15,7 +15,6 @@ from speaches.dependencies import ApiKeyDependency, get_config
 from speaches.logger import setup_logger
 from speaches.routers.chat import (
     router as chat_router,
-    APIProxyError,
 )
 from speaches.routers.misc import (
     router as misc_router,
@@ -38,6 +37,7 @@ from speaches.routers.stt import (
 from speaches.routers.vad import (
     router as vad_router,
 )
+from speaches.utils import APIProxyError
 
 # https://swagger.io/docs/specification/v3_0/grouping-operations-with-tags/
 # https://fastapi.tiangolo.com/tutorial/metadata/#metadata-for-tags
