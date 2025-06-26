@@ -114,11 +114,10 @@ def create_app() -> FastAPI:
         app = gr.mount_gradio_app(app, create_gradio_demo(config), path="")
 
         logger = logging.getLogger("speaches.main")
-        host = getattr(config, "host", "localhost")
-        port = getattr(config, "port", 8000)
-        display_host = "localhost" if host == "0.0.0.0" else host
-        url = f"http://{display_host}:{port}/"
-        logger.info(f"\n\nTo view the gradio web ui of speaches open your browser and visit:\n\n{url}\n\n")
-
+        if config.host and config.port:
+            display_host = "localhost" if config.host in ("0.0.0.0", "127.0.0.1") else config.host
+            url = f"http://{display_host}:{config.port}/"
+            logger.info(f"\n\nTo view the gradio web ui of speaches open your browser and visit:\n\n{url}\n\n")
+        # If host or port is missing, do not print a possibly incorrect URL.
 
     return app
