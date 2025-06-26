@@ -222,6 +222,16 @@ class AudioChatStream:
                 yield chunk
 
 
+# Custom exception for API proxy errors
+class APIProxyError(Exception):
+    def __init__(self, message, status_code=500, hint=None, suggestions=None, debug=None):
+        self.message = message
+        self.status_code = status_code
+        self.hint = hint
+        self.suggestions = suggestions or []
+        self.debug = debug
+
+
 # TODO: maybe propagate 400 errors
 
 
@@ -276,7 +286,63 @@ async def handle_completions(  # noqa: C901
     try:
         chat_completion = await chat_completion_client.create(**proxied_body.model_dump(exclude_defaults=True))
     except openai.APIStatusError as e:
-        return Response(content=e.message, status_code=e.status_code)
+        error_message = (
+            "Failed to communicate with the language model API. "
+            "This may be due to an invalid API key, incorrect endpoint, or network issues. "
+            "See the debug field for more details."
+        )
+        error_info = {
+            "openai_status_code": getattr(e, "status_code", None),
+            "openai_error_type": getattr(getattr(e, "error", None), "type", None),
+            "openai_error_code": getattr(getattr(e, "error", None), "code", None),
+            "openai_error_message": getattr(getattr(e, "error", None), "message", None),
+            "openai_request_id": getattr(getattr(e, "response", None), "headers", {{}}).get("x-request-id", None),
+            "endpoint": getattr(chat_completion_client, "endpoint", None),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "exception_type": type(e).__name__,
+        }
+        logger.exception(
+            f"Speaches API proxy error: {error_message} | "
+            f"status_code={error_info['openai_status_code']}, "
+            f"error_type={error_info['openai_error_type']}, "
+            f"request_id={error_info['openai_request_id']}, "
+            f"endpoint={error_info['endpoint']}"
+        )
+        raise APIProxyError(
+            error_message,
+            status_code=e.status_code,
+            hint="Verify your API key, endpoint URL, and network connection.",
+            suggestions=[
+                "Double-check your API key for typos or expiration.",
+                "Ensure the endpoint URL matches your Speaches server configuration.",
+                "Test your internet connection.",
+                "If the error persists, visit https://github.com/speaches-ai/speaches/issues or contact support with the error ID."
+            ],
+            debug=error_info
+        ) from e
+    except Exception as e:
+        error_message = (
+            "An unexpected internal error occurred while processing your request. "
+            "Please try again. If the problem continues, contact support and provide the error details in the debug field."
+        )
+        error_info = {
+            "exception_type": type(e).__name__,
+            "exception_message": str(e),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        }
+        logger.exception(
+            f"Speaches unexpected error: {error_message} | exception_type={error_info['exception_type']}"
+        )
+        raise APIProxyError(
+            error_message,
+            status_code=500,
+            hint="Try again or contact support with the error details.",
+            suggestions=[
+                "Retry your request.",
+                "If the error persists, visit https://github.com/speaches-ai/speaches/issues or contact support and provide the debug information."
+            ],
+            debug=error_info
+        ) from e
     if isinstance(chat_completion, AsyncStream):
 
         async def inner() -> AsyncGenerator[str]:

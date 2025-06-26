@@ -25,6 +25,9 @@ def create_stt_tab(config: Config) -> None:
     async def audio_task(
         http_client: httpx.AsyncClient, file_path: str, endpoint: str, temperature: float, model: str
     ) -> str:
+        if not file_path:
+            msg = "No audio file provided in audio_task (stt.py). Please record or upload audio."
+            raise ValueError(msg)
         with Path(file_path).open("rb") as file:  # noqa: ASYNC230
             response = await http_client.post(
                 endpoint,
@@ -59,6 +62,9 @@ def create_stt_tab(config: Config) -> None:
     async def whisper_handler(
         file_path: str, model: str, task: str, temperature: float, stream: bool, request: gr.Request
     ) -> AsyncGenerator[str, None]:
+        if not file_path:
+            msg = "No audio file provided in whisper_handler (stt.py). Please record or upload audio."
+            raise ValueError(msg)
         http_client = http_client_from_gradio_req(request, config)
         endpoint = TRANSCRIPTION_ENDPOINT if task == "transcribe" else TRANSLATION_ENDPOINT
 

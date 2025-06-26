@@ -8,11 +8,14 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
+from fastapi.responses import JSONResponse
+import uuid
 
 from speaches.dependencies import ApiKeyDependency, get_config
 from speaches.logger import setup_logger
 from speaches.routers.chat import (
     router as chat_router,
+    APIProxyError,
 )
 from speaches.routers.misc import (
     router as misc_router,
@@ -64,6 +67,23 @@ def create_app() -> FastAPI:
 
     app = FastAPI(dependencies=dependencies, openapi_tags=TAGS_METADATA)
 
+    # Register global exception handler for APIProxyError
+    @app.exception_handler(APIProxyError)
+    async def api_proxy_error_handler(request, exc: APIProxyError):
+        error_id = str(uuid.uuid4())
+        logger.exception(f"[{{error_id}}] {exc.message}")
+        content = {
+            "detail": exc.message,
+            "hint": exc.hint,
+            "suggested_fixes": exc.suggestions,
+            "error_id": error_id,
+        }
+        import os
+        log_level = os.getenv("SPEACHES_LOG_LEVEL", "INFO").upper()
+        if log_level == "DEBUG" and exc.debug:
+            content["debug"] = exc.debug
+        return JSONResponse(status_code=exc.status_code, content=content)
+
     app.include_router(chat_router)
     app.include_router(stt_router)
     app.include_router(models_router)
@@ -91,6 +111,14 @@ def create_app() -> FastAPI:
 
         from speaches.ui.app import create_gradio_demo
 
-        app = gr.mount_gradio_app(app, create_gradio_demo(config), path="/")
+        app = gr.mount_gradio_app(app, create_gradio_demo(config), path="")
+
+        logger = logging.getLogger("speaches.main")
+        host = getattr(config, "host", "localhost")
+        port = getattr(config, "port", 8000)
+        display_host = "localhost" if host == "0.0.0.0" else host
+        url = f"http://{display_host}:{port}/"
+        logger.info(f"\n\nTo view the gradio web ui of speaches open your browser and visit:\n\n{url}\n\n")
+
 
     return app
