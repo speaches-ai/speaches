@@ -25,6 +25,8 @@ class KokoroModelManager:
             get_available_providers()
         )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
         available_providers = available_providers - ORT_PROVIDERS_BLACKLIST
+        # print the available providers
+        logger.info(f"Available ONNX Runtime providers: {available_providers}")
         if "TensorrtExecutionProvider" in available_providers:
             available_providers.remove("TensorrtExecutionProvider")
         inf_sess = InferenceSession(model_files.model, providers=list(available_providers))

@@ -59,6 +59,9 @@ def gradio_message_to_openai_message(gradio_message: GradioMessage) -> ChatCompl
         content.append(ChatCompletionContentPartTextParam(text=gradio_message["text"], type="text"))
 
     for file_path in gradio_message["files"]:
+        if not file_path:
+            msg = "No audio file provided in gradio_message_to_openai_message (audio_chat.py). Please record or upload audio."
+            raise ValueError(msg)
         content.append(  # noqa: PERF401
             ChatCompletionContentPartInputAudioParam(
                 input_audio=InputAudio(

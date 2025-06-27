@@ -7,7 +7,7 @@ Before you can do anything useful with `speaches`, you'll need to want to downlo
 === "Speaches CLI"
 
     ```bash
-    uvx speaches-cli registry ls
+    uvx speaches registry ls
     ```
 
 === "cURL"
@@ -21,7 +21,7 @@ The above command will display a list of all available models. You can filter th
 === "Speaches CLI"
 
     ```bash
-    uvx speaches-cli registry ls --task automatic-speech-recognition
+    uvx speaches registry ls --task automatic-speech-recognition
     ```
 
 === "cURL"
@@ -37,7 +37,7 @@ You'll then want to download the model you want to use. You can do this by makin
 === "Speaches CLI"
 
     ```bash
-    uvx speaches-cli model download Systran/faster-distil-whisper-small.en
+    uvx speaches model download Systran/faster-distil-whisper-small.en
     ```
 
 === "cURL"
@@ -51,7 +51,7 @@ The downloaded model will now be included in the list of available models when y
 === "Speaches CLI"
 
     ```bash
-    uvx speaches-cli model ls
+    uvx speaches model ls
     ```
 
 === "cURL"

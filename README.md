@@ -1,11 +1,42 @@
+# Speaches
+
 > [!NOTE]
 > This project was previously named `faster-whisper-server`. I've decided to change the name from `faster-whisper-server`, as the project has evolved to support more than just ASR.
-
-# Speaches
 
 `speaches` is an OpenAI API-compatible server supporting streaming transcription, translation, and speech generation. Speach-to-Text is powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and for Text-to-Speech [piper](https://github.com/rhasspy/piper) and [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) are used. This project aims to be Ollama, but for TTS/STT models.
 
 See the documentation for installation instructions and usage: [speaches.ai](https://speaches.ai/)
+
+## Quick Start
+
+Get a fully functional `speaches` server running in a few commands.
+
+### 1. Installation
+
+Install the `speaches` command-line tool and all its dependencies using `uv`. The default installation includes the web server and UI.
+
+```bash
+
+git clone https://github.com/speaches-ai/speaches.git
+cd speaches
+uv venv
+source .venv/bin/activate
+uv sync --all-extras --upgrade
+uv tool install .
+
+# Downloading a Text To Speech (TTS) model:
+uvx speaches model download speaches-ai/Kokoro-82M-v1.0-ONNX
+
+# Downloading a Speech To Text (STT) model:
+uvx speaches model download Systran/faster-distil-whisper-small.en
+
+# run the speaches server then open http://localhost:8000 in your web browser to try speaches
+speaches serve --host 0.0.0.0 --port 8000
+```
+
+Visit http://localhost:8000 in your web browser.
+
+The server will start, and the console will display the correct URL (e.g., `http://localhost:8000`) to access the Gradio web UI. Once the server is running, you can open a new terminal to use client commands like `speaches model ls`.
 
 ## Features:
 
@@ -19,8 +50,8 @@ See the documentation for installation instructions and usage: [speaches.ai](htt
 - Text-to-Speech via `kokoro`(Ranked #1 in the [TTS Arena](https://huggingface.co/spaces/Pendrokar/TTS-Spaces-Arena)) and `piper` models.
 - GPU and CPU support.
 - [Deployable via Docker Compose / Docker](https://speaches.ai/installation/)
-- [Highly configurable](https://speaches.ai/usage/realtime-api)
-- [Realtime API](https://speaches.ai/configuration/)
+- [Highly configurable](https://speaches.ai/configuration/)
+- [Realtime API](https://speaches.ai/usage/realtime-api/)
 
 Please create an issue if you find a bug, have a question, or a feature suggestion.
 
