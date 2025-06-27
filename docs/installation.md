@@ -108,11 +108,45 @@ docker compose up --detach
 
 ## Python (requires Python 3.12+ and `uv` package manager)
 
+# Installation
+
+The `speaches` package is distributed as a single, "batteries-included" application. The standard installation provides all features, including the API server, web UI, and client tools.
+
+## For Users
+
+The recommended way to install `speaches` is as a command-line tool using `uv`. This installs the application and its dependencies into an isolated environment, making the `speaches` command available globally on your system.
+
 ```bash
 git clone https://github.com/speaches-ai/speaches.git
 cd speaches
 uv venv
 source .venv/bin/activate
-uv sync --all-extras
-uvicorn --factory --host 0.0.0.0 speaches.main:create_app
+uv sync --all-extras --upgrade
+uv tool install .
+speaches serve --host 0.0.0.0 --port 8000
 ```
+
+After installation, you can run the server with `speaches serve` or explore other commands with `speaches --help`.
+
+## For Developers (Contributing to Speaches)
+
+If you plan to contribute to the `speaches` project, you must install it in "editable" mode from a local clone of the repository. This setup links the `speaches` command directly to your source code, so your edits are reflected immediately without reinstalling.
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/path/to/speaches.git
+    cd speaches
+    ```
+
+2.  **Create and Activate a Virtual Environment:**
+    ```bash
+    uv venv
+    source .venv/bin/activate
+    ```
+
+3.  **Install in Editable Mode with Development Extras:**
+    This command installs the project along with all optional dependencies needed for running tests and other development tasks.
+    ```bash
+s   uv pip install -e '.[dev]'
+    ```
+The `speaches` command is now available in your shell for development and testing.

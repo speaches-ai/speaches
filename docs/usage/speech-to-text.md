@@ -15,13 +15,13 @@ TODO: add a note about vad
 export SPEACHES_BASE_URL="http://localhost:8000"
 
 # Listing all available STT models
-uvx speaches-cli registry ls --task automatic-speech-recognition | jq '.data | [].id'
+uvx speaches registry ls --task automatic-speech-recognition | jq '.data | [].id'
 
 # Downloading a Systran/faster-distil-whisper-small.en model
-uvx speaches-cli model download Systran/faster-distil-whisper-small.en
+uvx speaches model download Systran/faster-distil-whisper-small.en
 
 # Check that the model has been installed
-uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == "Systran/faster-distil-whisper-small.en"))'
+uvx speaches model ls --task text-to-speech | jq '.data | map(select(.id == "Systran/faster-distil-whisper-small.en"))'
 ```
 
 ## Usage
