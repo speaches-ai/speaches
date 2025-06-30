@@ -8,6 +8,8 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
+from fastapi.responses import JSONResponse
+import uuid
 
 from speaches.dependencies import ApiKeyDependency, get_config
 from speaches.logger import setup_logger
@@ -35,6 +37,7 @@ from speaches.routers.stt import (
 from speaches.routers.vad import (
     router as vad_router,
 )
+from speaches.utils import APIProxyError
 
 # https://swagger.io/docs/specification/v3_0/grouping-operations-with-tags/
 # https://fastapi.tiangolo.com/tutorial/metadata/#metadata-for-tags
@@ -64,6 +67,23 @@ def create_app() -> FastAPI:
 
     app = FastAPI(dependencies=dependencies, openapi_tags=TAGS_METADATA)
 
+    # Register global exception handler for APIProxyError
+    @app.exception_handler(APIProxyError)
+    async def api_proxy_error_handler(request, exc: APIProxyError):
+        error_id = str(uuid.uuid4())
+        logger.exception(f"[{{error_id}}] {exc.message}")
+        content = {
+            "detail": exc.message,
+            "hint": exc.hint,
+            "suggested_fixes": exc.suggestions,
+            "error_id": error_id,
+        }
+        import os
+        log_level = os.getenv("SPEACHES_LOG_LEVEL", "INFO").upper()
+        if log_level == "DEBUG" and exc.debug:
+            content["debug"] = exc.debug
+        return JSONResponse(status_code=exc.status_code, content=content)
+
     app.include_router(chat_router)
     app.include_router(stt_router)
     app.include_router(models_router)
@@ -91,6 +111,13 @@ def create_app() -> FastAPI:
 
         from speaches.ui.app import create_gradio_demo
 
-        app = gr.mount_gradio_app(app, create_gradio_demo(config), path="/")
+        app = gr.mount_gradio_app(app, create_gradio_demo(config), path="")
+
+        logger = logging.getLogger("speaches.main")
+        if config.host and config.port:
+            display_host = "localhost" if config.host in ("0.0.0.0", "127.0.0.1") else config.host
+            url = f"http://{display_host}:{config.port}/"
+            logger.info(f"\n\nTo view the gradio web ui of speaches open your browser and visit:\n\n{url}\n\n")
+        # If host or port is missing, do not print a possibly incorrect URL.
 
     return app
