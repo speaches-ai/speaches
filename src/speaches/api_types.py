@@ -33,17 +33,20 @@ class TranscriptionWord(BaseModel):
 
 # https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L10938
 class TranscriptionSegment(BaseModel):
-    id: int
-    seek: int
-    start: float
-    end: float
-    text: str
-    tokens: list[int]
-    temperature: float
     avg_logprob: float
     compression_ratio: float
+    end: float
+    id: int
     no_speech_prob: float
-    words: list[TranscriptionWord] | None
+    seek: int
+    start: float
+    temperature: float
+    text: str
+    tokens: list[int]
+    words: (
+        list[TranscriptionWord] | None
+    )  # TODO: why is here? It's not a field defined in the [OpenAI API spec](https://platform.openai.com/docs/api-reference/audio/verbose-json-object)
+    # TODO: add `usage` field: https://platform.openai.com/docs/api-reference/audio/verbose-json-object#audio/verbose-json-object-usage
 
     @classmethod
     def from_faster_whisper_segments(
@@ -79,6 +82,8 @@ class TranscriptionSegment(BaseModel):
 # https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L10924
 class CreateTranscriptionResponseJson(BaseModel):
     text: str
+    # NOTE: there's also a `logprobs` field it's only supported by non-whisper models, so we don't include it here (we can't `faster-whisper` doesn't provide it)
+    # TODO: add `usage` field: https://platform.openai.com/docs/api-reference/audio/json-object#audio/json-object-usage
 
     @classmethod
     def from_segments(cls, segments: list[TranscriptionSegment]) -> "CreateTranscriptionResponseJson":
@@ -88,6 +93,7 @@ class CreateTranscriptionResponseJson(BaseModel):
 # https://platform.openai.com/docs/api-reference/audio/verbose-json-object
 # https://github.com/openai/openai-openapi/blob/master/openapi.yaml#L11007
 class CreateTranscriptionResponseVerboseJson(BaseModel):
+    # NOTE: there's also a `logprobs` field it's only supported by non-whisper models, so we don't include it here (we can't `faster-whisper` doesn't provide it)
     task: str = "transcribe"
     language: str
     duration: float
