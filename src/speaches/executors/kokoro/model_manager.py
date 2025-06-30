@@ -3,8 +3,7 @@ import logging
 import threading
 
 from kokoro_onnx import Kokoro
-from onnxruntime import InferenceSession, get_available_providers
-
+from onnxruntime import SessionOptions, InferenceSession, get_available_providers
 from speaches.executors.kokoro.utils import model_registry
 from speaches.model_manager import SelfDisposingModel
 
@@ -27,7 +26,19 @@ class KokoroModelManager:
         available_providers = available_providers - ORT_PROVIDERS_BLACKLIST
         if "TensorrtExecutionProvider" in available_providers:
             available_providers.remove("TensorrtExecutionProvider")
-        inf_sess = InferenceSession(model_files.model, providers=list(available_providers))
+
+        providers = []
+        if "CUDAExecutionProvider" in available_providers:
+            # Apply the cudnn_conv_algo_search tweak
+            providers.append(
+                ("CUDAExecutionProvider", {"cudnn_conv_algo_search": "DEFAULT"})
+            )
+            available_providers.remove("CUDAExecutionProvider")
+        
+        # Add remaining providers as fallback
+        providers.extend(list(available_providers))
+
+        inf_sess = InferenceSession(model_files.model, providers=providers)
         return Kokoro.from_session(inf_sess, str(model_files.voices))
 
     def _handle_model_unloaded(self, model_id: str) -> None:
