@@ -4,13 +4,14 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from huggingface_hub.utils._cache_manager import _scan_cached_repo
+from huggingface_hub.errors import CorruptedCacheException
 from pydantic import BaseModel, Field
 
 from speaches.audio import convert_audio_format
 from speaches.dependencies import KokoroModelManagerDependency, PiperModelManagerDependency
 from speaches.executors.kokoro import utils as kokoro_utils
 from speaches.executors.piper import utils as piper_utils
-from speaches.hf_utils import get_model_card_data_from_cached_repo_info, get_model_repo_path
+from speaches.hf_utils import get_model_card_data_from_cached_repo_info, get_model_repo_path, load_repo_model_card_data
 from speaches.model_aliases import ModelId
 from speaches.text_utils import strip_emojis, strip_markdown_emphasis
 
@@ -61,9 +62,27 @@ async def synthesize(
             status_code=404,
             detail=f"Model '{body.model}' is not installed locally. You can download the model using `POST /v1/models`",
         )
-    cached_repo_info = _scan_cached_repo(model_repo_path)
-    model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
-    assert model_card_data is not None, cached_repo_info  # FIXME
+    # Try to scan the cached repo, but fall back to direct README loading if corrupted
+    try:
+        cached_repo_info = _scan_cached_repo(model_repo_path)
+        model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
+    except CorruptedCacheException as e:
+        logger.warning(f"Cache appears corrupted for {body.model}: {e}. Falling back to direct README loading.")
+        # Try to load the model card directly from the README file
+        readme_paths = list(model_repo_path.glob("snapshots/*/README.md"))
+        if readme_paths:
+            model_card_data = load_repo_model_card_data(readme_paths[0])
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Model cache is corrupted and no README.md found for '{body.model}'",
+            )
+    
+    if model_card_data is None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not load model card data for '{body.model}'",
+        )
 
     body.input = strip_emojis(body.input)
     body.input = strip_markdown_emphasis(body.input)
