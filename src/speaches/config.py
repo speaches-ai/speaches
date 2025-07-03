@@ -74,6 +74,12 @@ class Config(BaseSettings):
 
     whisper: WhisperConfig = WhisperConfig()
 
+    vad_filter: bool = False
+    """
+    Default value for VAD (Voice Activity Detection) filter in speech recognition endpoints.
+    When enabled, the model will filter out non-speech segments.
+    """
+
     loopback_host_url: str | None = None
     """
     If set this is the URL that the gradio app will use to connect to the API server hosting speaches.

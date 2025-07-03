@@ -108,8 +108,11 @@ def translate_file(
     response_format: Annotated[ResponseFormat, Form()] = DEFAULT_RESPONSE_FORMAT,
     temperature: Annotated[float, Form()] = 0.0,
     stream: Annotated[bool, Form()] = False,
-    vad_filter: Annotated[bool, Form()] = False,
+    vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
+    # Use config default if vad_filter not explicitly provided
+    effective_vad_filter = vad_filter if vad_filter is not None else config.vad_filter
+    
     with model_manager.load_model(model) as whisper:
         whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
         segments, transcription_info = whisper_model.transcribe(
@@ -117,7 +120,7 @@ def translate_file(
             task="translate",
             initial_prompt=prompt,
             temperature=temperature,
-            vad_filter=vad_filter,
+            vad_filter=effective_vad_filter,
         )
         segments = TranscriptionSegment.from_faster_whisper_segments(segments)
 
@@ -162,8 +165,11 @@ def transcribe_file(
     ] = ["segment"],
     stream: Annotated[bool, Form()] = False,
     hotwords: Annotated[str | None, Form()] = None,
-    vad_filter: Annotated[bool, Form()] = False,
+    vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
+    # Use config default if vad_filter not explicitly provided
+    effective_vad_filter = vad_filter if vad_filter is not None else config.vad_filter
+    
     timestamp_granularities = asyncio.run(get_timestamp_granularities(request))
     if timestamp_granularities != DEFAULT_TIMESTAMP_GRANULARITIES and response_format != "verbose_json":
         logger.warning(
@@ -189,7 +195,7 @@ def transcribe_file(
                 initial_prompt=prompt,
                 word_timestamps="word" in timestamp_granularities,
                 temperature=temperature,
-                vad_filter=vad_filter,
+                vad_filter=effective_vad_filter,
                 hotwords=hotwords,
             )
             segments = TranscriptionSegment.from_faster_whisper_segments(segments)
