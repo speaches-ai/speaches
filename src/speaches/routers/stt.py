@@ -13,6 +13,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from faster_whisper.transcribe import BatchedInferencePipeline, TranscriptionInfo
 from huggingface_hub.utils._cache_manager import _scan_cached_repo
+from huggingface_hub.errors import CorruptedCacheException
 
 from speaches.api_types import (
     DEFAULT_TIMESTAMP_GRANULARITIES,
@@ -24,7 +25,7 @@ from speaches.api_types import (
 )
 from speaches.dependencies import AudioFileDependency, ConfigDependency, WhisperModelManagerDependency
 from speaches.executors.whisper import utils as whisper_utils
-from speaches.hf_utils import get_model_card_data_from_cached_repo_info, get_model_repo_path
+from speaches.hf_utils import get_model_card_data_from_cached_repo_info, get_model_repo_path, load_repo_model_card_data
 from speaches.model_aliases import ModelId
 from speaches.text_utils import segments_to_srt, segments_to_text, segments_to_vtt
 
@@ -176,9 +177,27 @@ def transcribe_file(
             status_code=404,
             detail=f"Model '{model}' is not installed locally. You can download the model using `POST /v1/models`",
         )
-    cached_repo_info = _scan_cached_repo(model_repo_path)
-    model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
-    assert model_card_data is not None, cached_repo_info  # FIXME
+    # Try to scan the cached repo, but fall back to direct README loading if corrupted
+    try:
+        cached_repo_info = _scan_cached_repo(model_repo_path)
+        model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
+    except CorruptedCacheException as e:
+        logger.warning(f"Cache appears corrupted for {model}: {e}. Falling back to direct README loading.")
+        # Try to load the model card directly from the README file
+        readme_paths = list(model_repo_path.glob("snapshots/*/README.md"))
+        if readme_paths:
+            model_card_data = load_repo_model_card_data(readme_paths[0])
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Model cache is corrupted and no README.md found for '{model}'",
+            )
+    
+    if model_card_data is None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not load model card data for '{model}'",
+        )
     if whisper_utils.hf_model_filter.passes_filter(model_card_data):
         with model_manager.load_model(model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
