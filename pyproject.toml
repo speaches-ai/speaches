@@ -103,12 +103,15 @@ ignore = [
     "SIM102",
     "T201", # print
     "TRY003",
+    "TRY300",
+    "TRY301",
     "W505",
     "ISC001", # recommended to disable for formatting
     "INP001",
     "PT018",
     "G004", # logging f string
-    "E501" # line-too-long
+    "E501", # line-too-long
+    "PLC0415"
 ]
 
 [tool.ruff.lint.isort]

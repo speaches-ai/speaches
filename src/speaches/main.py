@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import logging
+import uuid
 
 from fastapi import (
     FastAPI,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
-from fastapi.responses import JSONResponse
-import uuid
 
 from speaches.dependencies import ApiKeyDependency, get_config
 from speaches.logger import setup_logger
@@ -69,7 +69,7 @@ def create_app() -> FastAPI:
 
     # Register global exception handler for APIProxyError
     @app.exception_handler(APIProxyError)
-    async def api_proxy_error_handler(request, exc: APIProxyError):
+    async def api_proxy_error_handler(request, exc: APIProxyError) -> JSONResponse:  # noqa: ANN001, ARG001
         error_id = str(uuid.uuid4())
         logger.exception(f"[{{error_id}}] {exc.message}")
         content = {
@@ -79,6 +79,7 @@ def create_app() -> FastAPI:
             "error_id": error_id,
         }
         import os
+
         log_level = os.getenv("SPEACHES_LOG_LEVEL", "INFO").upper()
         if log_level == "DEBUG" and exc.debug:
             content["debug"] = exc.debug

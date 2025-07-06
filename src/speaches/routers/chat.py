@@ -307,9 +307,9 @@ async def handle_completions(  # noqa: C901
                 "Double-check your API key for typos or expiration.",
                 "Ensure the endpoint URL matches your Speaches server configuration.",
                 "Test your internet connection.",
-                "If the error persists, visit https://github.com/speaches-ai/speaches/issues or contact support with the error ID."
+                "If the error persists, visit https://github.com/speaches-ai/speaches/issues or contact support with the error ID.",
             ],
-            debug=error_info
+            debug=error_info,
         ) from e
     except Exception as e:
         error_message = (
@@ -321,18 +321,16 @@ async def handle_completions(  # noqa: C901
             "exception_message": str(e),
             "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         }
-        logger.exception(
-            f"Speaches unexpected error: {error_message} | exception_type={error_info['exception_type']}"
-        )
+        logger.exception(f"Speaches unexpected error: {error_message} | exception_type={error_info['exception_type']}")
         raise APIProxyError(
             error_message,
             status_code=500,
             hint="Try again or contact support with the error details.",
             suggestions=[
                 "Retry your request.",
-                "If the error persists, visit https://github.com/speaches-ai/speaches/issues or contact support and provide the debug information."
+                "If the error persists, visit https://github.com/speaches-ai/speaches/issues or contact support and provide the debug information.",
             ],
-            debug=error_info
+            debug=error_info,
         ) from e
     if isinstance(chat_completion, AsyncStream):
 

@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+import logging
 from pathlib import Path
 
 import gradio as gr
@@ -8,7 +9,6 @@ from httpx_sse import aconnect_sse
 from speaches.config import Config
 from speaches.ui.utils import http_client_from_gradio_req, openai_client_from_gradio_req
 from speaches.utils import APIProxyError, format_api_proxy_error
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ TRANSCRIPTION_ENDPOINT = "/v1/audio/transcriptions"
 TRANSLATION_ENDPOINT = "/v1/audio/translations"
 
 
-def create_stt_tab(config: Config) -> None:
+def create_stt_tab(config: Config) -> None:  # noqa: C901, PLR0915
     async def update_whisper_model_dropdown(request: gr.Request) -> gr.Dropdown:
         openai_client = openai_client_from_gradio_req(request, config)
         models = (await openai_client.models.list()).data
