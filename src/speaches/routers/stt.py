@@ -111,8 +111,8 @@ def translate_file(
     vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
     # Use config default if vad_filter not explicitly provided
-    effective_vad_filter = vad_filter if vad_filter is not None else config.vad_filter
-    
+    effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001
+
     with model_manager.load_model(model) as whisper:
         whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
         segments, transcription_info = whisper_model.transcribe(
@@ -168,8 +168,8 @@ def transcribe_file(
     vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
     # Use config default if vad_filter not explicitly provided
-    effective_vad_filter = vad_filter if vad_filter is not None else config.vad_filter
-    
+    effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001
+
     timestamp_granularities = asyncio.run(get_timestamp_granularities(request))
     if timestamp_granularities != DEFAULT_TIMESTAMP_GRANULARITIES and response_format != "verbose_json":
         logger.warning(
