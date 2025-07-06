@@ -170,5 +170,8 @@ tests/data
 .secrets
 .ruff_cache
 .aider*
-.DS_Store
 speaches_debug
+
+# OS-specific
+Thumbs.db
+.DS_Store

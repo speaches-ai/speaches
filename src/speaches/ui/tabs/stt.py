@@ -7,6 +7,10 @@ from httpx_sse import aconnect_sse
 
 from speaches.config import Config
 from speaches.ui.utils import http_client_from_gradio_req, openai_client_from_gradio_req
+from speaches.utils import APIProxyError, format_api_proxy_error
+import logging
+
+logger = logging.getLogger(__name__)
 
 TRANSCRIPTION_ENDPOINT = "/v1/audio/transcriptions"
 TRANSLATION_ENDPOINT = "/v1/audio/translations"
@@ -25,50 +29,74 @@ def create_stt_tab(config: Config) -> None:
     async def audio_task(
         http_client: httpx.AsyncClient, file_path: str, endpoint: str, temperature: float, model: str
     ) -> str:
-        with Path(file_path).open("rb") as file:  # noqa: ASYNC230
-            response = await http_client.post(
-                endpoint,
-                files={"file": file},
-                data={
-                    "model": model,
-                    "response_format": "text",
-                    "temperature": temperature,
-                },
-            )
-
-        response.raise_for_status()
-        return response.text
+        try:
+            if not file_path:
+                msg = "No audio file provided in audio_task (stt.py). Please record or upload audio."
+                raise APIProxyError(msg, suggestions=["Please record or upload an audio file."])
+            with Path(file_path).open("rb") as file:  # noqa: ASYNC230
+                response = await http_client.post(
+                    endpoint,
+                    files={"file": file},
+                    data={
+                        "model": model,
+                        "response_format": "text",
+                        "temperature": temperature,
+                    },
+                )
+            response.raise_for_status()
+            return response.text
+        except Exception as e:
+            logger.exception("STT audio_task error")
+            if not isinstance(e, APIProxyError):
+                e = APIProxyError(str(e))
+            return format_api_proxy_error(e, context="audio_task")
 
     async def streaming_audio_task(
         http_client: httpx.AsyncClient, file_path: str, endpoint: str, temperature: float, model: str
     ) -> AsyncGenerator[str, None]:
-        with Path(file_path).open("rb") as file:  # noqa: ASYNC230
-            kwargs = {
-                "files": {"file": file},
-                "data": {
-                    "response_format": "text",
-                    "temperature": temperature,
-                    "model": model,
-                    "stream": True,
-                },
-            }
-            async with aconnect_sse(http_client, "POST", endpoint, **kwargs) as event_source:
-                async for event in event_source.aiter_sse():
-                    yield event.data
+        try:
+            with Path(file_path).open("rb") as file:  # noqa: ASYNC230
+                kwargs = {
+                    "files": {"file": file},
+                    "data": {
+                        "response_format": "text",
+                        "temperature": temperature,
+                        "model": model,
+                        "stream": True,
+                    },
+                }
+                async with aconnect_sse(http_client, "POST", endpoint, **kwargs) as event_source:
+                    async for event in event_source.aiter_sse():
+                        yield event.data
+        except Exception as e:
+            logger.exception("STT streaming error")
+            if not isinstance(e, APIProxyError):
+                e = APIProxyError(str(e))
+            yield format_api_proxy_error(e, context="streaming_audio_task")
 
     async def whisper_handler(
         file_path: str, model: str, task: str, temperature: float, stream: bool, request: gr.Request
     ) -> AsyncGenerator[str, None]:
-        http_client = http_client_from_gradio_req(request, config)
-        endpoint = TRANSCRIPTION_ENDPOINT if task == "transcribe" else TRANSLATION_ENDPOINT
+        try:
+            if not file_path:
+                msg = "No audio file provided in whisper_handler (stt.py). Please record or upload audio."
+                raise APIProxyError(msg, suggestions=["Please record or upload an audio file."])
+            http_client = http_client_from_gradio_req(request, config)
+            endpoint = TRANSCRIPTION_ENDPOINT if task == "transcribe" else TRANSLATION_ENDPOINT
 
-        if stream:
-            previous_transcription = ""
-            async for transcription in streaming_audio_task(http_client, file_path, endpoint, temperature, model):
-                previous_transcription += transcription
-                yield previous_transcription
-        else:
-            yield await audio_task(http_client, file_path, endpoint, temperature, model)
+            if stream:
+                previous_transcription = ""
+                async for transcription in streaming_audio_task(http_client, file_path, endpoint, temperature, model):
+                    previous_transcription += transcription
+                    yield previous_transcription
+            else:
+                result = await audio_task(http_client, file_path, endpoint, temperature, model)
+                yield result
+        except Exception as e:
+            logger.exception("STT handler error")
+            if not isinstance(e, APIProxyError):
+                e = APIProxyError(str(e))
+            yield format_api_proxy_error(e, context="whisper_handler")
 
     with gr.Tab(label="Speech-to-Text") as tab:
         audio = gr.Audio(type="filepath")
