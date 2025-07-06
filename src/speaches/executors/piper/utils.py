@@ -6,7 +6,7 @@ import time
 from typing import TYPE_CHECKING, Literal
 
 import huggingface_hub
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from speaches.api_types import Model
 from speaches.audio import resample_audio
@@ -47,6 +47,11 @@ class PiperModelFiles(BaseModel):
 class PiperModelVoice(BaseModel):
     name: str
     language: str
+
+    @computed_field
+    @property
+    def id(self) -> str:
+        return self.name
 
 
 class PiperModel(Model):

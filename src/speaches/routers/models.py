@@ -4,13 +4,16 @@ from fastapi import (
     Response,
 )
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from speaches.api_types import (
     ListModelsResponse,
     Model,
     ModelTask,
 )
+from speaches.executors.kokoro.utils import KokoroModel, KokoroModelVoice
 from speaches.executors.kokoro.utils import model_registry as kokoro_model_registry
+from speaches.executors.piper.utils import PiperModel
 from speaches.executors.piper.utils import model_registry as piper_model_registry
 from speaches.executors.whisper.utils import model_registry as whisper_model_registry
 from speaches.hf_utils import delete_local_model_repo
@@ -31,6 +34,34 @@ def list_local_models(task: ModelTask | None = None) -> JSONResponse:
     if task is None or task == "automatic-speech-recognition":
         models.extend(list(whisper_model_registry.list_local_models()))
     return JSONResponse(content={"data": [model.model_dump() for model in models], "object": "list"})
+
+
+class ListAudioModelsResponse(BaseModel):
+    models: list[Model]
+    object: str = "list"
+
+
+# HACK: returning ListModelsResponse directly causes extra `Model` fields to be omitted
+@router.get("/v1/audio/models", response_model=ListAudioModelsResponse)
+def list_local_audio_models() -> JSONResponse:
+    models: list[Model] = []
+    models.extend(list(kokoro_model_registry.list_local_models()))
+    models.extend(list(piper_model_registry.list_local_models()))
+    return JSONResponse(content={"models": [model.model_dump() for model in models], "object": "list"})
+
+
+class ListVoicesResponse(BaseModel):
+    voices: list[KokoroModelVoice | PiperModel]
+
+
+# HACK: returning ListModelsResponse directly causes extra `Model` fields to be omitted
+@router.get("/v1/audio/voices", response_model=ListModelsResponse)
+def list_local_audio_voices() -> JSONResponse:
+    models: list[KokoroModel | PiperModel] = []
+    models.extend(list(kokoro_model_registry.list_local_models()))
+    models.extend(list(piper_model_registry.list_local_models()))
+    voices = [voice for model in models for voice in model.voices]
+    return JSONResponse(content={"voices": [voice.model_dump() for voice in voices], "object": "list"})
 
 
 # TODO: this is very naive implementation. It should be improved

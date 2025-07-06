@@ -7,7 +7,7 @@ from typing import Literal
 import huggingface_hub
 from kokoro_onnx import Kokoro
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from speaches.api_types import Model
 from speaches.audio import resample_audio
@@ -37,6 +37,11 @@ class KokoroModelVoice(BaseModel):
     name: str
     language: str
     gender: Literal["male", "female"]
+
+    @computed_field
+    @property
+    def id(self) -> str:
+        return self.name
 
 
 VOICES = [
