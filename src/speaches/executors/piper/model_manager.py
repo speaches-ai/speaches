@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     from piper.voice import PiperVoice
 
 
+# TODO: make configurable
 ORT_PROVIDERS_BLACKLIST = {"TensorrtExecutionProvider"}
+ORT_PROVIDERS_PRIORITY = {"CUDAExecutionProvider": 100}
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +32,17 @@ class PiperModelManager:
         from piper.voice import PiperConfig, PiperVoice
 
         model_files = model_registry.get_model_files(model_id)
-        available_providers: set[str] = set(
-            get_available_providers()
-        )  # HACK: `get_available_providers` is an unknown symbol (on MacOS at least)
-        available_providers = available_providers - ORT_PROVIDERS_BLACKLIST
-        logger.info(f"Available ONNX Runtime providers: {available_providers}")
-        inf_sess = InferenceSession(model_files.model, providers=list(available_providers))
+        # NOTE: `get_available_providers` is an unknown symbol (on MacOS at least)
+        available_providers: list[str] = get_available_providers()
+        logger.debug(f"Available ONNX Runtime providers: {available_providers}")
+        available_providers = [provider for provider in available_providers if provider not in ORT_PROVIDERS_BLACKLIST]
+        logger.debug(f"Filtered available ONNX Runtime providers: {available_providers}")
+        available_providers = sorted(
+            available_providers,
+            key=lambda x: ORT_PROVIDERS_PRIORITY.get(x, 0),
+            reverse=True,
+        )
+        inf_sess = InferenceSession(model_files.model, providers=available_providers)
         conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 
