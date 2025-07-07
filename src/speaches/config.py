@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -38,6 +38,22 @@ class WhisperConfig(BaseModel):
     """
 
 
+class OrtOptions(BaseModel):
+    exclude_providers: list[str] = ["TensorrtExecutionProvider"]
+    """
+    List of ORT providers to exclude from the inference session.
+    """
+    provider_priority: dict[str, int] = {"CUDAExecutionProvider": 100}
+    """
+    Dictionary of ORT providers and their priority. The higher the value, the higher the priority. Default priority for a provider if not specified is 0.
+    """
+    provider_opts: dict[str, dict[str, Any]] = {}
+    """
+    Dictionary of ORT provider options. The keys are provider names, and the values are dictionaries of options.
+    Example: {"CUDAExecutionProvider": {"cudnn_conv_algo_search": "DEFAULT"}}
+    """
+
+
 # TODO: document `alias` behaviour within the docstring
 class Config(BaseSettings):
     """Configuration for the application. Values can be set via environment variables.
@@ -74,6 +90,7 @@ class Config(BaseSettings):
 
     whisper: WhisperConfig = WhisperConfig()
 
+    # TODO: remove the underscore prefix from the field name
     _unstable_vad_filter: bool = True
     """
     Default value for VAD (Voice Activity Detection) filter in speech recognition endpoints.
@@ -94,3 +111,5 @@ class Config(BaseSettings):
     # TODO: document the below configuration options
     chat_completion_base_url: str = "http://localhost:11434/v1"
     chat_completion_api_key: SecretStr = SecretStr("cant-be-empty")
+
+    unstable_ort_opts: OrtOptions = OrtOptions()

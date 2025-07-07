@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from onnxruntime import InferenceSession, get_available_providers
 
+from speaches.config import OrtOptions  # noqa: TC001
 from speaches.executors.piper.utils import model_registry
 from speaches.model_manager import SelfDisposingModel
 
@@ -15,16 +16,13 @@ if TYPE_CHECKING:
     from piper.voice import PiperVoice
 
 
-# TODO: make configurable
-ORT_PROVIDERS_BLACKLIST = {"TensorrtExecutionProvider"}
-ORT_PROVIDERS_PRIORITY = {"CUDAExecutionProvider": 100}
-
 logger = logging.getLogger(__name__)
 
 
 class PiperModelManager:
-    def __init__(self, ttl: int) -> None:
+    def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
         self.ttl = ttl
+        self.ort_opts = ort_opts
         self.loaded_models: OrderedDict[str, SelfDisposingModel[PiperVoice]] = OrderedDict()
         self._lock = threading.Lock()
 
@@ -35,14 +33,19 @@ class PiperModelManager:
         # NOTE: `get_available_providers` is an unknown symbol (on MacOS at least)
         available_providers: list[str] = get_available_providers()
         logger.debug(f"Available ONNX Runtime providers: {available_providers}")
-        available_providers = [provider for provider in available_providers if provider not in ORT_PROVIDERS_BLACKLIST]
-        logger.debug(f"Filtered available ONNX Runtime providers: {available_providers}")
+        available_providers = [
+            provider for provider in available_providers if provider not in self.ort_opts.exclude_providers
+        ]
         available_providers = sorted(
             available_providers,
-            key=lambda x: ORT_PROVIDERS_PRIORITY.get(x, 0),
+            key=lambda x: self.ort_opts.provider_priority.get(x, 0),
             reverse=True,
         )
-        inf_sess = InferenceSession(model_files.model, providers=available_providers)
+        available_providers_with_opts = [
+            (provider, self.ort_opts.provider_opts.get(provider, {})) for provider in available_providers
+        ]
+        logger.debug(f"Using ONNX Runtime providers: {available_providers_with_opts}")
+        inf_sess = InferenceSession(model_files.model, providers=available_providers_with_opts)
         conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 

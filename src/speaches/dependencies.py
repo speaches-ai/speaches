@@ -51,7 +51,7 @@ WhisperModelManagerDependency = Annotated[WhisperModelManager, Depends(get_model
 @lru_cache
 def get_piper_model_manager() -> PiperModelManager:
     config = get_config()
-    return PiperModelManager(config.whisper.ttl)  # HACK: should have its own config
+    return PiperModelManager(config.whisper.ttl, config.unstable_ort_opts)  # HACK: should have its own config
 
 
 PiperModelManagerDependency = Annotated[PiperModelManager, Depends(get_piper_model_manager)]
@@ -60,7 +60,7 @@ PiperModelManagerDependency = Annotated[PiperModelManager, Depends(get_piper_mod
 @lru_cache
 def get_kokoro_model_manager() -> KokoroModelManager:
     config = get_config()
-    return KokoroModelManager(config.whisper.ttl)  # HACK: should have its own config
+    return KokoroModelManager(config.whisper.ttl, config.unstable_ort_opts)  # HACK: should have its own config
 
 
 KokoroModelManagerDependency = Annotated[KokoroModelManager, Depends(get_kokoro_model_manager)]
