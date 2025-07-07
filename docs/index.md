@@ -18,8 +18,8 @@
 - Text-to-Speech via `kokoro`(Ranked #1 in the [TTS Arena](https://huggingface.co/spaces/Pendrokar/TTS-Spaces-Arena)) and `piper` models.
 - GPU and CPU support.
 - [Deployable via Docker Compose / Docker](https://speaches.ai/installation/)
-- [Highly configurable](https://speaches.ai/usage/realtime-api)
-- [Realtime API](https://speaches.ai/configuration/)
+- [Realtime API](https://speaches.ai/usage/realtime-api)
+- [Highly configurable](https://speaches.ai/configuration/)
 
 Please create an issue if you find a bug, have a question, or a feature suggestion.
 
