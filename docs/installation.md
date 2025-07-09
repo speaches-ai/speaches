@@ -46,6 +46,10 @@ docker compose up --detach
     ```bash
     # NOTE: you need to install and enable [buildx](https://github.com/docker/buildx) for multi-platform builds
 
+    # Download the source code
+    git clone https://github.com/speaches-ai/speaches.git
+    cd speaches
+
     # Build image with CUDA support
     docker compose --file compose.cuda.yaml build
 
@@ -96,6 +100,10 @@ docker compose up --detach
 ??? note "Build from source"
 
     ```bash
+    # Download the source code
+    git clone https://github.com/speaches-ai/speaches.git
+    cd speaches
+
     docker build --tag speaches .
 
     # NOTE: you need to install and enable [buildx](https://github.com/docker/buildx) for multi-platform builds
