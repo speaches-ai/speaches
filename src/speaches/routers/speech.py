@@ -1,7 +1,7 @@
 import logging
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from huggingface_hub.utils._cache_manager import _scan_cached_repo
 from pydantic import BaseModel, Field
@@ -28,6 +28,7 @@ OPENAI_SUPPORTED_SPEECH_VOICE_NAMES = ("alloy", "ash", "ballad", "coral", "echo"
 # https://platform.openai.com/docs/guides/text-to-speech/supported-output-formats
 type ResponseFormat = Literal["mp3", "flac", "wav", "pcm"]
 SUPPORTED_RESPONSE_FORMATS = ("mp3", "flac", "wav", "pcm")
+SUPPORTED_NON_STREAMABLE_RESPONSE_FORMATS = ("flac", "wav")
 UNSUPORTED_RESPONSE_FORMATS = ("opus", "aac")
 
 MIN_SAMPLE_RATE = 8000
@@ -53,12 +54,13 @@ class CreateSpeechRequestBody(BaseModel):
 
 
 # https://platform.openai.com/docs/api-reference/audio/createSpeech
-@router.post("/v1/audio/speech")
+# NOTE: `response_model=None` because `Response | StreamingResponse` are not serializable by Pydantic.
+@router.post("/v1/audio/speech", response_model=None)
 async def synthesize(
     piper_model_manager: PiperModelManagerDependency,
     kokoro_model_manager: KokoroModelManagerDependency,
     body: CreateSpeechRequestBody,
-) -> StreamingResponse:
+) -> Response | StreamingResponse:
     model_repo_path = get_model_repo_path(body.model)
     if model_repo_path is None:
         raise HTTPException(
@@ -101,6 +103,13 @@ async def synthesize(
                 speed=body.speed,
                 sample_rate=body.sample_rate,
             )
+            # these file formats can't easily be streamed because they have headers and/or metadata
+            if body.response_format in SUPPORTED_NON_STREAMABLE_RESPONSE_FORMATS:
+                audio_data = b"".join([audio_bytes async for audio_bytes in audio_generator])
+                audio_data = convert_audio_format(
+                    audio_data, body.sample_rate or kokoro_utils.SAMPLE_RATE, body.response_format
+                )
+                return Response(audio_data, media_type=f"audio/{body.response_format}")
             if body.response_format != "pcm":
                 audio_generator = (
                     convert_audio_format(
@@ -121,6 +130,13 @@ async def synthesize(
             audio_generator = piper_utils.generate_audio(
                 piper_tts, body.input, speed=body.speed, sample_rate=body.sample_rate
             )
+            # these file formats can't easily be streamed because they have headers and/or metadata
+            if body.response_format in SUPPORTED_NON_STREAMABLE_RESPONSE_FORMATS:
+                audio_data = b"".join(audio_bytes for audio_bytes in audio_generator)
+                audio_data = convert_audio_format(
+                    audio_data, body.sample_rate or kokoro_utils.SAMPLE_RATE, body.response_format
+                )
+                return Response(audio_data, media_type=f"audio/{body.response_format}")
             if body.response_format != "pcm":
                 audio_generator = (
                     convert_audio_format(
