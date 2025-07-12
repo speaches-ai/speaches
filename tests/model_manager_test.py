@@ -87,7 +87,7 @@ async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory)
         )
         await asyncio.sleep(0.1)  # wait for the server to start processing the request
         res = await aclient.delete(f"/api/ps/{MODEL_ID}")
-        assert res.status_code == 409
+        assert res.status_code == 409, res.text
 
         await task
         res = (await aclient.get("/api/ps")).json()
