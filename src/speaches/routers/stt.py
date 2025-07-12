@@ -143,7 +143,7 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
     assert timestamp_granularities in TIMESTAMP_GRANULARITIES_COMBINATIONS, (
         f"{timestamp_granularities} is not a valid value for `timestamp_granularities[]`."
     )
-    return timestamp_granularities
+    return timestamp_granularities  # type: ignore[return-value]
 
 
 # https://platform.openai.com/docs/api-reference/audio/createTranscription

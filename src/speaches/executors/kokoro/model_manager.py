@@ -3,7 +3,7 @@ import logging
 import threading
 
 from kokoro_onnx import Kokoro
-from onnxruntime import InferenceSession, get_available_providers
+from onnxruntime import InferenceSession, get_available_providers  # pyright: ignore[reportAttributeAccessIssue]
 
 from speaches.config import OrtOptions
 from speaches.executors.kokoro.utils import model_registry

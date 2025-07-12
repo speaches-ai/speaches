@@ -81,7 +81,7 @@ async def aclient(aclient_factory: AclientFactory) -> AsyncGenerator[AsyncClient
         yield aclient
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture
 def openai_client(aclient: AsyncClient) -> AsyncOpenAI:
     return AsyncOpenAI(api_key="cant-be-empty", http_client=aclient)
 

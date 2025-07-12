@@ -8,6 +8,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from openai import NotGiven
+from openai.types.beta.realtime.conversation_item_input_audio_transcription_completed_event import (
+    UsageTranscriptTextUsageDuration,
+)
 from pydantic import BaseModel
 import soundfile as sf
 
@@ -132,7 +135,14 @@ class InputAudioBufferTranscriber:
         logger.info(f"Transcription generation took {time.perf_counter() - start:.2f} seconds")
         content_item.transcript = transcript
         self.pubsub.publish_nowait(
-            ConversationItemInputAudioTranscriptionCompletedEvent(item_id=item.id, transcript=transcript)
+            ConversationItemInputAudioTranscriptionCompletedEvent(
+                item_id=item.id,
+                transcript=transcript,
+                usage=UsageTranscriptTextUsageDuration(
+                    seconds=self.input_audio_buffer.duration,
+                    type="duration",
+                ),
+            )
         )
 
     # TODO: add `timeout` parameter

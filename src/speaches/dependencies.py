@@ -102,7 +102,7 @@ def audio_file_dependency(
         )
         raise HTTPException(status_code=500, detail="Failed to decode audio.") from e
     else:
-        return audio  # pyright: ignore reportReturnType
+        return audio  # pyright: ignore[reportReturnType]
 
 
 AudioFileDependency = Annotated[NDArray[float32], Depends(audio_file_dependency)]

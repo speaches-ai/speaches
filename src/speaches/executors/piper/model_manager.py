@@ -6,7 +6,7 @@ import logging
 import threading
 from typing import TYPE_CHECKING
 
-from onnxruntime import InferenceSession, get_available_providers
+from onnxruntime import InferenceSession, get_available_providers  # pyright: ignore[reportAttributeAccessIssue]
 
 from speaches.config import OrtOptions  # noqa: TC001
 from speaches.executors.piper.utils import model_registry

@@ -36,7 +36,10 @@ def create_completion_params(
         kwargs["tools"] = [
             ChatCompletionToolParam(
                 type=tool.type,
-                function=FunctionDefinition(name=tool.name, description=tool.description, parameters=tool.parameters),
+                # HACK: figure out why `tool.description` is nullable
+                function=FunctionDefinition(
+                    name=tool.name, description=tool.description or "", parameters=tool.parameters
+                ),
             )
             for tool in response.tools
         ]
