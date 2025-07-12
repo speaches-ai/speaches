@@ -11,7 +11,7 @@ env:
   FULL_IMAGE_NAME: ghcr.io/speaches-ai/speaches
 jobs:
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-4core-x86
     strategy:
       fail-fast: false
       matrix:

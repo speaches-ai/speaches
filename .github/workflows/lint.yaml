@@ -17,7 +17,7 @@ on:
       - ".github/workflows/lint.yaml"
 jobs:
   ruff:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-4core-x86
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -30,7 +30,7 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check --diff .
   basedpyright:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-4core-x86
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
