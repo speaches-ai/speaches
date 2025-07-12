@@ -56,7 +56,7 @@ class CreateSpeechRequestBody(BaseModel):
 # https://platform.openai.com/docs/api-reference/audio/createSpeech
 # NOTE: `response_model=None` because `Response | StreamingResponse` are not serializable by Pydantic.
 @router.post("/v1/audio/speech", response_model=None)
-async def synthesize(
+async def synthesize(  # noqa: C901, PLR0912
     piper_model_manager: PiperModelManagerDependency,
     kokoro_model_manager: KokoroModelManagerDependency,
     body: CreateSpeechRequestBody,
