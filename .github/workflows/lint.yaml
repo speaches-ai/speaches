@@ -29,3 +29,15 @@ jobs:
       - run: uv sync --extra dev
       - run: uv run ruff check .
       - run: uv run ruff format --check --diff .
+  basedpyright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+          activate-environment: true
+      - run: uv python install 3.12
+      - run: uv sync --extra dev --extra ui
+      - run: uv run basedpyright .
