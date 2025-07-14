@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
     nix-hug = {
       url = "github:longregen/nix-hug";
@@ -16,7 +16,11 @@
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
-        # Function to create overlay for specific Python version with configuration
+        addIf = pkgs: name: (
+          if (builtins.hasAttr pkgs name)
+          then [pkgs [name]]
+          else []
+        );
         mkOverlay = {
           pythonVersion,
           cudaSupport ? true,
@@ -33,12 +37,7 @@
                 withCuDNN = true;
                 cudaPackages = prev.cudaPackages_12;
               }
-            else
-              prev.ctranslate2.override {
-                stdenv = prev.gcc11Stdenv;
-                withCUDA = false;
-                withCuDNN = false;
-              };
+            else prev.ctranslate2;
 
           "${pythonVersion}Packages" =
             pyPackages
@@ -47,71 +46,13 @@
               faster-whisper = pyPackages.faster-whisper.overrideAttrs (old: {
                 propagatedBuildInputs = old.propagatedBuildInputs ++ [final.ctranslate2];
               });
-
-              # Import all custom dependencies
-              # Import custom packages with Python naming convention (underscores)
-              espeakng_loader = import ./nix/dependencies/espeakng-loader.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              kokoro_onnx = import ./nix/dependencies/kokoro-onnx.nix {
-                pkgs = final;
-                prev = pyPackages;
-                inherit system cudaSupport espeakng_loader;
-                phonemizer_fork = phonemizer_fork;
-              };
-              piper_phonemize = import ./nix/dependencies/piper-phonemize.nix {
-                pkgs = final;
-                prev = pyPackages;
-                inherit system;
-              };
-              piper_tts = import ./nix/dependencies/piper-tts.nix {
-                pkgs = final;
-                prev = pyPackages;
-                inherit system;
-              };
-              httpx_ws = import ./nix/dependencies/httpx-ws.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              httpx_sse = import ./nix/dependencies/httpx-sse.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              aiortc = import ./nix/dependencies/aiortc.nix {
-                pkgs = final;
-                prev = pyPackages;
-                aioice = aioice;
-                pylibsrtp = pylibsrtp;
-              };
-              opentelemetry_instrumentation_openai = import ./nix/dependencies/opentelemetry-instrumentation-openai.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              opentelemetry_instrumentation_openai_v2 = import ./nix/dependencies/opentelemetry-instrumentation-openai-v2.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              pytest_antilru = import ./nix/dependencies/pytest-antilru.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              aioice = import ./nix/dependencies/aioice.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              pylibsrtp = import ./nix/dependencies/pylibsrtp.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-              phonemizer_fork = import ./nix/dependencies/phonemizer-fork.nix {
-                pkgs = final;
-                prev = pyPackages;
-              };
-            };
+            }
+            // (import ./nix/dependencies.nix {
+              pkgs = final;
+              inherit pyPackages system;
+            });
         };
 
-        # Function to create speaches package with options
         mkSpeaches = {
           pythonVersion ? "python312",
           withCuda ? (system == "x86_64-linux"),
@@ -158,9 +99,9 @@
                 ++ pkgs.lib.optionals (pythonPackages ? kokoro_onnx) [
                   # Custom packages - these are defined in our overlay
                   pythonPackages.kokoro_onnx
-                  pythonPackages.httpx_ws
                   pythonPackages.aiortc
-                  pythonPackages.httpx_sse
+                  ps.httpx-sse
+                  ps.httpx-ws
                 ];
 
               # Optional Piper TTS dependencies
@@ -177,25 +118,13 @@
                   ps.pytest
                   ps.ruff
                 ]
-                ++ (
-                  if pythonPackages ? pytest_antilru
-                  then [pythonPackages.pytest_antilru]
-                  else []
-                )
+                ++ (addIf pythonPackages "pytest_antilru")
               );
 
               # OpenTelemetry dependencies
               otelDeps = pkgs.lib.optionals withOtel (
-                (
-                  if pythonPackages ? opentelemetry_instrumentation_openai
-                  then [pythonPackages.opentelemetry_instrumentation_openai]
-                  else []
-                )
-                ++ (
-                  if pythonPackages ? opentelemetry_instrumentation_openai_v2
-                  then [pythonPackages.opentelemetry_instrumentation_openai_v2]
-                  else []
-                )
+                (addIf pythonPackages "opentelemetry_instrumentation_openai")
+                ++ (addIf pythonPackages "opentelemetry_instrumentation_openai_v2")
               );
             in
               coreDeps ++ piperDeps ++ devDeps ++ otelDeps
@@ -297,9 +226,10 @@
           whisper-base = nix-hug.lib.${system}.fetchModel {
             url = "Systran/faster-whisper-base";
             rev = "main";
-            repoInfoHash = "sha256-Rl9BpJJbcx+tQh25lUEHzXAcEiLQoLQvy0FV96ZNfFQ=";
+
+            repoInfoHash = "sha256-3OJtoPo3Dw2ThF4fuqfbkmtHozVn24R2TYilQByTSqA=";
             fileTreeHash = "sha256-GYgT6udNwSgjZabqajK/i8kL3pvRPbaTC2PQdUfH0EY=";
-            derivationHash = "sha256-AE6WcpwQr7UXIzodFzl1qqi75rSfDNsI5DnQTHXBtlY=";
+            derivationHash = "sha256-rSZlNVpVT5fbvIFvoaZZhO7icobKHZdB/QqyBelIGNQ=";
           };
         };
 
@@ -337,6 +267,8 @@
                     cachetools
                     gradio
                     httpx
+                    httpx-sse
+                    httpx-ws
                     faster-whisper
                     anyio
                     pytest-asyncio
@@ -348,7 +280,6 @@
                       # Custom packages from overlay
                       kokoro_onnx
                       aiortc
-                      httpx_sse
                       espeakng_loader
                       pytest_antilru
                       opentelemetry_instrumentation_openai
@@ -413,7 +344,7 @@
               models.silero-vad
               models.whisper-base
             ];
-            hash = "sha256-JqB1c24nJZRIomZLYK1pa5G0BA9tAeA2z01XazUsoFs=";
+            hash = "";
           };
 
           # End-to-end test package with actual models
@@ -430,7 +361,7 @@
                 models.silero-vad
                 models.whisper-base
               ];
-              hash = "sha256-JqB1c24nJZRIomZLYK1pa5G0BA9tAeA2z01XazUsoFs=";
+              hash = "sha256-b4bfr0sXkNm+DmHnt1mZA4xFOG89wXvUWezW5yeqcok=";
             }}"
             export HF_HUB_CACHE="$MODEL_CACHE/hub"
             export HF_HUB_OFFLINE=1
@@ -521,7 +452,7 @@
             if [[ "$STT_RESPONSE" =~ ^2[0-9][0-9]$ ]] && [ -f transcription.json ] && ${defaultPkgs.jq}/bin/jq -e '.text' transcription.json >/dev/null; then
               echo "✓ STT test passed - got transcription"
               echo "Original text: $ORIGINAL_TEXT"
-              echo "Transcribed text: $(${defaultPkgs.jq}/bin/jq -r '.text' transcription.json)"
+              echo "Transcription: $(${defaultPkgs.jq}/bin/jq -r '.text' transcription.json)"
 
               # Check if transcription is reasonably similar (basic check)
               # Create ORIGINAL_WORDS from ORIGINAL_TEXT by converting to lowercase and removing punctuation
@@ -605,7 +536,7 @@
                     models.silero-vad
                     models.whisper-base
                   ];
-                  hash = "sha256-JqB1c24nJZRIomZLYK1pa5G0BA9tAeA2z01XazUsoFs=";
+                  hash = "sha256-b4bfr0sXkNm+DmHnt1mZA4xFOG89wXvUWezW5yeqcok=";
                 }}/hub";
                 HF_HUB_OFFLINE = "1";
               };
@@ -624,7 +555,7 @@
                       models.silero-vad
                       models.whisper-base
                     ];
-                    hash = "sha256-JqB1c24nJZRIomZLYK1pa5G0BA9tAeA2z01XazUsoFs=";
+                    hash = "sha256-b4bfr0sXkNm+DmHnt1mZA4xFOG89wXvUWezW5yeqcok=";
                   }}/hub";
                   HF_HUB_OFFLINE = "1";
                 };

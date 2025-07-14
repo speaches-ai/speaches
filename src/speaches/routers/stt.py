@@ -124,6 +124,7 @@ def translate_file(
             task="translate",
             initial_prompt=prompt,
             temperature=temperature,
+            multilingual=True,
             vad_filter=effective_vad_filter,
         )
         segments = TranscriptionSegment.from_faster_whisper_segments(segments)
