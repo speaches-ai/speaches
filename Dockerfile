@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 # `ffmpeg` is installed because without it `gradio` won't work with mp3(possible others as well) files
 # hadolint ignore=DL3008
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl ffmpeg && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 # "ubuntu" is the default user on ubuntu images with UID=1000. This user is used for two reasons:
