@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+import struct
 from typing import TYPE_CHECKING, BinaryIO
 
 import numpy as np
@@ -28,6 +29,31 @@ def resample_audio(audio_bytes: bytes, sample_rate: int, target_sample_rate: int
     return resampled_data.astype(np.int16).tobytes()
 
 
+def create_wav_header(sample_rate=24000, bits_per_sample=16, channels=1):
+    byte_rate = sample_rate * channels * bits_per_sample // 8
+    block_align = channels * bits_per_sample // 8
+
+    data_size = 0xFFFFFFFF # placeholder value for streaming
+
+    header = struct.pack(
+        '<4sI4s4sIHHIIHH4sI',
+        b'RIFF',
+        0xFFFFFFFF, # placeholder file size value for streaming,
+        b'WAVE',
+        b'fmt ',
+        16,
+        1,
+        channels,
+        sample_rate,
+        byte_rate,
+        block_align,
+        bits_per_sample,
+        b'data',
+        data_size
+    )
+    return header
+
+
 def convert_audio_format(
     audio_bytes: bytes,
     sample_rate: int,
@@ -47,7 +73,15 @@ def convert_audio_format(
         endian=endian,
     )
     converted_audio_bytes_buffer = io.BytesIO()
-    sf.write(converted_audio_bytes_buffer, data, samplerate=sample_rate, format=audio_format)
+
+    out_subtype = None
+    if audio_format == "wav":
+        header = create_wav_header(sample_rate=sample_rate, bits_per_sample=16, channels=channels)
+        converted_audio_bytes_buffer.write(header)
+        audio_format = 'RAW'
+        out_subtype = "PCM_16"
+
+    sf.write(converted_audio_bytes_buffer, data, samplerate=sample_rate, format=audio_format, subtype=out_subtype)
     return converted_audio_bytes_buffer.getvalue()
 
 
