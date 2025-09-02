@@ -1,7 +1,7 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "git+ssh://gitea/mirrors/nixpkgs?shallow=1";
+    flake-utils.url = "git+ssh://gitea/mirrors/flake-utils";
     nix-hug = {
       url = "github:longregen/nix-hug";
       inputs.nixpkgs.follows = "nixpkgs";
