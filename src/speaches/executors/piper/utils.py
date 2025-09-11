@@ -72,29 +72,52 @@ logger = logging.getLogger(__name__)
 class PiperModelRegistry(ModelRegistry):
     def list_remote_models(self) -> Generator[PiperModel, None, None]:
         models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
+
         for model in models:
-            assert model.created_at is not None and model.card_data is not None, model
-            model_id_parts = model.id.split("/")[-1].split("-")
-            assert len(model_id_parts) == 4, model.id
-            # HACK: all of the `speaches-ai` piper models have a prefix of `piper-`. That's why there are 4 parts.
-            _prefix, _language_and_region, name, quality = model_id_parts
-            assert quality in PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP, model
-            languages = extract_language_list(model.card_data)
-            assert len(languages) == 1, model
-            yield PiperModel(
-                id=model.id,
-                created=int(model.created_at.timestamp()),
-                owned_by=model.id.split("/")[0],
-                language=languages,
-                task=TASK_NAME_TAG,
-                sample_rate=PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[quality],
-                voices=[
-                    PiperModelVoice(
-                        name=name,
-                        language=languages[0],
+            try:
+                # Must have basic metadata
+                if model.created_at is None or getattr(model, "card_data", None) is None:
+                    logger.info(
+                        f"Skipping (missing created_at/card_data): {model}",
                     )
-                ],
-            )
+                    continue
+                assert model.card_data is not None
+
+                # Expect repo name like: piper-<lang>_<REGION>-<voice>-<quality>
+                repo_name = model.id.split("/")[-1]
+                parts = repo_name.split("-")
+                if len(parts) != 4:
+                    logger.info(f"Skipping (unexpected repo name shape): {model.id}")
+                    continue
+
+                _prefix, _language_and_region, name, quality = parts
+
+                # Quality must be known
+                sample_rate = PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP.get(quality)  # pyright: ignore[reportArgumentType]
+                if sample_rate is None:
+                    logger.info(f"Skipping (unknown quality '{quality}'): {model.id}")
+                    continue
+
+                # Exactly one language required
+                languages = extract_language_list(model.card_data)
+                if not languages or len(languages) != 1:
+                    logger.info("Skipping (languages parsed=%s): %s", languages, model.id)
+                    continue
+
+                yield PiperModel(
+                    id=model.id,
+                    created=int(model.created_at.timestamp()),
+                    owned_by=model.id.split("/")[0],
+                    language=languages,
+                    task=TASK_NAME_TAG,
+                    sample_rate=sample_rate,
+                    voices=[PiperModelVoice(name=name, language=languages[0])],
+                )
+
+            except Exception:
+                # Defensive: never let one bad model crash the whole listing
+                logger.exception(f"Skipping (unexpected error): {model.id}")
+                continue
 
     def list_local_models(self) -> Generator[PiperModel, None, None]:
         cached_model_repos_info = get_cached_model_repos_info()
