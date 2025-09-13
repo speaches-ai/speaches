@@ -75,7 +75,8 @@ class PiperModelRegistry(ModelRegistry):
         for model in models:
             assert model.created_at is not None and model.card_data is not None, model
             model_id_parts = model.id.split("/")[-1].split("-")
-            assert len(model_id_parts) == 4, model.id
+            if len(model_id_parts) != 4:
+                continue
             # HACK: all of the `speaches-ai` piper models have a prefix of `piper-`. That's why there are 4 parts.
             _prefix, _language_and_region, name, quality = model_id_parts
             assert quality in PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP, model
@@ -105,7 +106,9 @@ class PiperModelRegistry(ModelRegistry):
             if self.hf_model_filter.passes_filter(model_card_data):
                 repo_id_parts = cached_repo_info.repo_id.split("/")[-1].split("-")
                 # HACK: all of the `speaches-ai` piper models have a prefix of `piper-`. That's why there are 4 parts.
-                assert len(repo_id_parts) == 4, repo_id_parts
+
+                if len(repo_id_parts) != 4:
+                    continue
                 _prefix, _language_and_region, name, quality = repo_id_parts
                 assert quality in PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP, cached_repo_info.repo_id
                 sample_rate = PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP[quality]
