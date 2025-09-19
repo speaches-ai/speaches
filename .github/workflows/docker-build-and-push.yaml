@@ -27,7 +27,7 @@ jobs:
           - base-image: ubuntu:24.04
             tag-suffix: -cpu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: meta
         uses: docker/metadata-action@v5
         with:
