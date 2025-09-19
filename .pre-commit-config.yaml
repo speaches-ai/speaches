@@ -10,7 +10,7 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=500'] # default: 500
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.33.2
+    rev: 0.34.0
     hooks:
       - id: check-taskfile
   - repo: https://github.com/rhysd/actionlint
