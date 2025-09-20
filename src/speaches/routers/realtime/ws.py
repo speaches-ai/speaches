@@ -4,6 +4,8 @@ import logging
 from fastapi import (
     APIRouter,
     WebSocket,
+    WebSocketException,
+    status,
 )
 from openai import AsyncOpenAI
 
@@ -21,6 +23,7 @@ from speaches.realtime.message_manager import WsServerMessageManager
 from speaches.realtime.response_event_router import event_router as response_event_router
 from speaches.realtime.session import OPENAI_REALTIME_SESSION_DURATION_SECONDS, create_session_object_configuration
 from speaches.realtime.session_event_router import event_router as session_event_router
+from speaches.realtime.utils import verify_websocket_api_key
 from speaches.realtime.utils import task_done_callback
 from speaches.types.realtime import SessionCreatedEvent
 
@@ -56,9 +59,31 @@ async def realtime(
     model: str,
     config: ConfigDependency,
     transcription_client: TranscriptionClientDependency,
+    intent: str = "conversation",
+    language: str | None = None,
+    transcription_model: str | None = None,
 ) -> None:
+    """OpenAI Realtime API compatible WebSocket endpoint.
+
+    According to OpenAI Realtime API specification:
+    - 'model' parameter is the conversation model (e.g., gpt-4o-realtime-preview)
+    - 'transcription_model' parameter is for input_audio_transcription.model
+    - 'intent' parameter controls session behavior (conversation vs transcription)
+
+    References:
+    - https://platform.openai.com/docs/guides/realtime/overview
+    - https://platform.openai.com/docs/api-reference/realtime-server-events/session/update
+
+    """
+    # Manually verify WebSocket authentication before accepting connection
+    try:
+        await verify_websocket_api_key(ws, config)
+    except WebSocketException:
+        await ws.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+        return
+
     await ws.accept()
-    logger.info("Accepted websocket connection")
+    logger.info(f"Accepted websocket connection with intent: {intent}")
 
     completion_client = AsyncOpenAI(
         base_url=f"http://{config.host}:{config.port}/v1",
@@ -68,7 +93,7 @@ async def realtime(
     ctx = SessionContext(
         transcription_client=transcription_client,
         completion_client=completion_client,
-        session=create_session_object_configuration(model),
+        session=create_session_object_configuration(model, intent, language, transcription_model),
     )
     message_manager = WsServerMessageManager(ctx.pubsub)
     async with asyncio.TaskGroup() as tg:
