@@ -75,14 +75,14 @@ def get_parakeet_model_manager() -> ParakeetModelManager:
 
 ParakeetModelManagerDependency = Annotated[ParakeetModelManager, Depends(get_parakeet_model_manager)]
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def verify_api_key(
-    config: ConfigDependency, credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]
+    config: ConfigDependency, credentials: HTTPAuthorizationCredentials | None = Depends(security)
 ) -> None:
     assert config.api_key is not None
-    if credentials.credentials != config.api_key.get_secret_value():
+    if credentials is None or credentials.credentials != config.api_key.get_secret_value():
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
 

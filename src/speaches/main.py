@@ -69,15 +69,8 @@ def create_app() -> FastAPI:
 
     logger.debug(f"Config: {config}")
 
-    dependencies = []
-    if config.api_key is not None:
-        dependencies.append(ApiKeyDependency)
-        logger.info("API key authentication is enabled.")
-    else:
-        logger.info("API key authentication is disabled.")
-
+    # Create main app WITHOUT global authentication
     app = FastAPI(
-        dependencies=dependencies,
         title="Speaches",
         version="0.8.3",  # TODO: update this on release
         license_info={"name": "MIT License", "identifier": "MIT"},
@@ -107,14 +100,21 @@ def create_app() -> FastAPI:
         logger.error(f"HTTP error: {exc}")
         return await http_exception_handler(request, exc)
 
-    app.include_router(chat_router)
-    app.include_router(stt_router)
-    app.include_router(models_router)
-    app.include_router(misc_router)
-    app.include_router(realtime_rtc_router)
+    # HTTP routers WITH authentication (if API key is configured)
+    http_dependencies = []
+    if config.api_key is not None:
+        http_dependencies.append(ApiKeyDependency)
+
+    app.include_router(chat_router, dependencies=http_dependencies)
+    app.include_router(stt_router, dependencies=http_dependencies)
+    app.include_router(models_router, dependencies=http_dependencies)
+    app.include_router(misc_router, dependencies=http_dependencies)
+    app.include_router(realtime_rtc_router, dependencies=http_dependencies)
+    app.include_router(speech_router, dependencies=http_dependencies)
+    app.include_router(vad_router, dependencies=http_dependencies)
+
+    # WebSocket router WITHOUT authentication (handles its own)
     app.include_router(realtime_ws_router)
-    app.include_router(speech_router)
-    app.include_router(vad_router)
 
     # HACK: move this elsewhere
     app.get("/v1/realtime", include_in_schema=False)(lambda: RedirectResponse(url="/v1/realtime/"))
