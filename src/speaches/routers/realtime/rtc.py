@@ -270,7 +270,7 @@ async def realtime_webrtc(
     ctx = SessionContext(
         transcription_client=transcription_client,
         completion_client=completion_client,
-        session=create_session_object_configuration(model),
+        session=create_session_object_configuration(model, "conversation", None, None),
     )
     rtc_session_tasks[ctx.session.id] = set()
 

@@ -61,12 +61,8 @@ def create_app() -> FastAPI:
 
     logger.debug(f"Config: {config}")
 
-    dependencies = []
-    if config.api_key is not None:
-        dependencies.append(ApiKeyDependency)
-
+    # Create main app WITHOUT global authentication
     app = FastAPI(
-        dependencies=dependencies,
         title="Speaches",
         version="v0.8.2",  # TODO: update this on release
         license_info={"name": "MIT License", "identifier": "MIT"},
@@ -91,14 +87,21 @@ def create_app() -> FastAPI:
             content["debug"] = exc.debug
         return JSONResponse(status_code=exc.status_code, content=content)
 
-    app.include_router(chat_router)
-    app.include_router(stt_router)
-    app.include_router(models_router)
-    app.include_router(misc_router)
-    app.include_router(realtime_rtc_router)
+    # HTTP routers WITH authentication (if API key is configured)
+    http_dependencies = []
+    if config.api_key is not None:
+        http_dependencies.append(ApiKeyDependency)
+
+    app.include_router(chat_router, dependencies=http_dependencies)
+    app.include_router(stt_router, dependencies=http_dependencies)
+    app.include_router(models_router, dependencies=http_dependencies)
+    app.include_router(misc_router, dependencies=http_dependencies)
+    app.include_router(realtime_rtc_router, dependencies=http_dependencies)
+    app.include_router(speech_router, dependencies=http_dependencies)
+    app.include_router(vad_router, dependencies=http_dependencies)
+
+    # WebSocket router WITHOUT authentication (handles its own)
     app.include_router(realtime_ws_router)
-    app.include_router(speech_router)
-    app.include_router(vad_router)
 
     # HACK: move this elsewhere
     app.get("/v1/realtime", include_in_schema=False)(lambda: RedirectResponse(url="/v1/realtime/"))
