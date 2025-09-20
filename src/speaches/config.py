@@ -38,6 +38,18 @@ class WhisperConfig(BaseModel):
     """
 
 
+class PyannoteConfig(BaseModel):
+    """Configuration for Pyannote diarization models."""
+
+    inference_device: Device = "auto"
+    ttl: int = Field(default=300, ge=-1)
+    """
+    Time in seconds until the model is unloaded if it is not being used.
+    -1: Never unload the model.
+    0: Unload the model immediately after usage.
+    """
+
+
 class OrtOptions(BaseModel):
     exclude_providers: list[str] = ["TensorrtExecutionProvider"]
     """
@@ -89,6 +101,7 @@ class Config(BaseSettings):
     """
 
     whisper: WhisperConfig = WhisperConfig()
+    pyannote: PyannoteConfig = PyannoteConfig()
 
     # TODO: remove the underscore prefix from the field name
     _unstable_vad_filter: bool = True
@@ -98,6 +111,14 @@ class Config(BaseSettings):
 
 
     NOTE: having `_unstable_vad_filter: True` technically deviates from the OpenAI API specification, so you may want to set it to `False`.
+
+    NOTE: This is an unstable feature and may change in the future.
+    """
+
+    _unstable_diarization: bool = False
+    """
+    Default value for speaker diarization in speech recognition endpoints.
+    When enabled, the model will identify different speakers in the audio and assign speaker labels to each segment.
 
     NOTE: This is an unstable feature and may change in the future.
     """
