@@ -22,6 +22,7 @@ from openai.resources.chat.completions import AsyncCompletions
 from speaches.config import Config
 from speaches.executors.kokoro.model_manager import KokoroModelManager
 from speaches.executors.piper.model_manager import PiperModelManager
+from speaches.executors.pyannote.model_manager import PyannoteModelManager
 from speaches.executors.whisper.model_manager import WhisperModelManager
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,15 @@ def get_kokoro_model_manager() -> KokoroModelManager:
 
 
 KokoroModelManagerDependency = Annotated[KokoroModelManager, Depends(get_kokoro_model_manager)]
+
+
+@lru_cache
+def get_pyannote_model_manager() -> PyannoteModelManager:
+    config = get_config()
+    return PyannoteModelManager(config.pyannote)
+
+
+PyannoteModelManagerDependency = Annotated[PyannoteModelManager, Depends(get_pyannote_model_manager)]
 
 security = HTTPBearer()
 
