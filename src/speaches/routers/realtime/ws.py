@@ -23,8 +23,7 @@ from speaches.realtime.message_manager import WsServerMessageManager
 from speaches.realtime.response_event_router import event_router as response_event_router
 from speaches.realtime.session import OPENAI_REALTIME_SESSION_DURATION_SECONDS, create_session_object_configuration
 from speaches.realtime.session_event_router import event_router as session_event_router
-from speaches.realtime.utils import verify_websocket_api_key
-from speaches.realtime.utils import task_done_callback
+from speaches.realtime.utils import task_done_callback, verify_websocket_api_key
 from speaches.types.realtime import SessionCreatedEvent
 
 logger = logging.getLogger(__name__)
