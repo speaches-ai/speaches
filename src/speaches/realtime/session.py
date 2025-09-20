@@ -11,10 +11,7 @@ OPENAI_REALTIME_INSTRUCTIONS = "Your knowledge cutoff is 2023-10. You are a help
 
 
 def create_session_object_configuration(
-    model: str,
-    intent: str = "conversation",
-    language: str | None = None,
-    transcription_model: str | None = None
+    model: str, intent: str = "conversation", language: str | None = None, transcription_model: str | None = None
 ) -> Session:
     """Create session configuration with OpenAI Realtime API compatibility.
 
@@ -34,14 +31,20 @@ def create_session_object_configuration(
     if intent == "transcription":
         # Speaches extension: for transcription-only mode, model param = transcription model
         # This provides compatibility with .NET OpenAI API and other simple clients
-        final_transcription_model = transcription_model or model  # Use explicit transcription_model if provided, else model param
+        final_transcription_model = (
+            transcription_model or model
+        )  # Use explicit transcription_model if provided, else model param
         conversation_model = "gpt-4o-realtime-preview"  # Default (not used in transcription-only mode)
-        logger.info(f"Transcription-only mode: using {final_transcription_model} for transcription, {conversation_model} for conversation (unused)")
+        logger.info(
+            f"Transcription-only mode: using {final_transcription_model} for transcription, {conversation_model} for conversation (unused)"
+        )
     else:
         # Standard OpenAI behavior: model param is conversation model
         conversation_model = model
         final_transcription_model = transcription_model or "Systran/faster-distil-whisper-small.en"
-        logger.info(f"Conversation mode (OpenAI standard): using {conversation_model} for conversation, {final_transcription_model} for transcription")
+        logger.info(
+            f"Conversation mode (OpenAI standard): using {conversation_model} for conversation, {final_transcription_model} for transcription"
+        )
 
     return Session(
         id=generate_session_id(),
@@ -53,7 +56,8 @@ def create_session_object_configuration(
         input_audio_format="pcm16",
         output_audio_format="pcm16",
         input_audio_transcription=InputAudioTranscription(
-            model=final_transcription_model, language=language  # auto-detect language when None
+            model=final_transcription_model,
+            language=language,  # auto-detect language when None
         ),
         turn_detection=TurnDetection(
             type="server_vad",

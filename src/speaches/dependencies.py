@@ -8,8 +8,6 @@ from fastapi import (
     Form,
     HTTPException,
     UploadFile,
-    WebSocket,
-    WebSocketException,
     status,
 )
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -71,8 +69,7 @@ security = HTTPBearer(auto_error=False)
 
 
 async def verify_api_key(
-    config: ConfigDependency,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security)
+    config: ConfigDependency, credentials: HTTPAuthorizationCredentials | None = Depends(security)
 ) -> None:
     assert config.api_key is not None
     if credentials is None or credentials.credentials != config.api_key.get_secret_value():
@@ -80,8 +77,6 @@ async def verify_api_key(
 
 
 ApiKeyDependency = Depends(verify_api_key)
-
-
 
 
 # TODO: test async vs sync performance

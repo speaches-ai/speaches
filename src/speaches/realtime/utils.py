@@ -63,6 +63,7 @@ async def verify_websocket_api_key(
 
     References:
     - https://platform.openai.com/docs/guides/realtime/overview
+
     """
     if config.api_key is None:
         return  # No API key configured, authentication not required

@@ -8,9 +8,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 from speaches.config import Config, WhisperConfig
-from speaches.realtime.utils import verify_websocket_api_key
 from speaches.main import create_app
 from speaches.realtime.session import create_session_object_configuration
+from speaches.realtime.utils import verify_websocket_api_key
 
 
 class TestRealtimeWebSocketAuthentication:
@@ -144,9 +144,7 @@ class TestRealtimeSessionConfiguration:
     def test_conversation_mode_with_custom_transcription(self) -> None:
         """Test conversation mode with custom transcription model."""
         session = create_session_object_configuration(
-            model="gpt-4o-realtime-preview",
-            intent="conversation",
-            transcription_model="whisper-1"
+            model="gpt-4o-realtime-preview", intent="conversation", transcription_model="whisper-1"
         )
 
         assert session.model == "gpt-4o-realtime-preview"
@@ -156,8 +154,7 @@ class TestRealtimeSessionConfiguration:
     def test_transcription_only_mode(self) -> None:
         """Test transcription-only mode configuration."""
         session = create_session_object_configuration(
-            model="deepdml/faster-whisper-large-v3-turbo-ct2",
-            intent="transcription"
+            model="deepdml/faster-whisper-large-v3-turbo-ct2", intent="transcription"
         )
 
         assert session.model == "gpt-4o-realtime-preview"  # Default conversation model (unused)
@@ -166,11 +163,7 @@ class TestRealtimeSessionConfiguration:
 
     def test_transcription_mode_with_language(self) -> None:
         """Test transcription mode with language specification."""
-        session = create_session_object_configuration(
-            model="whisper-1",
-            intent="transcription",
-            language="ru"
-        )
+        session = create_session_object_configuration(model="whisper-1", intent="transcription", language="ru")
 
         assert session.input_audio_transcription.language == "ru"
         assert session.turn_detection is not None and session.turn_detection.create_response is False
@@ -178,33 +171,25 @@ class TestRealtimeSessionConfiguration:
     def test_transcription_mode_with_explicit_models(self) -> None:
         """Test transcription mode with explicit transcription model."""
         session = create_session_object_configuration(
-            model="gpt-4o-realtime-preview",
-            intent="transcription",
-            transcription_model="custom-whisper-model"
+            model="gpt-4o-realtime-preview", intent="transcription", transcription_model="custom-whisper-model"
         )
 
         assert session.model == "gpt-4o-realtime-preview"
         assert session.input_audio_transcription.model == "custom-whisper-model"
         assert session.turn_detection is not None and session.turn_detection.create_response is False
 
-    def test_session_configuration_logging(self, caplog) -> None:
+    def test_session_configuration_logging(self, caplog) -> None:  # noqa: ANN001
         """Test that session configuration produces appropriate logging."""
         with caplog.at_level("INFO"):
-            create_session_object_configuration(
-                model="test-model",
-                intent="transcription"
-            )
+            create_session_object_configuration(model="test-model", intent="transcription")
 
         assert "Transcription-only mode" in caplog.text
         assert "test-model" in caplog.text
 
-    def test_conversation_mode_logging(self, caplog) -> None:
+    def test_conversation_mode_logging(self, caplog) -> None:  # noqa: ANN001
         """Test conversation mode logging."""
         with caplog.at_level("INFO"):
-            create_session_object_configuration(
-                model="gpt-4o-realtime-preview",
-                intent="conversation"
-            )
+            create_session_object_configuration(model="gpt-4o-realtime-preview", intent="conversation")
 
         assert "Conversation mode (OpenAI standard)" in caplog.text
 
@@ -255,10 +240,7 @@ class TestRealtimeWebSocketEndpoint:
 
         # Test with all parameters
         session = create_session_object_configuration(
-            model="test-model",
-            intent="transcription",
-            language="en",
-            transcription_model="custom-model"
+            model="test-model", intent="transcription", language="en", transcription_model="custom-model"
         )
         assert session.input_audio_transcription.model == "custom-model"
         assert session.input_audio_transcription.language == "en"
@@ -278,10 +260,7 @@ class TestRealtimeAPICompatibility:
 
     def test_openai_standard_behavior(self) -> None:
         """Test OpenAI standard behavior is maintained."""
-        session = create_session_object_configuration(
-            model="gpt-4o-realtime-preview",
-            intent="conversation"
-        )
+        session = create_session_object_configuration(model="gpt-4o-realtime-preview", intent="conversation")
 
         # OpenAI standard: model param is conversation model
         assert session.model == "gpt-4o-realtime-preview"
@@ -292,10 +271,7 @@ class TestRealtimeAPICompatibility:
 
     def test_speaches_extension_behavior(self) -> None:
         """Test Speaches extension behavior for transcription-only mode."""
-        session = create_session_object_configuration(
-            model="custom-whisper-model",
-            intent="transcription"
-        )
+        session = create_session_object_configuration(model="custom-whisper-model", intent="transcription")
 
         # Speaches extension: model param is transcription model
         assert session.input_audio_transcription.model == "custom-whisper-model"
