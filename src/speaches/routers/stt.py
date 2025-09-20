@@ -26,9 +26,11 @@ from speaches.dependencies import (
     AudioFileDependency,
     ConfigDependency,
     ParakeetModelManagerDependency,
+    PyannoteModelManagerDependency,
     WhisperModelManagerDependency,
 )
 from speaches.executors.parakeet import utils as nemo_conformer_tdt_utils
+from speaches.executors.pyannote.utils import run_diarization
 from speaches.executors.whisper import utils as whisper_utils
 from speaches.hf_utils import (
     MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE,
@@ -112,6 +114,7 @@ def segments_to_streaming_response(
 def translate_file(
     config: ConfigDependency,
     whisper_model_manager: WhisperModelManagerDependency,
+    pyannote_manager: PyannoteModelManagerDependency,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
     prompt: Annotated[str | None, Form()] = None,
@@ -119,9 +122,17 @@ def translate_file(
     temperature: Annotated[float, Form()] = 0.0,
     stream: Annotated[bool, Form()] = False,
     vad_filter: Annotated[bool | None, Form()] = None,
+    diarization: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
-    # Use config default if vad_filter not explicitly provided
+    # Use config defaults if not explicitly provided
     effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001
+    effective_diarization = diarization if diarization is not None else config._unstable_diarization  # noqa: SLF001
+
+    # Run diarization if enabled
+    speaker_segments = None
+    if effective_diarization:
+        with pyannote_manager.load_model("pyannote/speaker-diarization-3.1") as pipeline:
+            speaker_segments = run_diarization(audio, pipeline)
 
     with whisper_model_manager.load_model(model) as whisper:
         whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
@@ -132,7 +143,7 @@ def translate_file(
             temperature=temperature,
             vad_filter=effective_vad_filter,
         )
-        segments = TranscriptionSegment.from_faster_whisper_segments(segments)
+        segments = TranscriptionSegment.from_faster_whisper_segments(segments, speaker_segments)
 
         if stream:
             return segments_to_streaming_response(segments, transcription_info, response_format)
@@ -162,6 +173,7 @@ def transcribe_file(  # noqa: C901
     config: ConfigDependency,
     whisper_model_manager: WhisperModelManagerDependency,
     parakeet_model_manager: ParakeetModelManagerDependency,
+    pyannote_manager: PyannoteModelManagerDependency,
     request: Request,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
@@ -178,15 +190,23 @@ def transcribe_file(  # noqa: C901
     hotwords: Annotated[str | None, Form()] = None,
     vad_filter: Annotated[bool | None, Form()] = None,
     without_timestamps: Annotated[bool | None, Form()] = None,
+    diarization: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
-    # Use config default if vad_filter not explicitly provided
+    # Use config defaults if not explicitly provided
     effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001
+    effective_diarization = diarization if diarization is not None else config._unstable_diarization  # noqa: SLF001
 
     timestamp_granularities = asyncio.run(get_timestamp_granularities(request))
     if timestamp_granularities != DEFAULT_TIMESTAMP_GRANULARITIES and response_format != "verbose_json":
         logger.warning(
             "It only makes sense to provide `timestamp_granularities[]` when `response_format` is set to `verbose_json`. See https://platform.openai.com/docs/api-reference/audio/createTranscription#audio-createtranscription-timestamp_granularities."
         )
+
+    # Run diarization if enabled
+    speaker_segments = None
+    if effective_diarization:
+        with pyannote_manager.load_model("pyannote/speaker-diarization-3.1") as pipeline:
+            speaker_segments = run_diarization(audio, pipeline)
 
     model_repo_path = get_model_repo_path(model)
     if model_repo_path is None:
@@ -215,7 +235,7 @@ def transcribe_file(  # noqa: C901
                 hotwords=hotwords,
                 without_timestamps=without_timestamps,
             )
-            segments = TranscriptionSegment.from_faster_whisper_segments(segments)
+            segments = TranscriptionSegment.from_faster_whisper_segments(segments, speaker_segments)
 
             if stream:
                 return segments_to_streaming_response(segments, transcription_info, response_format)

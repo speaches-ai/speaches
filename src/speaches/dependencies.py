@@ -23,6 +23,7 @@ from speaches.config import Config
 from speaches.executors.kokoro.model_manager import KokoroModelManager
 from speaches.executors.parakeet.model_manager import ParakeetModelManager
 from speaches.executors.piper.model_manager import PiperModelManager
+from speaches.executors.pyannote.model_manager import PyannoteModelManager
 from speaches.executors.whisper.model_manager import WhisperModelManager
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,15 @@ def get_parakeet_model_manager() -> ParakeetModelManager:
 
 
 ParakeetModelManagerDependency = Annotated[ParakeetModelManager, Depends(get_parakeet_model_manager)]
+
+
+@lru_cache
+def get_pyannote_model_manager() -> PyannoteModelManager:
+    config = get_config()
+    return PyannoteModelManager(config.pyannote)
+
+
+PyannoteModelManagerDependency = Annotated[PyannoteModelManager, Depends(get_pyannote_model_manager)]
 
 security = HTTPBearer(auto_error=False)
 
