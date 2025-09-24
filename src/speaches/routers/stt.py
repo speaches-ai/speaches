@@ -170,6 +170,7 @@ def transcribe_file(
     stream: Annotated[bool, Form()] = False,
     hotwords: Annotated[str | None, Form()] = None,
     vad_filter: Annotated[bool | None, Form()] = None,
+    without_timestamps: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
     # Use config default if vad_filter not explicitly provided
     effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001
@@ -205,6 +206,7 @@ def transcribe_file(
                 temperature=temperature,
                 vad_filter=effective_vad_filter,
                 hotwords=hotwords,
+                without_timestamps=without_timestamps,
             )
             segments = TranscriptionSegment.from_faster_whisper_segments(segments)
 
