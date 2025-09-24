@@ -105,7 +105,7 @@ def segments_to_streaming_response(
 )
 def translate_file(
     config: ConfigDependency,
-    model_manager: WhisperModelManagerDependency,
+    whisper_model_manager: WhisperModelManagerDependency,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
     prompt: Annotated[str | None, Form()] = None,
@@ -117,7 +117,7 @@ def translate_file(
     # Use config default if vad_filter not explicitly provided
     effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001
 
-    with model_manager.load_model(model) as whisper:
+    with whisper_model_manager.load_model(model) as whisper:
         whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
         segments, transcription_info = whisper_model.transcribe(
             audio,
@@ -154,7 +154,7 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
 )
 def transcribe_file(
     config: ConfigDependency,
-    model_manager: WhisperModelManagerDependency,
+    whisper_model_manager: WhisperModelManagerDependency,
     request: Request,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
@@ -194,7 +194,7 @@ def transcribe_file(
             detail=MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE.format(model_id=model),
         )
     if whisper_utils.hf_model_filter.passes_filter(model_card_data):
-        with model_manager.load_model(model) as whisper:
+        with whisper_model_manager.load_model(model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
             segments, transcription_info = whisper_model.transcribe(
                 audio,

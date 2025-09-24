@@ -40,12 +40,12 @@ ConfigDependency = Annotated[Config, Depends(get_config)]
 
 
 @lru_cache
-def get_model_manager() -> WhisperModelManager:
+def get_whisper_model_manager() -> WhisperModelManager:
     config = get_config()
     return WhisperModelManager(config.stt_model_ttl, config.whisper)
 
 
-WhisperModelManagerDependency = Annotated[WhisperModelManager, Depends(get_model_manager)]
+WhisperModelManagerDependency = Annotated[WhisperModelManager, Depends(get_whisper_model_manager)]
 
 
 @lru_cache
