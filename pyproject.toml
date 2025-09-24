@@ -24,6 +24,7 @@ dependencies = [
     "httpx-ws>=0.7.2",
     "aiortc>=1.13.0",
     "httpx>=0.28.1",
+    "onnx-asr>=0.7.0",
 ]
 
 [project.optional-dependencies]
