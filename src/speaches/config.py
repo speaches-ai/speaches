@@ -26,12 +26,6 @@ class WhisperConfig(BaseModel):
     compute_type: Quantization = "default"  # TODO: should this even be a configuration option?
     cpu_threads: int = 0
     num_workers: int = 1
-    ttl: int = Field(default=300, ge=-1)
-    """
-    Time in seconds until the model is unloaded if it is not being used.
-    -1: Never unload the model.
-    0: Unload the model immediately after usage.
-    """
     use_batched_mode: bool = False
     """
     Whether to use batch mode(introduced in 1.1.0 `faster-whisper` release) for inference. This will likely become the default in the future and the configuration option will be removed.
@@ -64,6 +58,20 @@ class Config(BaseSettings):
     """
 
     model_config = SettingsConfigDict(env_nested_delimiter="__")
+
+    stt_model_ttl: int = Field(default=300, ge=-1)
+    """
+    Time in seconds until a speech to text (stt) model is unloaded after last usage.
+    -1: Never unload the model.
+    0: Unload the model immediately after usage.
+    """
+
+    tts_model_ttl: int = Field(default=300, ge=-1)
+    """
+    Time in seconds until a text to speech (tts) model is unloaded after last usage.
+    -1: Never unload the model.
+    0: Unload the model immediately after usage.
+    """
 
     api_key: SecretStr | None = None
     """

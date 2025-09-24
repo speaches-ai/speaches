@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class WhisperModelManager:
-    def __init__(self, whisper_config: WhisperConfig) -> None:
+    def __init__(self, ttl: int, whisper_config: WhisperConfig) -> None:
+        self.ttl = ttl
         self.whisper_config = whisper_config
         self.loaded_models: OrderedDict[str, SelfDisposingModel[WhisperModel]] = OrderedDict()
         self._lock = threading.Lock()
@@ -59,7 +60,7 @@ class WhisperModelManager:
             self.loaded_models[model_id] = SelfDisposingModel[WhisperModel](
                 model_id,
                 load_fn=lambda: self._load_fn(model_id),
-                ttl=self.whisper_config.ttl,
+                ttl=self.ttl,
                 model_unloaded_callback=self._handle_model_unloaded,
             )
             return self.loaded_models[model_id]
