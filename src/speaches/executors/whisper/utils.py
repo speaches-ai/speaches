@@ -42,7 +42,7 @@ class WhisperModelRegistry(ModelRegistry[Model, WhisperModelFiles]):
                 id=model.id,
                 created=int(model.created_at.timestamp()),
                 owned_by=model.id.split("/")[0],
-                language=extract_language_list(model.card_data),
+                language=None,
                 task=TASK_NAME_TAG,
             )
 
@@ -57,7 +57,7 @@ class WhisperModelRegistry(ModelRegistry[Model, WhisperModelFiles]):
                     id=cached_repo_info.repo_id,
                     created=int(cached_repo_info.last_modified),
                     owned_by=cached_repo_info.repo_id.split("/")[0],
-                    language=extract_language_list(model_card_data),
+                    language=None,
                     task=TASK_NAME_TAG,
                 )
 
