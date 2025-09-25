@@ -193,7 +193,7 @@ def transcribe_file(
             status_code=500,
             detail=MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE.format(model_id=model),
         )
-    if whisper_utils.hf_model_filter.passes_filter(model_card_data):
+    if whisper_utils.hf_model_filter.passes_filter(model, model_card_data):
         with whisper_model_manager.load_model(model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
             segments, transcription_info = whisper_model.transcribe(

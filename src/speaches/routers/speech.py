@@ -78,7 +78,7 @@ async def synthesize(  # noqa: C901, PLR0912
     body.input = strip_emojis(body.input)
     body.input = strip_markdown_emphasis(body.input)
 
-    if kokoro_utils.hf_model_filter.passes_filter(model_card_data):
+    if kokoro_utils.hf_model_filter.passes_filter(body.model, model_card_data):
         if body.speed < 0.5 or body.speed > 2.0:
             raise HTTPException(
                 status_code=422,
@@ -118,7 +118,7 @@ async def synthesize(  # noqa: C901, PLR0912
                     async for audio_bytes in audio_generator
                 )
             return StreamingResponse(audio_generator, media_type=f"audio/{body.response_format}")
-    elif piper_utils.hf_model_filter.passes_filter(model_card_data):
+    elif piper_utils.hf_model_filter.passes_filter(body.model, model_card_data):
         if body.speed < 0.25 or body.speed > 4.0:
             raise HTTPException(
                 status_code=422,

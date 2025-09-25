@@ -125,7 +125,7 @@ class PiperModelRegistry(ModelRegistry):
             model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
             if model_card_data is None:
                 continue
-            if self.hf_model_filter.passes_filter(model_card_data):
+            if self.hf_model_filter.passes_filter(cached_repo_info.repo_id, model_card_data):
                 repo_id_parts = cached_repo_info.repo_id.split("/")[-1].split("-")
                 # HACK: all of the `speaches-ai` piper models have a prefix of `piper-`. That's why there are 4 parts.
                 assert len(repo_id_parts) == 4, repo_id_parts

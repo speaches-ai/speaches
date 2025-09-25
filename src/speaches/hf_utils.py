@@ -15,34 +15,48 @@ MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE = """The model repository does not contai
 
 
 class HfModelFilterDict(TypedDict):
+    model_name: str | None
     library: str | None
     task: str | None
     tags: list[str] | None
 
 
 class HfModelFilter(BaseModel):
+    model_name: str | None = None
     library_name: str | None = None
     task: str | None = None
     tags: set[str] | None = None
 
-    def passes_filter(self, model_card_data: huggingface_hub.ModelCardData) -> bool:
+    def passes_filter(self, model_id: str, model_card_data: huggingface_hub.ModelCardData) -> bool:
+        if self.model_name is not None:
+            if self.model_name.lower() not in model_id.lower():
+                # logger.debug(f"Model ID '{model_id}' does not match filter model name '{self.model_name}'")
+                # allow partial match (case insensitive)
+                return False
+
         # convert None to an empty set so it's easier to work with
         model_card_data_tags = set(model_card_data.tags) if model_card_data.tags is not None else set()
         if self.library_name is not None:
             # Handle both 'library_name' (correct) and 'library' (legacy/incorrect) fields
             model_library = model_card_data.library_name or getattr(model_card_data, "library", None)
             if model_library != self.library_name:
+                # logger.debug(
+                #     f"Model ID '{model_id}' does not match filter library '{self.library_name}': {model_card_data.to_dict()}"
+                # )
                 return False
         if self.task is not None and (
             self.task != model_card_data.pipeline_tag and self.task not in model_card_data_tags
         ):
+            # logger.debug(f"Model ID '{model_id}' does not match filter task '{self.task}': {model_card_data.to_dict()}")
             return False
         if self.tags is not None and not self.tags.issubset(model_card_data_tags):  # noqa: SIM103
+            # logger.debug(f"Model ID '{model_id}' does not match filter tags '{self.tags}': {model_card_data.to_dict()}")
             return False
         return True
 
     def list_model_kwargs(self) -> HfModelFilterDict:
         kwargs: HfModelFilterDict = {
+            "model_name": None,
             "library": None,
             "task": None,
             "tags": None,
@@ -53,6 +67,8 @@ class HfModelFilter(BaseModel):
             kwargs["task"] = self.task
         if self.tags is not None and len(self.tags) > 0:
             kwargs["tags"] = list(self.tags)
+        if self.model_name is not None:
+            kwargs["model_name"] = self.model_name
         return kwargs
 
 

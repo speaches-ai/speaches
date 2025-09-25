@@ -147,7 +147,7 @@ class KokoroModelRegistry(ModelRegistry):
             model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
             if model_card_data is None:
                 continue
-            if self.hf_model_filter.passes_filter(model_card_data):
+            if self.hf_model_filter.passes_filter(cached_repo_info.repo_id, model_card_data):
                 yield KokoroModel(
                     id=cached_repo_info.repo_id,
                     created=int(cached_repo_info.last_modified),
