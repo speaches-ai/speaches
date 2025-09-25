@@ -223,7 +223,9 @@ def transcribe_file(  # noqa: C901
         if stream:
             raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
         if response_format not in ("text", "json"):
-            raise HTTPException(status_code=500, detail=f"Model '{model}' only supports 'text' and 'json' response formats for now.")
+            raise HTTPException(
+                status_code=500, detail=f"Model '{model}' only supports 'text' and 'json' response formats for now."
+            )
         with parakeet_model_manager.load_model(model) as parakeet:
             # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
             timestamped_result = parakeet.with_timestamps().recognize(audio)
