@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         dependencies=dependencies,
         title="Speaches",
-        version="v0.8.2",  # TODO: update this on release
+        version="0.8.3",  # TODO: update this on release
         license_info={"name": "MIT License", "identifier": "MIT"},
         openapi_tags=TAGS_METADATA,
     )
