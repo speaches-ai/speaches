@@ -220,12 +220,14 @@ def transcribe_file(  # noqa: C901
             else:
                 return segments_to_response(segments, transcription_info, response_format)
     elif nemo_conformer_tdt_utils.hf_model_filter.passes_filter(model, model_card_data):
+        if stream:
+            raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
+        if response_format not in ("text", "json"):
+            raise HTTPException(status_code=500, detail=f"Model '{model}' only supports 'text' and 'json' response formats for now.")
         with parakeet_model_manager.load_model(model) as parakeet:
             # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
             timestamped_result = parakeet.with_timestamps().recognize(audio)
 
-            if stream:
-                raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
             match response_format:
                 case "text":
                     return Response(timestamped_result.text, media_type="text/plain")
@@ -236,8 +238,6 @@ def transcribe_file(  # noqa: C901
                         ).model_dump_json(),
                         media_type="application/json",
                     )
-                case _:
-                    raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
     else:
         raise HTTPException(
             status_code=404,

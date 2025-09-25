@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 
 from fastapi import (
     FastAPI,
+    HTTPException,
+    Request,
+    Response,
+)
+from fastapi.exception_handlers import (
+    http_exception_handler,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import RedirectResponse
 
 from speaches.dependencies import ApiKeyDependency, get_config
@@ -64,6 +72,9 @@ def create_app() -> FastAPI:
     dependencies = []
     if config.api_key is not None:
         dependencies.append(ApiKeyDependency)
+        logger.info("API key authentication is enabled.")
+    else:
+        logger.info("API key authentication is disabled.")
 
     app = FastAPI(
         dependencies=dependencies,
@@ -75,7 +86,7 @@ def create_app() -> FastAPI:
 
     # Register global exception handler for APIProxyError
     @app.exception_handler(APIProxyError)
-    async def api_proxy_error_handler(request, exc: APIProxyError) -> JSONResponse:  # noqa: ANN001, ARG001
+    async def _api_proxy_error_handler(_request: Request, exc: APIProxyError) -> JSONResponse:
         error_id = str(uuid.uuid4())
         logger.exception(f"[{{error_id}}] {exc.message}")
         content = {
@@ -84,12 +95,17 @@ def create_app() -> FastAPI:
             "suggested_fixes": exc.suggestions,
             "error_id": error_id,
         }
-        import os
 
+        # HACK: replace with something else
         log_level = os.getenv("SPEACHES_LOG_LEVEL", "INFO").upper()
         if log_level == "DEBUG" and exc.debug:
             content["debug"] = exc.debug
         return JSONResponse(status_code=exc.status_code, content=content)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _custom_http_exception_handler(request: Request, exc: HTTPException) -> Response:
+        logger.error(f"HTTP error: {exc}")
+        return await http_exception_handler(request, exc)
 
     app.include_router(chat_router)
     app.include_router(stt_router)
