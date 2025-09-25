@@ -21,6 +21,7 @@ from openai.resources.chat.completions import AsyncCompletions
 
 from speaches.config import Config
 from speaches.executors.kokoro.model_manager import KokoroModelManager
+from speaches.executors.parakeet.model_manager import ParakeetModelManager
 from speaches.executors.piper.model_manager import PiperModelManager
 from speaches.executors.whisper.model_manager import WhisperModelManager
 
@@ -64,6 +65,15 @@ def get_kokoro_model_manager() -> KokoroModelManager:
 
 
 KokoroModelManagerDependency = Annotated[KokoroModelManager, Depends(get_kokoro_model_manager)]
+
+
+@lru_cache
+def get_parakeet_model_manager() -> ParakeetModelManager:
+    config = get_config()
+    return ParakeetModelManager(config.stt_model_ttl, config.unstable_ort_opts)
+
+
+ParakeetModelManagerDependency = Annotated[ParakeetModelManager, Depends(get_parakeet_model_manager)]
 
 security = HTTPBearer()
 

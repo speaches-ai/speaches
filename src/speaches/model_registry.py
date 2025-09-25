@@ -1,14 +1,12 @@
 from collections.abc import Generator
 
-from pydantic import BaseModel
-
 from speaches.api_types import Model
 from speaches.hf_utils import (
     HfModelFilter,
 )
 
 
-class ModelRegistry[ModelT: Model, ModelFilesT: BaseModel]:
+class ModelRegistry[ModelT: Model, ModelFilesT]:
     def __init__(self, hf_model_filter: HfModelFilter) -> None:
         self.hf_model_filter = hf_model_filter
 

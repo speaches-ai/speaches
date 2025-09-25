@@ -22,7 +22,13 @@ from speaches.api_types import (
     TimestampGranularities,
     TranscriptionSegment,
 )
-from speaches.dependencies import AudioFileDependency, ConfigDependency, WhisperModelManagerDependency
+from speaches.dependencies import (
+    AudioFileDependency,
+    ConfigDependency,
+    ParakeetModelManagerDependency,
+    WhisperModelManagerDependency,
+)
+from speaches.executors.parakeet import utils as nemo_conformer_tdt_utils
 from speaches.executors.whisper import utils as whisper_utils
 from speaches.hf_utils import (
     MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE,
@@ -152,9 +158,10 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
     "/v1/audio/transcriptions",
     response_model=str | CreateTranscriptionResponseJson | CreateTranscriptionResponseVerboseJson,
 )
-def transcribe_file(
+def transcribe_file(  # noqa: C901
     config: ConfigDependency,
     whisper_model_manager: WhisperModelManagerDependency,
+    parakeet_model_manager: ParakeetModelManagerDependency,
     request: Request,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
@@ -212,6 +219,25 @@ def transcribe_file(
                 return segments_to_streaming_response(segments, transcription_info, response_format)
             else:
                 return segments_to_response(segments, transcription_info, response_format)
+    elif nemo_conformer_tdt_utils.hf_model_filter.passes_filter(model, model_card_data):
+        with parakeet_model_manager.load_model(model) as parakeet:
+            # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
+            timestamped_result = parakeet.with_timestamps().recognize(audio)
+
+            if stream:
+                raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
+            match response_format:
+                case "text":
+                    return Response(timestamped_result.text, media_type="text/plain")
+                case "json":
+                    return Response(
+                        CreateTranscriptionResponseJson(
+                            text=timestamped_result.text,
+                        ).model_dump_json(),
+                        media_type="application/json",
+                    )
+                case _:
+                    raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
     else:
         raise HTTPException(
             status_code=404,
