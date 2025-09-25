@@ -36,7 +36,7 @@ repos:
     hooks:
       - id: yamlfmt
   - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
-    rev: 1.31.4
+    rev: 1.31.5
     hooks:
       - id: basedpyright
         pass_filenames: false # TODO: document
