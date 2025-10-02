@@ -14,6 +14,7 @@ dependencies = [
     "piper-tts>=1.2.0 ; sys_platform == 'linux'",
     "pydantic-settings>=2.10.1",
     "pydantic>=2.11.7",
+    "pyannote-audio>=3.1.1",
     "python-multipart>=0.0.10",
     "sounddevice>=0.5.2",
     "soundfile>=0.13.1",
@@ -168,3 +169,11 @@ requires-dist = ["piper-phonemize"]
 
 [tool.uv.workspace]
 members = ["packages/speaches-cli"]
+
+[dependency-groups]
+dev = [
+    "anyio>=4.9.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
+    "pytest-mock>=3.14.1",
+]

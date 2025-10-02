@@ -13,6 +13,7 @@ class TranscriptionWord(BaseModel):
     end: float
     word: str
     probability: float
+    speaker: str | None = None
 
     @classmethod
     def from_segments(cls, segments: Iterable["TranscriptionSegment"]) -> list["TranscriptionWord"]:
@@ -47,12 +48,21 @@ class TranscriptionSegment(BaseModel):
         list[TranscriptionWord] | None
     )  # TODO: why is here? It's not a field defined in the [OpenAI API spec](https://platform.openai.com/docs/api-reference/audio/verbose-json-object)
     # TODO: add `usage` field: https://platform.openai.com/docs/api-reference/audio/verbose-json-object#audio/verbose-json-object-usage
+    speaker: str | None = None
 
     @classmethod
     def from_faster_whisper_segments(
-        cls, segments: Iterable[faster_whisper.transcribe.Segment]
+        cls, segments: Iterable[faster_whisper.transcribe.Segment], diarization: dict[tuple[float, float], str] | None = None
     ) -> Iterable["TranscriptionSegment"]:
         for segment in segments:
+            speaker = None
+            if diarization:
+                # Find speaker for this segment based on timing overlap
+                for (start, end), segment_speaker in diarization.items():
+                    if start <= segment.start < end or start < segment.end <= end:
+                        speaker = segment_speaker
+                        break
+
             yield cls(
                 id=segment.id,
                 seek=segment.seek,
@@ -64,12 +74,14 @@ class TranscriptionSegment(BaseModel):
                 avg_logprob=segment.avg_logprob,
                 compression_ratio=segment.compression_ratio,
                 no_speech_prob=segment.no_speech_prob,
+                speaker=speaker,
                 words=[
                     TranscriptionWord(
                         start=word.start,
                         end=word.end,
                         word=word.word,
                         probability=word.probability,
+                        speaker=speaker,  # Assign same speaker to all words in segment
                     )
                     for word in segment.words
                 ]
