@@ -1,3 +1,5 @@
+[![Runpod](https://api.runpod.io/badge/Daniel-OS01/speaches)](https://console.runpod.io/hub/Daniel-OS01/speaches)
+
 \[\!NOTE\]  
 This project was previously named faster-whisper-server. I've decided to change the name from faster-whisper-server, as the project has evolved to support more than just ASR.
 
