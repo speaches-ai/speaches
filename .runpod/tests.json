@@ -1,32 +1,21 @@
-{
-  "tests": [
-    {
-      "name": "validation_text_input",
-      "input": {
-        "text": "Hello world",
-        "language": "en"
-      },
-      "timeout": 10000
-    }
-  ],
-  "config": {
-    "gpuTypeId": "NVIDIA GeForce RTX 4090",
-    "gpuCount": 1,
-    "env": [
-      {
-        "key": "ENV_KEY_HERE",
-        "value": "ENV_VALUE_HERE"
+[
+  {
+    "name": "Test Text-to-Speech",
+    "input": {
+      "method": "POST",
+      "path": "/v1/audio/speech",
+      "body": {
+        "model": "en_US-amy-medium",
+        "input": "Hello, world! This is a test of the Speaches server on Runpod."
       }
-    ],
-    "allowedCudaVersions": [
-      "12.7",
-      "12.6",
-      "12.5",
-      "12.4",
-      "12.3",
-      "12.2",
-      "12.1",
-      "12.0"
-    ]
+    }
+  },
+  {
+    "name": "Test List Models",
+    "input": {
+      "method": "GET",
+      "path": "/v1/models"
+    }
   }
-}
+]
+
