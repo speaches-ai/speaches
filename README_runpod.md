@@ -49,7 +49,7 @@ The handler.py script expects an input object with the following fields:
 You can send a request to your Runpod endpoint URL (https://api.runpod.ai/v2/{YOUR\_ENDPOINT\_ID}/runsync).
 
 **Request Body (input object):**
-
+```
 {  
   "input": {  
     "method": "POST",  
@@ -68,13 +68,13 @@ The response will be a JSON object. If the request is successful, it will contai
   "content\_type": "audio/wav",  
   "audio\_content": "UklGRiS....(base64 data)..."  
 }
-
+```
 You can then decode this string to get the audio file.
 
 ### **Example: Speech-to-Text (STT)**
 
 **Request Body (input object):**
-
+```
 {  
   "input": {  
     "method": "POST",  
@@ -85,9 +85,10 @@ You can then decode this string to get the audio file.
     }  
   }  
 }
-
+```
 **Response:**
-
+```
 {  
   "text": "This is the transcribed text from your audio file."  
 }  
+```
