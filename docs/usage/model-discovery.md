@@ -154,3 +154,20 @@ services:
 ???+ question "Can I use private models from Hugging Face?"
 
     Yes. You'll want to first set the `HF_TOKEN`(you may need to restart the server after setting this variable) environment variable to your Hugging Face token. This will allow the server to access private models.
+
+???+ question "How do I use Pyannote speaker diarization models?"
+
+    Pyannote models require additional setup because they are gated models on Hugging Face:
+
+    1. **Set your Hugging Face token**: You must set the `HF_TOKEN` environment variable with a valid Hugging Face access token:
+       ```bash
+       export HF_TOKEN="your_huggingface_token_here"
+       ```
+
+    2. **Accept the model EULAs**: Visit the following model pages on Hugging Face and accept the terms of use for each gated model:
+       - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+       - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+
+    3. **Restart the server**: After setting the token and accepting the terms, restart the `speaches` server for the changes to take effect.
+
+    Without these steps, you'll receive authentication errors when attempting to download or use Pyannote models.
