@@ -1,0 +1,35 @@
+{
+  "title": "Speaches",
+  "description": "An example description",
+  "type": "serverless",
+  "category": "audio",
+  "iconUrl": "https://example.com/icon.png",
+  "config": {
+    "runsOn": "GPU",
+    "containerDiskInGb": 20,
+    "presets": [
+      {
+        "name": "Preset 1",
+        "defaults": {
+          "STATIC_1": "value_1",
+          "STRING_1": "default value 1"
+        }
+      }
+    ],
+    "env": [
+      {
+        "key": "STATIC_VAR",
+        "value": "static_value"
+      },
+      {
+        "key": "STRING_VAR",
+        "input": {
+          "name": "String Input",
+          "type": "string",
+          "description": "A string input test",
+          "default": "new default value"
+        }
+      }
+    ]
+  }
+}
