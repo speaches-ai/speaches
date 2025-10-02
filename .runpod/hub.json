@@ -1,35 +1,38 @@
 {
-  "title": "Speaches",
-  "description": "An example description",
-  "type": "serverless",
-  "category": "audio",
-  "iconUrl": "https://example.com/icon.png",
-  "config": {
-    "runsOn": "GPU",
-    "containerDiskInGb": 20,
-    "presets": [
-      {
-        "name": "Preset 1",
-        "defaults": {
-          "STATIC_1": "value_1",
-          "STRING_1": "default value 1"
-        }
-      }
-    ],
-    "env": [
-      {
-        "key": "STATIC_VAR",
-        "value": "static_value"
-      },
-      {
-        "key": "STRING_VAR",
-        "input": {
-          "name": "String Input",
+  "name": "Speaches",
+  "description": "An OpenAI API-compatible server for streaming transcription (faster-whisper), translation, and speech generation (piper, Kokoro) on Runpod Serverless.",
+  "dockerfile": "Dockerfile",
+  "gpu": true,
+  "mem": "16Gi",
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "method": {
           "type": "string",
-          "description": "A string input test",
-          "default": "new default value"
+          "description": "HTTP method (e.g., GET, POST).",
+          "default": "POST"
+        },
+        "path": {
+          "type": "string",
+          "description": "API path to proxy to the speaches server (e.g., /v1/audio/speech).",
+          "required": true
+        },
+        "headers": {
+          "type": "object",
+          "description": "Request headers."
+        },
+        "body": {
+          "type": "object",
+          "description": "JSON request body for the speaches API."
+        },
+        "file_url": {
+            "type": "string",
+            "description": "A public URL to a file to be used for upload (e.g., for transcriptions)."
         }
-      }
-    ]
+      },
+      "required": ["path", "method"]
+    }
   }
 }
+
