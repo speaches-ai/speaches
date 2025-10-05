@@ -40,7 +40,9 @@ class ListAudioModelsResponse(BaseModel):
 
 # HACK: returning ListModelsResponse directly causes extra `Model` fields to be omitted
 @router.get("/v1/audio/models", response_model=ListAudioModelsResponse)
-def list_local_audio_models(executor_registry: ExecutorRegistryDependency) -> JSONResponse:
+def list_local_audio_models(
+    executor_registry: ExecutorRegistryDependency,
+) -> JSONResponse:
     models: list[Model] = []
     for executor in executor_registry.text_to_speech:
         models.extend(list(executor.model_registry.list_local_models()))
@@ -53,7 +55,9 @@ class ListVoicesResponse(BaseModel):
 
 # HACK: returning ListModelsResponse directly causes extra `Model` fields to be omitted
 @router.get("/v1/audio/voices", response_model=ListModelsResponse)
-def list_local_audio_voices(executor_registry: ExecutorRegistryDependency) -> JSONResponse:
+def list_local_audio_voices(
+    executor_registry: ExecutorRegistryDependency,
+) -> JSONResponse:
     models: list[KokoroModel | PiperModel] = []
     for executor in executor_registry.text_to_speech:
         models.extend(list(executor.model_registry.list_local_models()))
@@ -77,14 +81,14 @@ def get_local_model(executor_registry: ExecutorRegistryDependency, model_id: Mod
 # NOTE: without `response_model` and `JSONResponse` extra fields aren't included in the response
 @router.post("/v1/models/{model_id:path}")
 def download_remote_model(executor_registry: ExecutorRegistryDependency, model_id: ModelId) -> Response:
-    for executor in executor_registry.all_executors():
-        if model_id in [model.id for model in executor.model_registry.list_remote_models()]:
-            was_downloaded = executor.model_registry.download_model_files_if_not_exist(model_id)
-            if was_downloaded:
-                return Response(status_code=200, content=f"Model '{model_id}' downloaded")
-            else:
-                return Response(status_code=201, content=f"Model '{model_id}' already exists")
-    raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+    try:
+        was_downloaded = executor_registry.download_model_by_id(model_id)
+        if was_downloaded:
+            return Response(status_code=200, content=f"Model '{model_id}' downloaded")
+        else:
+            return Response(status_code=201, content=f"Model '{model_id}' already exists")
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found") from error
 
 
 # TODO: document that any model will be deleted regardless if it's supported speaches or not
