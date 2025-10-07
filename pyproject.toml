@@ -48,7 +48,7 @@ dev = [
     "httpx-sse>=0.4.1",
 ]
 ui = [
-    "gradio>=5.13.0",
+    "gradio>=5.49.0",
     "httpx-sse>=0.4.1",
 ]
 opentelemetry = [
