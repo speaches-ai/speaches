@@ -18,18 +18,16 @@ jobs:
     strategy:
       fail-fast: false # Continue running jobs even if one fails
       matrix:
-        # https://docs.github.com/en/actions/concepts/runners/about-larger-runners#about-macos-larger-runners
-        # NOTE: macos-15-large was failing with the following error:
-        #  hint: You're on macOS (`macosx_15_0_x86_64`), but `ctranslate2` (v4.5.0) only has wheels for the following platforms: `manylinux_2_17_aarch64`, `manylinux_2_17_x86_64`, `manylinux2014_aarch64`, `manylinux2014_x86_64`, `macosx_11_0_arm64`, `win_amd64`; consider adding your platform to `tool.uv.required-environments` to ensure uv resolves to a version with compatible wheels
-        os: [ubuntu-24.04-4core-x86, ubuntu-24.04-4core-arm64, macos-15-xlarge]
+        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/
+        os: [ubuntu-24.04, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          version: "latest"
-          enable-cache: true
-          activate-environment: true
-      - run: uv python install 3.12
-      - run: uv sync --all-extras
-      - run: uv run pytest -m "not requires_openai"
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v1
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Run tests
+        run: uv run pytest -m "not requires_openai"

@@ -2,8 +2,10 @@ name: docker-build-and-push
 on:
   workflow_dispatch:
   push:
+    branches:
+      - master
     tags:
-      - 'v*'
+      - "v*.*.*"
   release:
     types: [published]
 env:
@@ -11,23 +13,18 @@ env:
   FULL_IMAGE_NAME: ghcr.io/speaches-ai/speaches
 jobs:
   docker:
-    runs-on: ubuntu-24.04-4core-x86
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         # https://hub.docker.com/r/nvidia/cuda/tags
-        base-image: ['nvidia/cuda:12.9.0-cudnn-runtime-ubuntu24.04', 'nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04', 'nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04', 'ubuntu:24.04']
         include:
           - base-image: nvidia/cuda:12.9.0-cudnn-runtime-ubuntu24.04
             tag-suffix: -cuda
-          - base-image: nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
-            tag-suffix: -cuda-12.6.3
-          - base-image: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
-            tag-suffix: -cuda-12.4.1
           - base-image: ubuntu:24.04
             tag-suffix: -cpu
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - id: meta
         uses: docker/metadata-action@v5
         with:
@@ -35,7 +32,7 @@ jobs:
             ${{ env.FULL_IMAGE_NAME }}
           # https://github.com/docker/metadata-action?tab=readme-ov-file#flavor-input
           flavor: |
-            suffix=${{ matrix.tag-suffix}},onlatest=true
+            suffix=${{ matrix.tag-suffix }},onlatest=true
           tags: |
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
             type=semver,pattern={{major}}.{{minor}}
@@ -50,7 +47,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile

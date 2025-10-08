@@ -10,26 +10,18 @@ permissions:
   contents: write
 jobs:
   deploy:
-    runs-on: ubuntu-24.04-4core-x86
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
         with:
-          version: "latest"
-          enable-cache: true
-          activate-environment: true
-      - run: uv python install 3.12
-      - run: uv sync --extra dev
-      - run: echo "cache_id=$(date --utc '+%V')" >> "$GITHUB_ENV"
-      - uses: actions/cache@v4
-        with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: .cache
-          restore-keys: |
-            mkdocs-material-
-      - run: uv run mkdocs gh-deploy --force
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v1
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Deploy docs
+        run: uv run mkdocs gh-deploy --force
