@@ -20,7 +20,6 @@ from openai.resources.audio import AsyncSpeech, AsyncTranscriptions
 from openai.resources.chat.completions import AsyncCompletions
 
 from speaches.config import Config
-from speaches.executors.pyannote import PyannoteModelManager
 from speaches.executors.shared.registry import ExecutorRegistry
 
 logger = logging.getLogger(__name__)
@@ -46,14 +45,6 @@ def get_executor_registry() -> ExecutorRegistry:
 
 ExecutorRegistryDependency = Annotated[ExecutorRegistry, Depends(get_executor_registry)]
 
-
-@lru_cache
-def get_pyannote_model_manager() -> PyannoteModelManager:
-    config = get_config()
-    return PyannoteModelManager(config.stt_model_ttl, config.unstable_ort_opts)
-
-
-PyannoteModelManagerDependency = Annotated[PyannoteModelManager, Depends(get_pyannote_model_manager)]
 
 security = HTTPBearer(auto_error=False)
 
