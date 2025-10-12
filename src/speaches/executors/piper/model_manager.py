@@ -59,7 +59,8 @@ class PiperModelManager:
             model = self.loaded_models.get(model_id)
             if model is None:
                 raise KeyError(f"Model {model_id} not found")
-            self.loaded_models[model_id].unload()
+            del self.loaded_models[model_id]
+        model.unload()
 
     def load_model(self, model_id: str) -> SelfDisposingModel[PiperVoice]:
         from piper.voice import PiperVoice

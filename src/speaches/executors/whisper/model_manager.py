@@ -48,7 +48,8 @@ class WhisperModelManager:
             if model is None:
                 raise KeyError(f"Model {model_id} not found")
             # WARN: ~300 MB of memory will still be held by the model. See https://github.com/SYSTRAN/faster-whisper/issues/992
-            self.loaded_models[model_id].unload()
+            del self.loaded_models[model_id]
+        model.unload()
 
     def load_model(self, model_id: str) -> SelfDisposingModel[WhisperModel]:
         logger.debug(f"Loading model {model_id}")
