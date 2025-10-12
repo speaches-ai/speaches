@@ -33,12 +33,18 @@ hf_model_filter = HfModelFilter(
 
 logger = logging.getLogger(__name__)
 
+MODEL_ID_BLACKLIST = {
+    "eek/wespeaker-voxceleb-resnet293-LM"  # reason: doesn't have `task` tag, also has pytorch binary file, onnx model file isn't named `model.onnx`
+}
+
 
 class PyannoteModelRegistry(ModelRegistry):
     def list_remote_models(self) -> Generator[Model, None, None]:
         models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
 
         for model in models:
+            if model.id in MODEL_ID_BLACKLIST:
+                continue
             try:
                 if model.created_at is None or getattr(model, "card_data", None) is None:
                     logger.info(
@@ -61,6 +67,8 @@ class PyannoteModelRegistry(ModelRegistry):
     def list_local_models(self) -> Generator[Model, None, None]:
         cached_model_repos_info = get_cached_model_repos_info()
         for cached_repo_info in cached_model_repos_info:
+            if cached_repo_info.repo_id in MODEL_ID_BLACKLIST:
+                continue
             model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
             if model_card_data is None:
                 continue
