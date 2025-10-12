@@ -39,7 +39,7 @@ class HfModelFilter(BaseModel):
         if self.library_name is not None:
             # Handle both 'library_name' (correct) and 'library' (legacy/incorrect) fields
             model_library = model_card_data.library_name or getattr(model_card_data, "library", None)
-            if model_library != self.library_name:
+            if model_library != self.library_name and self.library_name not in model_card_data_tags:
                 # logger.debug(
                 #     f"Model ID '{model_id}' does not match filter library '{self.library_name}': {model_card_data.to_dict()}"
                 # )
