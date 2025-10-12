@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["automatic-speech-recognition"])
 
 type ResponseFormat = Literal["text", "json", "verbose_json", "srt", "vtt"]
+RESPONSE_FORMATS = ("text", "json", "verbose_json", "srt", "vtt")
 
 # https://platform.openai.com/docs/api-reference/audio/createTranscription#audio-createtranscription-response_format
 DEFAULT_RESPONSE_FORMAT: ResponseFormat = "json"
