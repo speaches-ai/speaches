@@ -2,15 +2,18 @@ import asyncio
 from collections.abc import AsyncGenerator, Callable, Coroutine, Sequence
 import contextlib
 from datetime import datetime
+import io
 import logging
 import logging.config
 from pathlib import Path
 import time
+from typing import TypedDict
 
 from httpx import AsyncClient
 from openai import NOT_GIVEN, AsyncOpenAI
 from openai.types.audio import SpeechCreateParams, TranscriptionCreateParams
-from openai.types.audio.transcription_create_params import TranscriptionCreateParamsNonStreaming
+
+# from openai.types.audio.transcription_create_params import TranscriptionCreateParamsNonStreaming
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, computed_field
 from pydantic_settings import BaseSettings
 import soundfile as sf
@@ -71,12 +74,13 @@ class SpeechBenchmarkScenario(BaseModel):
 
 
 class TranscriptionBenchmarkResultEntry(BaseModel):
-    total_time: float
+    start_time: float
+    end_time: float
     file_duration_seconds: float
 
 
 class TranscriptionBenchmarkResultsSummary(BaseModel):
-    total_time: float
+    total_processing_time_seconds: float
     total_file_duration_seconds: float
 
 
@@ -86,11 +90,13 @@ class TranscriptionBenchmarkScenarioResults(BaseModel):
     @computed_field
     @property
     def summary(self) -> TranscriptionBenchmarkResultsSummary:
-        total_time = sum(entry.total_time for entry in self.entries)
+        earliest_start = min(entry.start_time for entry in self.entries) if self.entries else 0
+        latest_end = max(entry.end_time for entry in self.entries) if self.entries else 0
+        total_time = latest_end - earliest_start
         total_file_duration_seconds = sum(entry.file_duration_seconds for entry in self.entries)
 
         return TranscriptionBenchmarkResultsSummary(
-            total_time=total_time,
+            total_processing_time_seconds=total_time,
             total_file_duration_seconds=total_file_duration_seconds,
         )
 
@@ -114,6 +120,22 @@ class TranscriptionBenchmarkScenario(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
+class VadCreateParams(TypedDict):
+    model: str
+    file: Path
+
+
+class VadBenchmarkScenario(BaseModel):
+    request_count: int
+    request_concurrency: int
+    request_params: VadCreateParams
+    warmup_count: int = 2
+
+    results: TranscriptionBenchmarkScenarioResults | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 # with Path("/Users/fedir/code/speaches/audio.wav").open("rb") as f:
 #     AUDIO_FILE_CONTENT = f.read()
 
@@ -127,15 +149,27 @@ DEFAULT_SCENARIOS = [
     #         input=INPUT_TEXT_1,
     #     ),
     # ),
-    TranscriptionBenchmarkScenario(
-        request_count=1,
-        request_concurrency=1,
-        request_params=TranscriptionCreateParamsNonStreaming(
+    # TranscriptionBenchmarkScenario(
+    #     request_count=1,
+    #     request_concurrency=1,
+    #     request_params=TranscriptionCreateParamsNonStreaming(
+    #         # file=Path("/Users/fedir/code/speaches/data/modified_test/BillGates_2010_modified.wav").open("rb"),
+    #         file=Path("/Users/fedir/code/speaches/data/modified_test/BillGates_2010_modified_2min.wav"),
+    #         # file=Path("/Users/fedir/code/speaches/audio.wav"),
+    #         # model="Systran/faster-whisper-tiny.en",
+    #         model="istupakov/parakeet-tdt-0.6b-v3-onnx",
+    #     ),
+    # ),
+    VadBenchmarkScenario(
+        request_count=40,
+        request_concurrency=20,
+        warmup_count=2,
+        request_params=VadCreateParams(
             # file=Path("/Users/fedir/code/speaches/data/modified_test/BillGates_2010_modified.wav").open("rb"),
-            file=Path("/Users/fedir/code/speaches/data/modified_test/BillGates_2010_modified_short.wav"),
+            file=Path("/Users/fedir/code/speaches/data/modified_test/BillGates_2010_modified_2min.wav"),
             # file=Path("/Users/fedir/code/speaches/audio.wav"),
             # model="Systran/faster-whisper-tiny.en",
-            model="istupakov/parakeet-tdt-0.6b-v3-onnx",
+            model="silero_vad_v5",
         ),
     ),
     # BenchmarkScenario(
@@ -160,7 +194,7 @@ class Config(BaseSettings):
     output_directory: Path = Path("benchmarks")
     file_prefix: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))  # noqa: DTZ005
 
-    scenarios: Sequence[SpeechBenchmarkScenario | TranscriptionBenchmarkScenario]
+    scenarios: Sequence[SpeechBenchmarkScenario | TranscriptionBenchmarkScenario | VadBenchmarkScenario]
 
 
 class Output(BaseModel):
@@ -249,6 +283,61 @@ async def speech_benchmark_runner(
     )
 
 
+async def vad_benchmark_runner(
+    openai_client: AsyncOpenAI, scenario: VadBenchmarkScenario
+) -> TranscriptionBenchmarkScenarioResults:
+    entries: list[TranscriptionBenchmarkResultEntry] = []
+
+    # Pre-load and convert file data to PCM 16-bit
+    audio_data, samplerate = sf.read(scenario.request_params["file"], dtype="int16")
+
+    # Calculate actual file duration
+    file_duration_seconds = len(audio_data) / samplerate
+
+    # Convert to WAV format in memory (PCM 16-bit)
+    buffer = io.BytesIO()
+    sf.write(buffer, audio_data, samplerate, subtype="PCM_16", format="WAV")
+    buffer.seek(0)
+    file_data = buffer.read()
+
+    async def create_vad() -> None:
+        start = time.perf_counter()
+        _res = await openai_client._client.post(
+            "/v1/audio/speech/timestamps",
+            data={"model": scenario.request_params["model"]},
+            files={"file": file_data},
+        )
+        end = time.perf_counter()
+
+        stat = TranscriptionBenchmarkResultEntry(
+            start_time=start,
+            end_time=end,
+            file_duration_seconds=file_duration_seconds,
+        )
+
+        entries.append(stat)
+
+    # Warmup phase
+    logger.info(f"Running {scenario.warmup_count} warmup requests...")
+    for _ in range(scenario.warmup_count):
+        await create_vad()
+    entries.clear()
+    logger.info("Warmup complete, starting benchmark...")
+
+    # Actual benchmark
+    create_vad_with_limited_concurrency = limit_concurrency(create_vad, scenario.request_concurrency)
+
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(create_vad_with_limited_concurrency()) for _ in range(scenario.request_count)]
+        start = time.perf_counter()
+        await asyncio.gather(*tasks)
+        logger.info(f"All tasks completed in {time.perf_counter() - start:.2f} seconds")
+
+    return TranscriptionBenchmarkScenarioResults(
+        entries=entries,
+    )
+
+
 async def transcription_benchmark_runner(
     openai_client: AsyncOpenAI, scenario: TranscriptionBenchmarkScenario
 ) -> TranscriptionBenchmarkScenarioResults:
@@ -268,7 +357,8 @@ async def transcription_benchmark_runner(
             file_duration_seconds = len(f) / f.samplerate
 
         stat = TranscriptionBenchmarkResultEntry(
-            total_time=end - start,
+            start_time=start,
+            end_time=end,
             file_duration_seconds=file_duration_seconds,
         )
         entries.append(stat)
@@ -299,17 +389,21 @@ async def main(config: Config) -> None:
     )
 
     for scenario in config.scenarios:
-        async with model_available_fixture(scenario.request_params["model"], client):
-            logger.info(f"Running benchmark scenario: {scenario.model_dump_json()}")
-            if isinstance(scenario, SpeechBenchmarkScenario):
+        logger.info(f"Running benchmark scenario: {scenario.model_dump_json()}")
+        if isinstance(scenario, SpeechBenchmarkScenario):
+            async with model_available_fixture(scenario.request_params["model"], client):
                 scenario_output = await speech_benchmark_runner(openai_client, scenario)
                 scenario.results = scenario_output
-            elif isinstance(scenario, TranscriptionBenchmarkScenario):
+        elif isinstance(scenario, TranscriptionBenchmarkScenario):
+            async with model_available_fixture(scenario.request_params["model"], client):
                 scenario_output = await transcription_benchmark_runner(openai_client, scenario)
                 scenario.results = scenario_output
-            else:
-                raise TypeError(f"Unknown scenario type: {type(scenario)}")
-            logger.info(f"Finished benchmark scenario: {scenario.model_dump_json()}")
+        elif isinstance(scenario, VadBenchmarkScenario):
+            scenario_output = await vad_benchmark_runner(openai_client, scenario)
+            scenario.results = scenario_output
+        else:
+            raise TypeError(f"Unknown scenario type: {type(scenario)}")
+        logger.info(f"Finished benchmark scenario: {scenario.model_dump_json(indent=2)}")
 
     output = Output(config=config)
     output_file_path = Path(config.output_directory, f"{config.file_prefix}_output.json")
