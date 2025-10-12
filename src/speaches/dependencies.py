@@ -35,7 +35,11 @@ def get_config() -> Config:
     return Config()
 
 
-ConfigDependency = Annotated[Config, Depends(get_config)]
+async def get_config_async() -> Config:
+    return get_config()
+
+
+ConfigDependency = Annotated[Config, Depends(get_config_async)]
 
 
 @lru_cache
@@ -44,7 +48,11 @@ def get_executor_registry() -> ExecutorRegistry:
     return ExecutorRegistry(config)
 
 
-ExecutorRegistryDependency = Annotated[ExecutorRegistry, Depends(get_executor_registry)]
+async def get_executor_registry_async() -> ExecutorRegistry:
+    return get_executor_registry()
+
+
+ExecutorRegistryDependency = Annotated[ExecutorRegistry, Depends(get_executor_registry_async)]
 
 
 security = HTTPBearer(auto_error=False)
@@ -107,7 +115,11 @@ def get_completion_client() -> AsyncCompletions:
     return oai_client.chat.completions
 
 
-CompletionClientDependency = Annotated[AsyncCompletions, Depends(get_completion_client)]
+async def get_completion_client_async() -> AsyncCompletions:
+    return get_completion_client()
+
+
+CompletionClientDependency = Annotated[AsyncCompletions, Depends(get_completion_client_async)]
 
 
 @lru_cache
@@ -136,7 +148,11 @@ def get_speech_client() -> AsyncSpeech:
     return oai_client.audio.speech
 
 
-SpeechClientDependency = Annotated[AsyncSpeech, Depends(get_speech_client)]
+def get_speech_client_async() -> AsyncSpeech:
+    return get_speech_client()
+
+
+SpeechClientDependency = Annotated[AsyncSpeech, Depends(get_speech_client_async)]
 
 
 @lru_cache
@@ -165,4 +181,8 @@ def get_transcription_client() -> AsyncTranscriptions:
     return oai_client.audio.transcriptions
 
 
-TranscriptionClientDependency = Annotated[AsyncTranscriptions, Depends(get_transcription_client)]
+async def get_transcription_client_async() -> AsyncTranscriptions:
+    return get_transcription_client()
+
+
+TranscriptionClientDependency = Annotated[AsyncTranscriptions, Depends(get_transcription_client_async)]
