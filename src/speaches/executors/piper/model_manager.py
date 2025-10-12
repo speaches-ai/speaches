@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from collections import OrderedDict
 import json
 import logging
-import threading
 from typing import TYPE_CHECKING
 
 from onnxruntime import InferenceSession, get_available_providers  # pyright: ignore[reportAttributeAccessIssue]
 
 from speaches.config import OrtOptions  # noqa: TC001
+from speaches.executors.base_model_manager import BaseModelManager
 from speaches.executors.piper.utils import model_registry
-from speaches.model_manager import SelfDisposingModel
 
 if TYPE_CHECKING:
     from piper.voice import PiperVoice
@@ -19,12 +17,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class PiperModelManager:
+class PiperModelManager(BaseModelManager["PiperVoice"]):
     def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
-        self.ttl = ttl
+        super().__init__(ttl)
         self.ort_opts = ort_opts
-        self.loaded_models: OrderedDict[str, SelfDisposingModel[PiperVoice]] = OrderedDict()
-        self._lock = threading.Lock()
 
     def _load_fn(self, model_id: str) -> PiperVoice:
         from piper.voice import PiperConfig, PiperVoice
@@ -48,31 +44,3 @@ class PiperModelManager:
         inf_sess = InferenceSession(model_files.model, providers=available_providers_with_opts)
         conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
-
-    def _handle_model_unloaded(self, model_id: str) -> None:
-        with self._lock:
-            if model_id in self.loaded_models:
-                del self.loaded_models[model_id]
-
-    def unload_model(self, model_id: str) -> None:
-        with self._lock:
-            model = self.loaded_models.get(model_id)
-            if model is None:
-                raise KeyError(f"Model {model_id} not found")
-            del self.loaded_models[model_id]
-        model.unload()
-
-    def load_model(self, model_id: str) -> SelfDisposingModel[PiperVoice]:
-        from piper.voice import PiperVoice
-
-        with self._lock:
-            if model_id in self.loaded_models:
-                logger.debug(f"{model_id} model already loaded")
-                return self.loaded_models[model_id]
-            self.loaded_models[model_id] = SelfDisposingModel[PiperVoice](
-                model_id,
-                load_fn=lambda: self._load_fn(model_id),
-                ttl=self.ttl,
-                model_unloaded_callback=self._handle_model_unloaded,
-            )
-            return self.loaded_models[model_id]
