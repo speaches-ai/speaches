@@ -175,3 +175,5 @@ speaches_debug
 # OS-specific
 Thumbs.db
 .DS_Store
+
+misc/onnx-export/models/*onnx

@@ -139,6 +139,9 @@ pythonPlatform = "Linux"
 # https://github.com/DetachHead/basedpyright?tab=readme-ov-file#pre-commit-hook
 venvPath = "."
 venv = ".venv"
+ignore = [
+    "misc/**"
+]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function" # this fixes pytest warning
@@ -167,4 +170,7 @@ version = "1.2.0"
 requires-dist = ["piper-phonemize"]
 
 [tool.uv.workspace]
-members = ["packages/speaches-cli"]
+members = [
+    "packages/speaches-cli",
+    # "misc/onnx_export",
+]

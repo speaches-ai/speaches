@@ -32,4 +32,4 @@ jobs:
           activate-environment: true
       - run: uv python install 3.12
       - run: uv sync --all-extras
-      - run: uv run pytest -m "not requires_openai"
+      - run: uv run pytest -m "not requires_openai" tests/
