@@ -12,6 +12,8 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from faster_whisper.transcribe import BatchedInferencePipeline, TranscriptionInfo
+from faster_whisper.vad import get_speech_timestamps
+import numpy as np
 
 from speaches.api_types import (
     DEFAULT_TIMESTAMP_GRANULARITIES,
@@ -217,16 +219,58 @@ def transcribe_file(
             )
         with executor.model_manager.load_model(model) as parakeet:
             # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
-            # WARNING: doesn't work for large audio files
-            timestamped_result = parakeet.with_timestamps().recognize(audio)
+
+            # Somewhat hacky work around for transcribing large audio files by splitting them into smaller chunks using VAD. May not work well for all use cases. Bug: https://github.com/istupakov/onnx-asr/issues/18
+
+            # Apply VAD to split audio into speech segments
+            speech_timestamps = get_speech_timestamps(audio, sampling_rate=16000)
+
+            if not speech_timestamps:
+                # No speech detected, return empty transcription
+                match response_format:
+                    case "text":
+                        return Response("", media_type="text/plain")
+                    case "json":
+                        return Response(
+                            CreateTranscriptionResponseJson(text="").model_dump_json(),
+                            media_type="application/json",
+                        )
+
+            # Extract speech segments from audio
+            waveforms = []
+            waveforms_len = []
+            for timestamp in speech_timestamps:
+                start = timestamp["start"]
+                end = timestamp["end"]
+                segment = audio[start:end]
+                waveforms.append(segment)
+                waveforms_len.append(len(segment))
+
+            # Prepare batch arrays
+            max_len = max(waveforms_len)
+            waveforms_batch = np.zeros((len(waveforms), max_len), dtype=np.float32)
+            for i, waveform in enumerate(waveforms):
+                waveforms_batch[i, : len(waveform)] = waveform
+            waveforms_len_batch = np.array(waveforms_len, dtype=np.int64)
+
+            # print all segment sizes in descending order
+
+            logger.info(f"Transcribing {len(waveforms)} segments with lengths: {sorted(waveforms_len, reverse=True)}")
+            # Process all segments in batch
+            results = list(
+                parakeet.with_timestamps().asr.recognize_batch(waveforms_batch, waveforms_len_batch, language=language)
+            )
+
+            # Combine results
+            combined_text = " ".join(result.text for result in results)
 
             match response_format:
                 case "text":
-                    return Response(timestamped_result.text, media_type="text/plain")
+                    return Response(combined_text, media_type="text/plain")
                 case "json":
                     return Response(
                         CreateTranscriptionResponseJson(
-                            text=timestamped_result.text,
+                            text=combined_text,
                         ).model_dump_json(),
                         media_type="application/json",
                     )
