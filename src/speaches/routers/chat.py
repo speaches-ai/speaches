@@ -70,7 +70,7 @@ def generate_chat_completion_id() -> str:
 # TODO: support model aliasing
 class CompletionCreateParamsBase(OpenAICompletionCreateParamsBase):
     stream: bool = False
-    trancription_model: str = DEFAULT_TRANSCRIPTION_MODEL
+    transcription_model: str = DEFAULT_TRANSCRIPTION_MODEL
     transcription_extra_body: dict | None = None
     speech_model: str = DEFAULT_SPEECH_MODEL
     speech_extra_body: dict | None = Field(default_factory=lambda: {"sample_rate": 24000})
@@ -251,7 +251,7 @@ async def handle_completions(  # noqa: C901
                     # TODO: how does the endpoint know the format lol?
                     transcript = await transcription_client.create(
                         file=BytesIO(audio_bytes),
-                        model=body.trancription_model,
+                        model=body.transcription_model,
                         response_format="text",
                     )
                     content[j] = ChatCompletionContentPartTextParam(text=transcript, type="text")
