@@ -2,7 +2,6 @@ import logging
 
 from fastapi import (
     APIRouter,
-    # Response,
 )
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
@@ -116,6 +115,7 @@ def load_model_route(
     responses={
         200: {"model": MessageResponse},
         404: {"model": MessageResponse},
+        409: {"model": MessageResponse},
     },
 )
 def stop_running_model(
@@ -128,13 +128,16 @@ def stop_running_model(
     model_managers = [whisper_model_manager, piper_model_manager, kokoro_model_manager, parakeet_model_manager]
     for model_manager in model_managers:
         if model_id in model_manager.loaded_models:
-            model_manager.unload_model(model_id)
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": f"Model {model_id} unloaded.",
-                },
-            )
+            try:
+                model_manager.unload_model(model_id)
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "message": f"Model {model_id} unloaded.",
+                    },
+                )
+            except ValueError as e:
+                return JSONResponse(status_code=409, content={"message": str(e)})
     return JSONResponse(
         status_code=404,
         content={
