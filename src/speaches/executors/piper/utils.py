@@ -165,7 +165,7 @@ class PiperModelRegistry(ModelRegistry):
         )
 
 
-model_registry = PiperModelRegistry(hf_model_filter=hf_model_filter)
+piper_model_registry = PiperModelRegistry(hf_model_filter=hf_model_filter)
 
 
 # TODO: async generator https://github.com/mikeshardmind/async-utils/blob/354b93a276572aa54c04212ceca5ac38fedf34ab/src/async_utils/gen_transform.py#L147

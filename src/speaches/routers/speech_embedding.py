@@ -16,9 +16,8 @@ from speaches.api_types import (
 )
 from speaches.dependencies import (
     AudioFileDependency,
-    PyannoteModelManagerDependency,
+    ExecutorRegistryDependency,
 )
-from speaches.executors.pyannote import utils as pyannote_utils
 from speaches.hf_utils import (
     MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE,
     get_model_card_data_from_cached_repo_info,
@@ -35,7 +34,7 @@ router = APIRouter(tags=["speaker-embedding"])
     "/v1/audio/speech/embedding",
 )
 def create_speech_embedding(
-    pyannote_model_manager: PyannoteModelManagerDependency,
+    executor_registry: ExecutorRegistryDependency,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
 ) -> CreateEmbeddingResponse:
@@ -52,23 +51,27 @@ def create_speech_embedding(
             status_code=500,
             detail=MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE.format(model_id=model),
         )
-    if not pyannote_utils.hf_model_filter.passes_filter(model, model_card_data):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Model '{model}' is not supported. If you think this is a mistake, please open an issue.",
-        )
 
-    with pyannote_model_manager.load_model(model) as inference_session:
-        audio_input = audio.astype(np.float32)
-        if len(audio_input.shape) == 1:
-            audio_input = audio_input.reshape(1, -1)
+    for executor in executor_registry.speaker_embedding:
+        if executor.can_handle_model(model, model_card_data):
+            with executor.model_manager.load_model(model) as inference_session:
+                audio_input = audio.astype(np.float32)
+                if len(audio_input.shape) == 1:
+                    audio_input = audio_input.reshape(1, -1)
 
-        outputs = inference_session.run(None, {"waveform": audio_input})  # TODO: handle other input name possibilities
-        embedding = outputs[0][0].tolist()
+                outputs = inference_session.run(
+                    None, {"waveform": audio_input}
+                )  # TODO: handle other input name possibilities
+                embedding = outputs[0][0].tolist()
 
-        return CreateEmbeddingResponse(
-            object="list",
-            data=[EmbeddingObject(embedding=embedding)],
-            model=model,
-            usage=EmbeddingUsage(prompt_tokens=len(audio), total_tokens=len(audio)),
-        )
+                return CreateEmbeddingResponse(
+                    object="list",
+                    data=[EmbeddingObject(embedding=embedding)],
+                    model=model,
+                    usage=EmbeddingUsage(prompt_tokens=len(audio), total_tokens=len(audio)),
+                )
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Model '{model}' is not supported. If you think this is a mistake, please open an issue.",
+    )

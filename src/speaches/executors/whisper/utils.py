@@ -94,4 +94,4 @@ class WhisperModelRegistry(ModelRegistry[Model, WhisperModelFiles]):
         )
 
 
-model_registry = WhisperModelRegistry(hf_model_filter=hf_model_filter)
+whisper_model_registry = WhisperModelRegistry(hf_model_filter=hf_model_filter)

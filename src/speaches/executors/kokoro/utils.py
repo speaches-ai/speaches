@@ -175,7 +175,7 @@ class KokoroModelRegistry(ModelRegistry):
         )
 
 
-model_registry = KokoroModelRegistry(hf_model_filter=hf_model_filter)
+kokoro_model_registry = KokoroModelRegistry(hf_model_filter=hf_model_filter)
 
 
 async def generate_audio(

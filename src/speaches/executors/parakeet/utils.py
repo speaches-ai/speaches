@@ -92,4 +92,4 @@ class NemoConformerTdtModelRegistry(ModelRegistry[Model, NemoConformerTdtModelFi
         )
 
 
-model_registry = NemoConformerTdtModelRegistry(hf_model_filter=hf_model_filter)
+parakeet_model_registry = NemoConformerTdtModelRegistry(hf_model_filter=hf_model_filter)

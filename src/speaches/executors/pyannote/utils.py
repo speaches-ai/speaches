@@ -96,4 +96,4 @@ class PyannoteModelRegistry(ModelRegistry):
         )
 
 
-model_registry = PyannoteModelRegistry(hf_model_filter=hf_model_filter)
+pyannote_model_registry = PyannoteModelRegistry(hf_model_filter=hf_model_filter)

@@ -20,11 +20,8 @@ from openai.resources.audio import AsyncSpeech, AsyncTranscriptions
 from openai.resources.chat.completions import AsyncCompletions
 
 from speaches.config import Config
-from speaches.executors.kokoro.model_manager import KokoroModelManager
-from speaches.executors.parakeet.model_manager import ParakeetModelManager
-from speaches.executors.piper.model_manager import PiperModelManager
 from speaches.executors.pyannote.model_manager import PyannoteModelManager
-from speaches.executors.whisper.model_manager import WhisperModelManager
+from speaches.executors.registry import ExecutorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -42,39 +39,12 @@ ConfigDependency = Annotated[Config, Depends(get_config)]
 
 
 @lru_cache
-def get_whisper_model_manager() -> WhisperModelManager:
+def get_executor_registry() -> ExecutorRegistry:
     config = get_config()
-    return WhisperModelManager(config.stt_model_ttl, config.whisper)
+    return ExecutorRegistry(config)
 
 
-WhisperModelManagerDependency = Annotated[WhisperModelManager, Depends(get_whisper_model_manager)]
-
-
-@lru_cache
-def get_piper_model_manager() -> PiperModelManager:
-    config = get_config()
-    return PiperModelManager(config.tts_model_ttl, config.unstable_ort_opts)
-
-
-PiperModelManagerDependency = Annotated[PiperModelManager, Depends(get_piper_model_manager)]
-
-
-@lru_cache
-def get_kokoro_model_manager() -> KokoroModelManager:
-    config = get_config()
-    return KokoroModelManager(config.tts_model_ttl, config.unstable_ort_opts)
-
-
-KokoroModelManagerDependency = Annotated[KokoroModelManager, Depends(get_kokoro_model_manager)]
-
-
-@lru_cache
-def get_parakeet_model_manager() -> ParakeetModelManager:
-    config = get_config()
-    return ParakeetModelManager(config.stt_model_ttl, config.unstable_ort_opts)
-
-
-ParakeetModelManagerDependency = Annotated[ParakeetModelManager, Depends(get_parakeet_model_manager)]
+ExecutorRegistryDependency = Annotated[ExecutorRegistry, Depends(get_executor_registry)]
 
 
 @lru_cache
