@@ -106,7 +106,8 @@ def extract_language_list(card_data: huggingface_hub.ModelCardData) -> list[str]
     elif isinstance(card_data.language, str):
         language = [card_data.language]
     else:
-        language = card_data.language
+        # NOTE:I've added `isinstance` check because some models would have non-string values in the list, e.g. https://huggingface.co/jkawamoto/whisper-tiny-ct2 has `False` in the list. AFAICT in the example it's not the metadata that is incorrect but rather `no` language is somehow being represented as `False` instead of `"no"`.
+        language = [lang for lang in card_data.language if isinstance(lang, str)]
     return language
 
 
