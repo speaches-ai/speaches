@@ -39,6 +39,9 @@ from speaches.routers.realtime.ws import (
 from speaches.routers.speech import (
     router as speech_router,
 )
+from speaches.routers.speech_embedding import (
+    router as speech_embedding_router,
+)
 from speaches.routers.stt import (
     router as stt_router,
 )
@@ -52,6 +55,7 @@ from speaches.utils import APIProxyError
 TAGS_METADATA = [
     {"name": "automatic-speech-recognition"},
     {"name": "speech-to-text"},
+    {"name": "speaker-embedding"},
     {"name": "realtime"},
     {"name": "models"},
     {"name": "diagnostic"},
@@ -111,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(misc_router, dependencies=http_dependencies)
     app.include_router(realtime_rtc_router, dependencies=http_dependencies)
     app.include_router(speech_router, dependencies=http_dependencies)
+    app.include_router(speech_embedding_router, dependencies=http_dependencies)
     app.include_router(vad_router, dependencies=http_dependencies)
 
     # WebSocket router WITHOUT authentication (handles its own)

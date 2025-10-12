@@ -16,6 +16,7 @@ from speaches.executors.kokoro.utils import model_registry as kokoro_model_regis
 from speaches.executors.parakeet.utils import model_registry as parakeet_model_registry
 from speaches.executors.piper.utils import PiperModel
 from speaches.executors.piper.utils import model_registry as piper_model_registry
+from speaches.executors.pyannote.utils import model_registry as pyannote_model_registry
 from speaches.executors.whisper.utils import model_registry as whisper_model_registry
 from speaches.hf_utils import delete_local_model_repo
 from speaches.model_aliases import ModelId
@@ -35,6 +36,8 @@ def list_local_models(task: ModelTask | None = None) -> JSONResponse:
     if task is None or task == "automatic-speech-recognition":
         models.extend(list(whisper_model_registry.list_local_models()))
         models.extend(list(parakeet_model_registry.list_local_models()))
+    if task is None or task == "speaker-embedding":
+        models.extend(list(pyannote_model_registry.list_local_models()))
     return JSONResponse(content={"data": [model.model_dump() for model in models], "object": "list"})
 
 
@@ -75,6 +78,7 @@ def get_local_model(model_id: ModelId) -> JSONResponse:
     models.extend(list(piper_model_registry.list_local_models()))
     models.extend(list(whisper_model_registry.list_local_models()))
     models.extend(list(parakeet_model_registry.list_local_models()))
+    models.extend(list(pyannote_model_registry.list_local_models()))
     for model in models:
         if model.id == model_id:
             return JSONResponse(content=model.model_dump())
@@ -92,6 +96,8 @@ def download_remote_model(model_id: ModelId) -> Response:
         was_downloaded = whisper_model_registry.download_model_files_if_not_exist(model_id)
     elif model_id in [model.id for model in parakeet_model_registry.list_remote_models()]:
         was_downloaded = parakeet_model_registry.download_model_files_if_not_exist(model_id)
+    elif model_id in [model.id for model in pyannote_model_registry.list_remote_models()]:
+        was_downloaded = pyannote_model_registry.download_model_files_if_not_exist(model_id)
     else:
         raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
 
@@ -121,4 +127,6 @@ def get_remote_models(task: ModelTask | None = None) -> JSONResponse:
     if task is None or task == "automatic-speech-recognition":
         models.extend(list(whisper_model_registry.list_remote_models()))
         models.extend(list(parakeet_model_registry.list_remote_models()))
+    if task is None or task == "speaker-embedding":
+        models.extend(list(pyannote_model_registry.list_remote_models()))
     return JSONResponse(content={"data": [model.model_dump() for model in models], "object": "list"})
