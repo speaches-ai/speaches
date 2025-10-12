@@ -7,10 +7,9 @@ from pydantic import BaseModel, Field
 
 from speaches.audio import convert_audio_format
 from speaches.dependencies import ExecutorRegistryDependency
-from speaches.executors.kokoro import utils as kokoro_utils
-from speaches.executors.kokoro.model_manager import KokoroModelManager
-from speaches.executors.piper import utils as piper_utils
-from speaches.executors.piper.model_manager import PiperModelManager
+from speaches.executors import kokoro, piper
+from speaches.executors.kokoro import KokoroModelManager
+from speaches.executors.piper import PiperModelManager
 from speaches.model_aliases import ModelId
 from speaches.routers.utils import find_executor_for_model_or_raise, get_model_card_data_or_raise
 from speaches.text_utils import strip_emojis, strip_markdown_emphasis
@@ -70,19 +69,19 @@ async def synthesize(  # noqa: C901
                 status_code=422,
                 detail=f"Speed must be between 0.5 and 2.0, got {body.speed}",
             )
-        if body.voice not in [v.name for v in kokoro_utils.VOICES]:
+        if body.voice not in [v.name for v in kokoro.VOICES]:
             if body.voice in OPENAI_SUPPORTED_SPEECH_VOICE_NAMES:
                 logger.warning(
-                    f"Voice '{body.voice}' is not supported by the model '{body.model}'. It will be replaced with '{kokoro_utils.VOICES[0].name}'. The behaviour of substituting OpenAI voices may be removed in the future without warning."
+                    f"Voice '{body.voice}' is not supported by the model '{body.model}'. It will be replaced with '{kokoro.VOICES[0].name}'. The behaviour of substituting OpenAI voices may be removed in the future without warning."
                 )
-                body.voice = kokoro_utils.VOICES[0].name
+                body.voice = kokoro.VOICES[0].name
             else:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"Voice '{body.voice}' is not supported. Supported voices: {kokoro_utils.VOICES}",
+                    detail=f"Voice '{body.voice}' is not supported. Supported voices: {kokoro.VOICES}",
                 )
         with executor.model_manager.load_model(body.model) as tts:
-            audio_generator = kokoro_utils.generate_audio(
+            audio_generator = kokoro.generate_audio(
                 tts,
                 body.input,
                 body.voice,
@@ -93,14 +92,12 @@ async def synthesize(  # noqa: C901
             if body.response_format in SUPPORTED_NON_STREAMABLE_RESPONSE_FORMATS:
                 audio_data = b"".join([audio_bytes async for audio_bytes in audio_generator])
                 audio_data = convert_audio_format(
-                    audio_data, body.sample_rate or kokoro_utils.SAMPLE_RATE, body.response_format
+                    audio_data, body.sample_rate or kokoro.SAMPLE_RATE, body.response_format
                 )
                 return Response(audio_data, media_type=f"audio/{body.response_format}")
             if body.response_format != "pcm":
                 audio_generator = (
-                    convert_audio_format(
-                        audio_bytes, body.sample_rate or kokoro_utils.SAMPLE_RATE, body.response_format
-                    )
+                    convert_audio_format(audio_bytes, body.sample_rate or kokoro.SAMPLE_RATE, body.response_format)
                     async for audio_bytes in audio_generator
                 )
             return StreamingResponse(audio_generator, media_type=f"audio/{body.response_format}")
@@ -113,14 +110,14 @@ async def synthesize(  # noqa: C901
         # TODO: maybe check voice
         with executor.model_manager.load_model(body.model) as piper_tts:
             # TODO: async generator
-            audio_generator = piper_utils.generate_audio(
+            audio_generator = piper.generate_audio(
                 piper_tts, body.input, speed=body.speed, sample_rate=body.sample_rate
             )
             # these file formats can't easily be streamed because they have headers and/or metadata
             if body.response_format in SUPPORTED_NON_STREAMABLE_RESPONSE_FORMATS:
                 audio_data = b"".join(audio_bytes for audio_bytes in audio_generator)
                 audio_data = convert_audio_format(
-                    audio_data, body.sample_rate or kokoro_utils.SAMPLE_RATE, body.response_format
+                    audio_data, body.sample_rate or kokoro.SAMPLE_RATE, body.response_format
                 )
                 return Response(audio_data, media_type=f"audio/{body.response_format}")
             if body.response_format != "pcm":

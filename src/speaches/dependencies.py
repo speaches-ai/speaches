@@ -20,8 +20,8 @@ from openai.resources.audio import AsyncSpeech, AsyncTranscriptions
 from openai.resources.chat.completions import AsyncCompletions
 
 from speaches.config import Config
-from speaches.executors.pyannote.model_manager import PyannoteModelManager
-from speaches.executors.registry import ExecutorRegistry
+from speaches.executors.pyannote import PyannoteModelManager
+from speaches.executors.shared.registry import ExecutorRegistry
 
 logger = logging.getLogger(__name__)
 

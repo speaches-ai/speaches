@@ -5,17 +5,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from speaches.config import Config
 
-from speaches.executors.executor import Executor
-from speaches.executors.kokoro.model_manager import KokoroModelManager
-from speaches.executors.kokoro.utils import kokoro_model_registry
-from speaches.executors.parakeet.model_manager import ParakeetModelManager
-from speaches.executors.parakeet.utils import parakeet_model_registry
-from speaches.executors.piper.model_manager import PiperModelManager
-from speaches.executors.piper.utils import piper_model_registry
-from speaches.executors.pyannote.model_manager import PyannoteModelManager
-from speaches.executors.pyannote.utils import pyannote_model_registry
-from speaches.executors.whisper.model_manager import WhisperModelManager
-from speaches.executors.whisper.utils import whisper_model_registry
+from speaches.executors.kokoro import KokoroModelManager, kokoro_model_registry
+from speaches.executors.parakeet import ParakeetModelManager, parakeet_model_registry
+from speaches.executors.piper import PiperModelManager, piper_model_registry
+from speaches.executors.pyannote import PyannoteModelManager, pyannote_model_registry
+from speaches.executors.shared.executor import Executor
+from speaches.executors.whisper import WhisperModelManager, whisper_model_registry
 
 
 class ExecutorRegistry:

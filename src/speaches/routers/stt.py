@@ -26,8 +26,8 @@ from speaches.dependencies import (
     ConfigDependency,
     ExecutorRegistryDependency,
 )
-from speaches.executors.parakeet.model_manager import ParakeetModelManager
-from speaches.executors.whisper.model_manager import WhisperModelManager
+from speaches.executors.parakeet import ParakeetModelManager
+from speaches.executors.whisper import WhisperModelManager
 from speaches.model_aliases import ModelId
 from speaches.routers.utils import find_executor_for_model_or_raise, get_model_card_data_or_raise
 from speaches.text_utils import segments_to_srt, segments_to_text, segments_to_vtt

@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path  # noqa: TC003
 import time
 from typing import TYPE_CHECKING, Literal
 
 import huggingface_hub
+from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
 from speaches.api_types import Model
 from speaches.audio import resample_audio
+from speaches.config import OrtOptions  # noqa: TC001
+from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -180,3 +184,18 @@ def generate_audio(
             audio_bytes = resample_audio(audio_bytes, piper_tts.config.sample_rate, sample_rate)  # noqa: PLW2901
         yield audio_bytes
     logger.info(f"Generated audio for {len(text)} characters in {time.perf_counter() - start}s")
+
+
+class PiperModelManager(BaseModelManager["PiperVoice"]):
+    def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
+        super().__init__(ttl)
+        self.ort_opts = ort_opts
+
+    def _load_fn(self, model_id: str) -> PiperVoice:
+        from piper.voice import PiperConfig, PiperVoice
+
+        model_files = piper_model_registry.get_model_files(model_id)
+        providers = get_ort_providers_with_options(self.ort_opts)
+        inf_sess = InferenceSession(model_files.model, providers=providers)
+        conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
+        return PiperVoice(session=inf_sess, config=conf)

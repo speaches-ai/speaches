@@ -4,9 +4,13 @@ from pathlib import Path
 from typing import TypedDict
 
 import huggingface_hub
+import onnx_asr
+from onnx_asr.adapters import TextResultsAsrAdapter
 from onnx_asr.models import NemoConformerTdt
 
 from speaches.api_types import Model
+from speaches.config import OrtOptions
+from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -93,3 +97,13 @@ class NemoConformerTdtModelRegistry(ModelRegistry[Model, NemoConformerTdtModelFi
 
 
 parakeet_model_registry = NemoConformerTdtModelRegistry(hf_model_filter=hf_model_filter)
+
+
+class ParakeetModelManager(BaseModelManager[TextResultsAsrAdapter]):
+    def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
+        super().__init__(ttl)
+        self.ort_opts = ort_opts
+
+    def _load_fn(self, model_id: str) -> TextResultsAsrAdapter:
+        providers = get_ort_providers_with_options(self.ort_opts)
+        return onnx_asr.load_model(model_id, providers=providers)

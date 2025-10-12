@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
     import huggingface_hub
 
-    from speaches.executors.executor import Executor
+    from speaches.executors.shared.executor import Executor
 
 from fastapi import HTTPException
 from huggingface_hub.utils._cache_manager import _scan_cached_repo

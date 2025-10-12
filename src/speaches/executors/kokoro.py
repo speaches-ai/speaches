@@ -7,10 +7,13 @@ from typing import Literal
 import huggingface_hub
 from kokoro_onnx import Kokoro
 import numpy as np
+from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
 from speaches.api_types import Model
 from speaches.audio import resample_audio
+from speaches.config import OrtOptions
+from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -176,6 +179,18 @@ class KokoroModelRegistry(ModelRegistry):
 
 
 kokoro_model_registry = KokoroModelRegistry(hf_model_filter=hf_model_filter)
+
+
+class KokoroModelManager(BaseModelManager[Kokoro]):
+    def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
+        super().__init__(ttl)
+        self.ort_opts = ort_opts
+
+    def _load_fn(self, model_id: str) -> Kokoro:
+        model_files = kokoro_model_registry.get_model_files(model_id)
+        providers = get_ort_providers_with_options(self.ort_opts)
+        inf_sess = InferenceSession(model_files.model, providers=providers)
+        return Kokoro.from_session(inf_sess, str(model_files.voices))
 
 
 async def generate_audio(

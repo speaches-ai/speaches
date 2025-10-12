@@ -1,11 +1,14 @@
-from collections.abc import Generator
-import logging
-from pathlib import Path
+from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
+from faster_whisper import WhisperModel
 import huggingface_hub
 from pydantic import BaseModel
 
 from speaches.api_types import Model
+from speaches.executors.shared.base_model_manager import BaseModelManager
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -14,6 +17,14 @@ from speaches.hf_utils import (
     list_model_files,
 )
 from speaches.model_registry import ModelRegistry
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
+
+    from speaches.config import (
+        WhisperConfig,
+    )
 
 LIBRARY_NAME = "ctranslate2"
 TASK_NAME_TAG = "automatic-speech-recognition"
@@ -95,3 +106,19 @@ class WhisperModelRegistry(ModelRegistry[Model, WhisperModelFiles]):
 
 
 whisper_model_registry = WhisperModelRegistry(hf_model_filter=hf_model_filter)
+
+
+class WhisperModelManager(BaseModelManager[WhisperModel]):
+    def __init__(self, ttl: int, whisper_config: WhisperConfig) -> None:
+        super().__init__(ttl)
+        self.whisper_config = whisper_config
+
+    def _load_fn(self, model_id: str) -> WhisperModel:
+        return WhisperModel(
+            model_id,
+            device=self.whisper_config.inference_device,
+            device_index=self.whisper_config.device_index,
+            compute_type=self.whisper_config.compute_type,
+            cpu_threads=self.whisper_config.cpu_threads,
+            num_workers=self.whisper_config.num_workers,
+        )
