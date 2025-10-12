@@ -230,6 +230,7 @@ def transcribe_file(  # noqa: C901
             )
         with parakeet_model_manager.load_model(model) as parakeet:
             # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
+            # WARNING: doesn't work for large audio files
             timestamped_result = parakeet.with_timestamps().recognize(audio)
 
             match response_format:

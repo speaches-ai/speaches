@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import onnx_asr
 from onnx_asr.adapters import TextResultsAsrAdapter
+from onnxruntime import get_available_providers
 
 from speaches.model_manager import SelfDisposingModel
 
@@ -24,9 +25,22 @@ class ParakeetModelManager:
         self._lock = threading.Lock()
 
     def _load_fn(self, model_id: str) -> TextResultsAsrAdapter:
-        return onnx_asr.load_model(
-            model_id,
+        # NOTE: `get_available_providers` is an unknown symbol (on MacOS at least)
+        available_providers: list[str] = get_available_providers()
+        logger.debug(f"Available ONNX Runtime providers: {available_providers}")
+        available_providers = [
+            provider for provider in available_providers if provider not in self.ort_opts.exclude_providers
+        ]
+        available_providers = sorted(
+            available_providers,
+            key=lambda x: self.ort_opts.provider_priority.get(x, 0),
+            reverse=True,
         )
+        available_providers_with_opts = [
+            (provider, self.ort_opts.provider_opts.get(provider, {})) for provider in available_providers
+        ]
+        logger.debug(f"Using ONNX Runtime providers: {available_providers_with_opts}")
+        return onnx_asr.load_model(model_id, providers=available_providers_with_opts)
 
     def _handle_model_unloaded(self, model_id: str) -> None:
         with self._lock:
