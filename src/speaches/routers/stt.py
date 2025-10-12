@@ -175,7 +175,7 @@ def transcribe_file(  # noqa: C901, PLR0912
     stream: Annotated[bool, Form()] = False,
     hotwords: Annotated[str | None, Form()] = None,
     vad_filter: Annotated[bool | None, Form()] = None,
-    without_timestamps: Annotated[bool | None, Form()] = None,
+    without_timestamps: Annotated[bool, Form()] = True,
 ) -> Response | StreamingResponse:
     # Use config default if vad_filter not explicitly provided
     effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001

@@ -22,6 +22,8 @@ OPENAI_MODEL = "gpt-4o-audio-preview"
 TEXT_ONLY_MODEL = "gpt-4o-mini"
 AUDIO_PARAM = ChatCompletionAudioParam(voice="alloy", format="wav")
 
+TRANSCRIPTION_MODEL_ID = "Systran/faster-whisper-tiny.en"
+
 # TODO: for non-streaming: validate audio format matches the one sent
 # TODO: check how OpenAI behaves when more than two content parts are sent: (text, audio, audio), (audio, text, audio), etc.
 # TODO: test with multiple input_audio content parts
@@ -136,7 +138,9 @@ async def test_audio_chat_text(dynamic_openai_client: AsyncOpenAI, target: str) 
         ],
     )
 
-    chunk_completion = await openai_client.chat.completions.create(**body)
+    chunk_completion = await openai_client.chat.completions.create(
+        **body, extra_body={"transcription_model": TRANSCRIPTION_MODEL_ID} if target == "speaches" else None
+    )
     AudioChatSessionArchive(res=chunk_completion, body=body)
 
 
@@ -162,7 +166,9 @@ async def test_audio_chat_text_audio(dynamic_openai_client: AsyncOpenAI, target:
         ],
     )
 
-    chunk_completion = await openai_client.chat.completions.create(**body)
+    chunk_completion = await openai_client.chat.completions.create(
+        **body, extra_body={"transcription_model": TRANSCRIPTION_MODEL_ID} if target == "speaches" else None
+    )
     AudioChatSessionArchive(res=chunk_completion, body=body)
 
 
@@ -189,7 +195,10 @@ async def test_audio_chat_text_stream(dynamic_openai_client: AsyncOpenAI, target
     )
 
     chunk_completion_chunks: list[ChatCompletionChunk] = [
-        x async for x in await openai_client.chat.completions.create(**body)
+        x
+        async for x in await openai_client.chat.completions.create(
+            **body, extra_body={"transcription_model": TRANSCRIPTION_MODEL_ID} if target == "speaches" else None
+        )
     ]
     AudioChatStreamingSessionArchive(res=chunk_completion_chunks, body=body)
 
@@ -217,6 +226,9 @@ async def test_audio_chat_text_audio_stream(dynamic_openai_client: AsyncOpenAI, 
     )
 
     chunk_completion_chunks: list[ChatCompletionChunk] = [
-        x async for x in await openai_client.chat.completions.create(**body)
+        x
+        async for x in await openai_client.chat.completions.create(
+            **body, extra_body={"transcription_model": TRANSCRIPTION_MODEL_ID} if target == "speaches" else None
+        )
     ]
     AudioChatStreamingSessionArchive(res=chunk_completion_chunks, body=body)

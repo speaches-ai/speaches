@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_ort_providers_with_options(ort_opts: OrtOptions) -> list[tuple[str, dict]]:
-    from onnxruntime import get_available_providers
+    from onnxruntime import get_available_providers  # pyright: ignore[reportAttributeAccessIssue]
 
     available_providers: list[str] = get_available_providers()
     logger.debug(f"Available ONNX Runtime providers: {available_providers}")

@@ -275,7 +275,12 @@ async def handle_completions(  # noqa: C901
     proxied_body.audio = None
     # NOTE: Adding --use-one-literal-as-default breaks the `exclude_defaults=True` behavior
     try:
-        chat_completion = await chat_completion_client.create(**proxied_body.model_dump(exclude_defaults=True))
+        chat_completion = await chat_completion_client.create(
+            **proxied_body.model_dump(
+                exclude_defaults=True,
+                exclude={"transcription_model", "transcription_extra_body", "speech_model", "speech_extra_body"},
+            )
+        )
     except openai.APIStatusError as e:
         error_message = (
             "Failed to communicate with the language model API. "

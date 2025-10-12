@@ -34,6 +34,7 @@ DEFAULT_CONFIG = Config(
     enable_ui=False,
     chat_completion_base_url="https://api.openai.com/v1",
     chat_completion_api_key=SecretStr(api_key),
+    loopback_host_url=None,
 )
 TIMEOUT = httpx.Timeout(15.0)
 
@@ -62,9 +63,12 @@ async def aclient_factory(mocker: MockerFixture) -> AclientFactory:
 
     @asynccontextmanager
     async def inner(config: Config = DEFAULT_CONFIG) -> AsyncGenerator[AsyncClient, None]:
+        from speaches.executors.shared.registry import ExecutorRegistry
+
         # NOTE: all calls to `get_config` should be patched. One way to test that this works is to update the original `get_config` to raise an exception and see if the tests fail
         mocker.patch("speaches.dependencies.get_config", return_value=config)
         mocker.patch("speaches.main.get_config", return_value=config)
+        mocker.patch("speaches.dependencies.get_executor_registry", return_value=ExecutorRegistry(config))
         # NOTE: I couldn't get the following to work but it shouldn't matter
         # mocker.patch(
         #     "speaches.text_utils.Transcription._ensure_no_word_overlap.get_config", return_value=config

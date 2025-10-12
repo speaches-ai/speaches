@@ -143,7 +143,7 @@ def get_speech_client() -> AsyncSpeech:
         http_client=http_client,
         api_key=config.api_key.get_secret_value() if config.api_key else "cant-be-empty",
         max_retries=0,
-        base_url=f"{config.loopback_host_url}/v1",
+        base_url=f"{config.loopback_host_url}/v1" if config.loopback_host_url else None,
     )
     return oai_client.audio.speech
 
@@ -176,7 +176,7 @@ def get_transcription_client() -> AsyncTranscriptions:
         http_client=http_client,
         api_key=config.api_key.get_secret_value() if config.api_key else "cant-be-empty",
         max_retries=0,
-        base_url=f"{config.loopback_host_url}/v1",
+        base_url=f"{config.loopback_host_url}/v1" if config.loopback_host_url else None,
     )
     return oai_client.audio.transcriptions
 
