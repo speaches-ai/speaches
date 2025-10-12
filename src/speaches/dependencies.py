@@ -1,5 +1,6 @@
 from functools import lru_cache
 import logging
+import time
 from typing import Annotated
 
 import av.error
@@ -65,7 +66,13 @@ def audio_file_dependency(
     file: Annotated[UploadFile, Form()],
 ) -> NDArray[float32]:
     try:
-        audio = decode_audio(file.file)
+        logger.debug(
+            f"Decoding audio file: {file.filename}, content_type: {file.content_type}, header: {file.headers}, size: {file.size}"
+        )
+        start = time.perf_counter()
+        audio = decode_audio(file.file, sampling_rate=16000)
+        elapsed, duration = time.perf_counter() - start, len(audio) / 16000
+        logger.debug(f"Decoded {duration:.5f}s of audio in {elapsed:.5f}s (RTF: {elapsed / duration:.5f})")
     except av.error.InvalidDataError as e:
         raise HTTPException(
             status_code=415,
