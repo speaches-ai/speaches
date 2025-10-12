@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from speaches.config import Config
+
 from speaches.executors.executor import Executor
 from speaches.executors.kokoro.model_manager import KokoroModelManager
 from speaches.executors.kokoro.utils import kokoro_model_registry
@@ -13,9 +16,6 @@ from speaches.executors.pyannote.model_manager import PyannoteModelManager
 from speaches.executors.pyannote.utils import pyannote_model_registry
 from speaches.executors.whisper.model_manager import WhisperModelManager
 from speaches.executors.whisper.utils import whisper_model_registry
-
-if TYPE_CHECKING:
-    from speaches.config import Config
 
 
 class ExecutorRegistry:

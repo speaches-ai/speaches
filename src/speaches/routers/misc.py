@@ -3,14 +3,12 @@ import logging
 from fastapi import (
     APIRouter,
 )
-from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
-from huggingface_hub.utils._cache_manager import _scan_cached_repo
 from pydantic import BaseModel, Field
 
 from speaches.dependencies import ExecutorRegistryDependency
-from speaches.hf_utils import get_model_card_data_from_cached_repo_info, get_model_repo_path
 from speaches.model_aliases import ModelId
+from speaches.routers.utils import get_model_card_data_or_raise
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -58,20 +56,10 @@ def load_model_route(executor_registry: ExecutorRegistryDependency, model_id: Mo
                 },
             )
 
-    model_repo_path = get_model_repo_path(model_id)
-    if model_repo_path is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "message": f"Model '{model_id}' is not installed locally. You can download the model using `POST /v1/models`",
-            },
-        )
-    cached_repo_info = _scan_cached_repo(model_repo_path)
-    model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
-    assert model_card_data is not None, cached_repo_info  # FIXME
+    model_card_data = get_model_card_data_or_raise(model_id)
 
     for executor in executor_registry.all_executors():
-        if executor.can_handle_model(cached_repo_info.repo_id, model_card_data):
+        if executor.can_handle_model(model_id, model_card_data):
             with executor.model_manager.load_model(model_id):
                 pass
             return JSONResponse(status_code=201, content={"message": f"Model '{model_id}' loaded."})

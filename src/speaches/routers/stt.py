@@ -12,7 +12,6 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from faster_whisper.transcribe import BatchedInferencePipeline, TranscriptionInfo
-from huggingface_hub.utils._cache_manager import _scan_cached_repo
 
 from speaches.api_types import (
     DEFAULT_TIMESTAMP_GRANULARITIES,
@@ -29,12 +28,8 @@ from speaches.dependencies import (
 )
 from speaches.executors.parakeet.model_manager import ParakeetModelManager
 from speaches.executors.whisper.model_manager import WhisperModelManager
-from speaches.hf_utils import (
-    MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE,
-    get_model_card_data_from_cached_repo_info,
-    get_model_repo_path,
-)
 from speaches.model_aliases import ModelId
+from speaches.routers.utils import find_executor_for_model_or_raise, get_model_card_data_or_raise
 from speaches.text_utils import segments_to_srt, segments_to_text, segments_to_vtt
 
 logger = logging.getLogger(__name__)
@@ -159,7 +154,7 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
     "/v1/audio/transcriptions",
     response_model=str | CreateTranscriptionResponseJson | CreateTranscriptionResponseVerboseJson,
 )
-def transcribe_file(  # noqa: C901, PLR0912
+def transcribe_file(
     config: ConfigDependency,
     executor_registry: ExecutorRegistryDependency,
     request: Request,
@@ -188,69 +183,54 @@ def transcribe_file(  # noqa: C901, PLR0912
             "It only makes sense to provide `timestamp_granularities[]` when `response_format` is set to `verbose_json`. See https://platform.openai.com/docs/api-reference/audio/createTranscription#audio-createtranscription-timestamp_granularities."
         )
 
-    model_repo_path = get_model_repo_path(model)
-    if model_repo_path is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Model '{model}' is not installed locally. You can download the model using `POST /v1/models`",
-        )
-    cached_repo_info = _scan_cached_repo(model_repo_path)
-    model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
-    if model_card_data is None:
-        raise HTTPException(
-            status_code=500,
-            detail=MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE.format(model_id=model),
-        )
+    model_card_data = get_model_card_data_or_raise(model)
+    executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.transcription)
 
-    for executor in executor_registry.transcription:
-        if executor.can_handle_model(model, model_card_data):
-            if isinstance(executor.model_manager, WhisperModelManager):
-                with executor.model_manager.load_model(model) as whisper:
-                    whisper_model = (
-                        BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
-                    )
-                    segments, transcription_info = whisper_model.transcribe(
-                        audio,
-                        task="transcribe",
-                        language=language,
-                        initial_prompt=prompt,
-                        word_timestamps="word" in timestamp_granularities,
-                        temperature=temperature,
-                        vad_filter=effective_vad_filter,
-                        hotwords=hotwords,
-                        without_timestamps=without_timestamps,
-                    )
-                    segments = TranscriptionSegment.from_faster_whisper_segments(segments)
+    if isinstance(executor.model_manager, WhisperModelManager):
+        with executor.model_manager.load_model(model) as whisper:
+            whisper_model = BatchedInferencePipeline(model=whisper) if config.whisper.use_batched_mode else whisper
+            segments, transcription_info = whisper_model.transcribe(
+                audio,
+                task="transcribe",
+                language=language,
+                initial_prompt=prompt,
+                word_timestamps="word" in timestamp_granularities,
+                temperature=temperature,
+                vad_filter=effective_vad_filter,
+                hotwords=hotwords,
+                without_timestamps=without_timestamps,
+            )
+            segments = TranscriptionSegment.from_faster_whisper_segments(segments)
 
-                    if stream:
-                        return segments_to_streaming_response(segments, transcription_info, response_format)
-                    else:
-                        return segments_to_response(segments, transcription_info, response_format)
-            elif isinstance(executor.model_manager, ParakeetModelManager):
-                if stream:
-                    raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
-                if response_format not in ("text", "json"):
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Model '{model}' only supports 'text' and 'json' response formats for now.",
-                    )
-                with executor.model_manager.load_model(model) as parakeet:
-                    # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
-                    # WARNING: doesn't work for large audio files
-                    timestamped_result = parakeet.with_timestamps().recognize(audio)
+            if stream:
+                return segments_to_streaming_response(segments, transcription_info, response_format)
+            else:
+                return segments_to_response(segments, transcription_info, response_format)
+    elif isinstance(executor.model_manager, ParakeetModelManager):
+        if stream:
+            raise HTTPException(status_code=500, detail=f"Model '{model}' does not support streaming yet.")
+        if response_format not in ("text", "json"):
+            raise HTTPException(
+                status_code=500,
+                detail=f"Model '{model}' only supports 'text' and 'json' response formats for now.",
+            )
+        with executor.model_manager.load_model(model) as parakeet:
+            # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
+            # WARNING: doesn't work for large audio files
+            timestamped_result = parakeet.with_timestamps().recognize(audio)
 
-                    match response_format:
-                        case "text":
-                            return Response(timestamped_result.text, media_type="text/plain")
-                        case "json":
-                            return Response(
-                                CreateTranscriptionResponseJson(
-                                    text=timestamped_result.text,
-                                ).model_dump_json(),
-                                media_type="application/json",
-                            )
+            match response_format:
+                case "text":
+                    return Response(timestamped_result.text, media_type="text/plain")
+                case "json":
+                    return Response(
+                        CreateTranscriptionResponseJson(
+                            text=timestamped_result.text,
+                        ).model_dump_json(),
+                        media_type="application/json",
+                    )
 
     raise HTTPException(
-        status_code=404,
-        detail=f"Model '{model}' is not supported. If you think this is a mistake, please open an issue.",
+        status_code=500,
+        detail=f"Executor for model '{model}' exists but is not properly configured. This is a bug.",
     )
