@@ -14,11 +14,12 @@ EMBEDDING_MODEL_ID = "deepghs/pyannote-embedding-onnx"
 async def test_create_speech_embedding(aclient: AsyncClient, tmp_path: Path) -> None:
     sample_rate = 16000
     duration = 3
-    audio_data = np.random.randn(sample_rate * duration).astype(np.float32)
+    rng = np.random.default_rng()
+    audio_data = rng.standard_normal(sample_rate * duration).astype(np.float32)
     audio_file = tmp_path / "test_audio.wav"
     sf.write(audio_file, audio_data, sample_rate)
 
-    with open(audio_file, "rb") as f:
+    with audio_file.open("rb") as f:
         response = await aclient.post(
             "/v1/audio/speech/embedding",
             data={"model": EMBEDDING_MODEL_ID},
@@ -48,12 +49,12 @@ async def test_create_speech_embedding_with_real_audio(aclient: AsyncClient, tmp
     sample_rate = 16000
     duration = 2
     frequency = 440
-    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
     audio_data = np.sin(2 * np.pi * frequency * t).astype(np.float32)
     audio_file = tmp_path / "sine_wave.wav"
     sf.write(audio_file, audio_data, sample_rate)
 
-    with open(audio_file, "rb") as f:
+    with audio_file.open("rb") as f:
         response = await aclient.post(
             "/v1/audio/speech/embedding",
             data={"model": EMBEDDING_MODEL_ID},
@@ -72,11 +73,12 @@ async def test_create_speech_embedding_with_real_audio(aclient: AsyncClient, tmp
 @pytest.mark.asyncio
 async def test_create_speech_embedding_model_not_found(aclient: AsyncClient, tmp_path: Path) -> None:
     sample_rate = 16000
-    audio_data = np.random.randn(sample_rate).astype(np.float32)
+    rng = np.random.default_rng()
+    audio_data = rng.standard_normal(sample_rate).astype(np.float32)
     audio_file = tmp_path / "test_audio.wav"
     sf.write(audio_file, audio_data, sample_rate)
 
-    with open(audio_file, "rb") as f:
+    with audio_file.open("rb") as f:
         response = await aclient.post(
             "/v1/audio/speech/embedding",
             data={"model": "non-existent-model"},
@@ -94,7 +96,7 @@ async def test_embedding_similarity(aclient: AsyncClient, tmp_path: Path) -> Non
     duration = 2
     frequency = 440
 
-    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
     audio_data_1 = np.sin(2 * np.pi * frequency * t).astype(np.float32)
     audio_file_1 = tmp_path / "audio_1.wav"
     sf.write(audio_file_1, audio_data_1, sample_rate)
@@ -103,14 +105,14 @@ async def test_embedding_similarity(aclient: AsyncClient, tmp_path: Path) -> Non
     audio_file_2 = tmp_path / "audio_2.wav"
     sf.write(audio_file_2, audio_data_2, sample_rate)
 
-    with open(audio_file_1, "rb") as f:
+    with audio_file_1.open("rb") as f:
         response_1 = await aclient.post(
             "/v1/audio/speech/embedding",
             data={"model": EMBEDDING_MODEL_ID},
             files={"file": ("audio_1.wav", f, "audio/wav")},
         )
 
-    with open(audio_file_2, "rb") as f:
+    with audio_file_2.open("rb") as f:
         response_2 = await aclient.post(
             "/v1/audio/speech/embedding",
             data={"model": EMBEDDING_MODEL_ID},

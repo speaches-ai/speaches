@@ -10,7 +10,7 @@ import time
 from typing import TypedDict
 
 from httpx import AsyncClient
-from openai import NOT_GIVEN, AsyncOpenAI
+from openai import AsyncOpenAI, omit
 from openai.types.audio import SpeechCreateParams, TranscriptionCreateParams
 
 # from openai.types.audio.transcription_create_params import TranscriptionCreateParamsNonStreaming
@@ -302,7 +302,7 @@ async def vad_benchmark_runner(
 
     async def create_vad() -> None:
         start = time.perf_counter()
-        _res = await openai_client._client.post(
+        _res = await openai_client._client.post(  # noqa: SLF001
             "/v1/audio/speech/timestamps",
             data={"model": scenario.request_params["model"]},
             files={"file": file_data},
@@ -348,7 +348,7 @@ async def transcription_benchmark_runner(
         _res = await openai_client.audio.transcriptions.create(
             file=scenario.request_params["file"],
             model=scenario.request_params["model"],
-            language=scenario.request_params.get("language") or NOT_GIVEN,
+            language=scenario.request_params.get("language") or omit,
             # prompt=scenario.request_params["prompt"],
         )
         end = time.perf_counter()

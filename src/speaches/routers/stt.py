@@ -157,7 +157,7 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
     "/v1/audio/transcriptions",
     response_model=str | CreateTranscriptionResponseJson | CreateTranscriptionResponseVerboseJson,
 )
-def transcribe_file(
+def transcribe_file(  # noqa: C901, PLR0912
     config: ConfigDependency,
     executor_registry: ExecutorRegistryDependency,
     request: Request,
