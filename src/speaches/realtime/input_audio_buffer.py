@@ -7,7 +7,7 @@ import time
 from typing import TYPE_CHECKING
 
 import numpy as np
-from openai import omit
+from openai import Omit
 from openai.types.beta.realtime.conversation_item_input_audio_transcription_completed_event import (
     UsageTranscriptTextUsageDuration,
 )
@@ -130,7 +130,7 @@ class InputAudioBufferTranscriber:
             file=file,
             model=self.session.input_audio_transcription.model,
             response_format="text",
-            language=self.session.input_audio_transcription.language or omit,
+            language=self.session.input_audio_transcription.language or Omit(),
         )
         logger.info(f"Transcription generation took {time.perf_counter() - start:.2f} seconds")
         content_item.transcript = transcript
