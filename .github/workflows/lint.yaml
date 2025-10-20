@@ -22,7 +22,6 @@ jobs:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
         with:
-          version: "latest"
           enable-cache: true
           activate-environment: true
       - run: uv python install 3.12
@@ -35,7 +34,6 @@ jobs:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
         with:
-          version: "latest"
           enable-cache: true
           activate-environment: true
       - run: uv python install 3.12
