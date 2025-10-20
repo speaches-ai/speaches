@@ -22,8 +22,9 @@ jobs:
         with:
           enable-cache: true
           activate-environment: true
-      - run: uv python install 3.12
+      - run: uv python install
       - run: uv sync --extra dev
+        # TODO: what is command below for? Is it needed?
       - run: echo "cache_id=$(date --utc '+%V')" >> "$GITHUB_ENV"
       - uses: actions/cache@v4
         with:

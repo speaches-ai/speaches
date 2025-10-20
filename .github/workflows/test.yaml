@@ -29,6 +29,6 @@ jobs:
         with:
           enable-cache: true
           activate-environment: true
-      - run: uv python install 3.12
+      - run: uv python install
       - run: uv sync --all-extras
       - run: uv run pytest -m "not requires_openai" tests/

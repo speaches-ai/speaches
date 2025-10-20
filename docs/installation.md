@@ -114,11 +114,12 @@ docker compose up --detach
     docker build --tag speaches --build-arg BASE_IMAGE=ubuntu:24.04 .
     ```
 
-## Python (requires Python 3.12+ and `uv` package manager)
+## Python (requires `uv` package manager)
 
 ```bash
 git clone https://github.com/speaches-ai/speaches.git
 cd speaches
+uv python install
 uv venv
 source .venv/bin/activate
 uv sync --all-extras
