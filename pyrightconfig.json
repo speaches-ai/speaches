@@ -1,7 +1,6 @@
 {
     "typeCheckingMode": "standard",
     "pythonVersion": "3.12",
-    "pythonPlatform": "Linux",
     "venvPath": ".",
     // https://github.com/DetachHead/basedpyright?tab=readme-ov-file#pre-commit-hook
     "venv": ".venv",
