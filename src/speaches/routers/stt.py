@@ -113,7 +113,7 @@ def translate_file(
     model: Annotated[ModelId, Form()],
     prompt: Annotated[str | None, Form()] = None,
     response_format: Annotated[ResponseFormat, Form()] = DEFAULT_RESPONSE_FORMAT,
-    temperature: Annotated[float, Form()] = 0.0,
+    temperature: Annotated[float | None, Form()] = None,
     stream: Annotated[bool, Form()] = False,
     vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
@@ -128,7 +128,7 @@ def translate_file(
             audio,
             task="translate",
             initial_prompt=prompt,
-            temperature=temperature,
+            temperature=temperature if temperature is not None else [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
             vad_filter=effective_vad_filter,
         )
         segments = TranscriptionSegment.from_faster_whisper_segments(segments)
@@ -166,7 +166,7 @@ def transcribe_file(  # noqa: C901, PLR0912
     language: Annotated[str | None, Form()] = None,
     prompt: Annotated[str | None, Form()] = None,
     response_format: Annotated[ResponseFormat, Form()] = DEFAULT_RESPONSE_FORMAT,
-    temperature: Annotated[float, Form()] = 0.0,
+    temperature: Annotated[float | None, Form()] = None,
     timestamp_granularities: Annotated[
         TimestampGranularities,
         # WARN: `alias` doesn't actually work.
@@ -198,7 +198,7 @@ def transcribe_file(  # noqa: C901, PLR0912
                 language=language,
                 initial_prompt=prompt,
                 word_timestamps="word" in timestamp_granularities,
-                temperature=temperature,
+                temperature=temperature if temperature is not None else [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
                 vad_filter=effective_vad_filter,
                 hotwords=hotwords,
                 without_timestamps=without_timestamps,
