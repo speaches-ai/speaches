@@ -142,6 +142,10 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         request: TranscriptionRequest,
         **_kwargs,
     ) -> NonStreamingTranscriptionResponse:
+        if request.response_format == "diarized_json":
+            raise NotImplementedError(
+                f"'{request.response_format}' response format is not supported for '{request.model}' model."
+            )
         timelog_start = time.perf_counter()
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
@@ -226,6 +230,10 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         request: TranslationRequest,
         **_kwargs,
     ) -> TranslationResponse:
+        if request.response_format == "diarized_json":
+            raise NotImplementedError(
+                f"'{request.response_format}' response format is not supported for '{request.model}' model."
+            )
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
