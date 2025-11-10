@@ -177,3 +177,6 @@ Thumbs.db
 .DS_Store
 
 misc/onnx-export/models/*onnx
+scratchpad.md
+.claude/commands
+*.rttm
