@@ -30,10 +30,10 @@ from speaches.routers.misc import (
 from speaches.routers.models import (
     router as models_router,
 )
-from speaches.routers.realtime.rtc import (
+from speaches.routers.realtime_rtc import (
     router as realtime_rtc_router,
 )
-from speaches.routers.realtime.ws import (
+from speaches.routers.realtime_ws import (
     router as realtime_ws_router,
 )
 from speaches.routers.speech import (

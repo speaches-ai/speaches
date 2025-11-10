@@ -42,7 +42,7 @@ from speaches.realtime.rtc.audio_stream_track import AudioStreamTrack
 from speaches.realtime.session import create_session_object_configuration
 from speaches.realtime.session_event_router import event_router as session_event_router
 from speaches.realtime.utils import generate_event_id
-from speaches.routers.realtime.ws import event_listener
+from speaches.routers.realtime_ws import event_listener
 from speaches.types.realtime import (
     SERVER_EVENT_TYPES,
     ErrorEvent,
