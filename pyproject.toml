@@ -10,8 +10,7 @@ dependencies = [
     "huggingface-hub[hf-transfer]>=0.33.4",
     "kokoro-onnx[gpu]>=0.4.5,<0.5.0",
     "numpy>=2.3.1",
-    "piper-phonemize ; sys_platform == 'linux'",
-    "piper-tts>=1.2.0 ; sys_platform == 'linux'",
+    "piper-tts>=1.3.0",
     "pydantic-settings>=2.10.1",
     "pydantic>=2.11.7",
     "python-multipart>=0.0.10",
@@ -89,16 +88,16 @@ constraint-dependencies = ["llvmlite>=0.40.0"]
 # TODO: create an issue on https://github.com/thewh1teagle/kokoro-onnx regarding this
 override-dependencies = ["onnxruntime-gpu>=1.22.0 ; platform_machine == 'x86_64'", "onnxruntime>=1.22.0 ; platform_machine != 'x86_64'"]
 
-[tool.uv.sources]
-piper-phonemize = [
-  { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
-  { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-]
-
-[[tool.uv.dependency-metadata]]
-name = "piper-tts"
-version = "1.2.0"
-requires-dist = ["piper-phonemize"]
+# [tool.uv.sources]
+# piper-phonemize = [
+#   { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_aarch64.whl", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
+#   { url = "https://github.com/fedirz/piper-phonemize/raw/refs/heads/master/dist/piper_phonemize-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+# ]
+#
+# [[tool.uv.dependency-metadata]]
+# name = "piper-tts"
+# version = "1.2.0"
+# requires-dist = ["piper-phonemize"]
 
 [tool.uv.workspace]
 members = [

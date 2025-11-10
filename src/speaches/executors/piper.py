@@ -1,21 +1,21 @@
-from __future__ import annotations
-
+from collections.abc import Generator
 import json
 import logging
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 import time
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import huggingface_hub
-import numpy as np
 from onnxruntime import InferenceSession
+from piper.config import PiperConfig, SynthesisConfig
+from piper.voice import PiperVoice
 from pydantic import BaseModel, computed_field
 
 from speaches.api_types import Model
 from speaches.audio import Audio
-from speaches.config import OrtOptions  # noqa: TC001
+from speaches.config import OrtOptions
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
-from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse  # noqa: TC001
+from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -24,12 +24,6 @@ from speaches.hf_utils import (
     list_model_files,
 )
 from speaches.model_registry import ModelRegistry
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-    from piper.voice import PiperVoice
-
 
 PiperVoiceQuality = Literal["x_low", "low", "medium", "high"]
 PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
@@ -180,8 +174,6 @@ class PiperModelManager(BaseModelManager["PiperVoice"]):
         self.ort_opts = ort_opts
 
     def _load_fn(self, model_id: str) -> PiperVoice:
-        from piper.voice import PiperConfig, PiperVoice
-
         model_files = piper_model_registry.get_model_files(model_id)
         providers = get_ort_providers_with_options(self.ort_opts)
         inf_sess = InferenceSession(model_files.model, providers=providers)
@@ -199,8 +191,6 @@ class PiperModelManager(BaseModelManager["PiperVoice"]):
         # TODO: maybe check voice
         with self.load_model(request.model) as piper_tts:
             start = time.perf_counter()
-            for audio_bytes in piper_tts.synthesize_stream_raw(request.text, length_scale=1.0 / request.speed):
-                audio_data_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
-                audio_data = audio_data_int16.astype(np.float32) / 32768.0
-                yield Audio(audio_data, sample_rate=piper_tts.config.sample_rate)
-            logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")
+            for audio_chunk in piper_tts.synthesize(request.text, SynthesisConfig(length_scale=1.0 / request.speed)):
+                yield Audio(audio_chunk.audio_float_array, sample_rate=piper_tts.config.sample_rate)
+        logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")
