@@ -1,3 +1,4 @@
+import base64
 import io
 import logging
 from typing import BinaryIO, Self, cast
@@ -113,6 +114,10 @@ class Audio:
         audio_bytes_buffer = io.BytesIO()
         sf.write(audio_bytes_buffer, self.data, samplerate=self.sample_rate, format=audio_format)
         return audio_bytes_buffer.getvalue()
+
+    def to_base64(self) -> str:
+        audio_bytes = self.as_bytes()
+        return base64.b64encode(audio_bytes).decode("utf-8")
 
     def resample(self, target_sample_rate: int) -> Self:
         if self.sample_rate == target_sample_rate:

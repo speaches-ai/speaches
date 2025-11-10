@@ -86,3 +86,35 @@ class CreateEmbeddingResponse(BaseModel):
     """The model used to generate the embeddings."""
     usage: EmbeddingUsage
     """Usage statistics for the API call."""
+
+
+# NOTE: I define these here because they aren't defined in the openai-python package. Once they are added there, we can remove these definitions.
+
+
+class SpeechAudioDeltaEvent(BaseModel):
+    """Emitted for each chunk of audio data generated during speech synthesis."""
+
+    type: Literal["speech.audio.delta"] = "speech.audio.delta"
+    """The type of the event. Always speech.audio.delta."""
+    audio: str
+    """A chunk of Base64-encoded audio data."""
+
+
+class SpeechAudioTokenUsage(BaseModel):
+    """Token usage statistics for the request."""
+
+    input_tokens: int
+    """Number of input tokens in the prompt."""
+    output_tokens: int
+    """Number of output tokens generated."""
+    total_tokens: int
+    """Total number of tokens used (input + output)."""
+
+
+class SpeechAudioDoneEvent(BaseModel):
+    """Emitted when the speech synthesis is complete and all audio has been streamed."""
+
+    type: Literal["speech.audio.done"] = "speech.audio.done"
+    """The type of the event. Always speech.audio.done."""
+    token_usage: SpeechAudioTokenUsage
+    """Token usage statistics for the request."""
