@@ -1,6 +1,8 @@
 import io
 
 from openai import AsyncOpenAI, UnprocessableEntityError
+import openai.types.audio
+import pydub
 import pytest
 import soundfile as sf
 
@@ -147,6 +149,55 @@ async def test_speech_invalid_resample(openai_client: AsyncOpenAI, sample_rate: 
             response_format="wav",
             extra_body={"sample_rate": sample_rate},
         )
+
+
+_OPENAI_SPEECH_MODELS = ("tts-1", "tts-1-hd", "gpt-4o-mini-tts")
+_OPUS_SUPPORTED_SAMPLE_RATES = (8000, 12000, 16000, 24000, 48000)
+_OPUS_PREFERRED_SAMPLE_RATE = 48000
+
+
+@pytest.mark.asyncio
+@pytest.mark.requires_openai
+@pytest.mark.parametrize("speech_model_id", _OPENAI_SPEECH_MODELS)
+async def test_openai_speech_opus_sample_rate(
+    actual_openai_client: AsyncOpenAI, speech_model_id: openai.types.audio.SpeechModel
+) -> None:
+    res = await actual_openai_client.audio.speech.create(
+        model=speech_model_id,
+        voice="alloy",
+        input=DEFAULT_INPUT,
+        response_format="opus",
+    )
+
+    audio_data_bytes = res.content
+
+    # Read opus audio using pydub
+    audio_segment = pydub.AudioSegment.from_file(io.BytesIO(audio_data_bytes), format="ogg", codec="libopus")
+
+    assert audio_segment.frame_rate in _OPUS_SUPPORTED_SAMPLE_RATES
+    assert audio_segment.frame_rate == 48000
+
+
+@pytest.mark.parametrize("pull_model_without_cleanup", [SPEECH_MODEL_ID], indirect=True)
+@pytest.mark.usefixtures("pull_model_without_cleanup")
+@pytest.mark.asyncio
+async def test_speaches_speech_opus_sample_rate(
+    openai_client: AsyncOpenAI,
+) -> None:
+    res = await openai_client.audio.speech.create(
+        model=SPEECH_MODEL_ID,
+        voice=VOICE_ID,
+        input=DEFAULT_INPUT,
+        response_format="opus",
+    )
+
+    audio_data_bytes = res.content
+
+    # Read opus audio using pydub
+    audio_segment = pydub.AudioSegment.from_file(io.BytesIO(audio_data_bytes), format="ogg", codec="libopus")
+
+    assert audio_segment.frame_rate in _OPUS_SUPPORTED_SAMPLE_RATES
+    assert audio_segment.frame_rate == 48000
 
 
 # TODO: add piper tests

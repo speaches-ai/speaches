@@ -1,9 +1,10 @@
 import base64
 import io
 import logging
-from typing import BinaryIO, Self, cast
+from typing import BinaryIO, Literal, Self, cast
 
 import numpy as np
+import pydub
 import soundfile as sf
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,9 @@ def audio_samples_from_file(file: BinaryIO, sample_rate: int) -> np.typing.NDArr
     return cast("np.typing.NDArray[np.float32]", audio_data)
 
 
+_SOUNDFILE_SUPPORTED_AUDIO_FORMATS = ("mp3", "flac", "wav")
+
+
 class Audio:
     def __init__(
         self,
@@ -110,10 +114,30 @@ class Audio:
 
         return audio.tobytes()
 
-    def as_formatted_bytes(self, audio_format: str) -> bytes:
-        audio_bytes_buffer = io.BytesIO()
-        sf.write(audio_bytes_buffer, self.data, samplerate=self.sample_rate, format=audio_format)
-        return audio_bytes_buffer.getvalue()
+    def as_formatted_bytes(self, audio_format: Literal["aac", "pcm", "opus", "mp3", "flac", "wav"] = "pcm") -> bytes:
+        if audio_format == "pcm":
+            return self.as_bytes()
+
+        audio_bytes_output_buffer = io.BytesIO()
+        if audio_format in _SOUNDFILE_SUPPORTED_AUDIO_FORMATS:
+            sf.write(audio_bytes_output_buffer, self.data, samplerate=self.sample_rate, format=audio_format)
+            return audio_bytes_output_buffer.getvalue()
+
+        if audio_format == "aac":
+            pydub_audio_format, codec = "adts", "aac"
+        elif audio_format == "opus":
+            # TODO: OPUS format only supports a limited range of sample rates. Should the audio be resampled first?
+            pydub_audio_format, codec = "ogg", "libopus"
+        audio_bytes = self.as_bytes()
+        pydub_audio_segment = pydub.AudioSegment(
+            data=audio_bytes,
+            sample_width=2,  # 16 bits = 2 bytes
+            frame_rate=self.sample_rate,
+            channels=1,
+        )
+        # TODO: should the bitrate be specified here?
+        pydub_audio_segment.export(audio_bytes_output_buffer, format=pydub_audio_format, codec=codec)
+        return audio_bytes_output_buffer.getvalue()
 
     def to_base64(self) -> str:
         audio_bytes = self.as_bytes()

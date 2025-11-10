@@ -10,7 +10,7 @@ from speaches.api_types import (
     DEFAULT_SPEECH_RESPONSE_FORMAT,
     MAX_SPEECH_SAMPLE_RATE,
     MIN_SPEECH_SAMPLE_RATE,
-    SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS,
+    SUPPORTED_STREAMABLE_SPEECH_RESPONSE_FORMATS,
     SpeechAudioDeltaEvent,
     SpeechAudioDoneEvent,
     SpeechAudioTokenUsage,
@@ -94,7 +94,7 @@ def synthesize(
 
     # HACK: some response formats may not directly map to soundfile formats
     # HACK: some response formats may not directly map to mime types
-    if body.response_format in SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS:
+    if body.response_format not in SUPPORTED_STREAMABLE_SPEECH_RESPONSE_FORMATS:
         audio = Audio.concatenate(list(audio_generator))
         if body.sample_rate is not None:
             audio = audio.resample(body.sample_rate)
@@ -108,6 +108,6 @@ def synthesize(
             if body.sample_rate is not None:
                 audio.resample(body.sample_rate)
 
-            yield audio.as_bytes() if body.response_format == "pcm" else audio.as_formatted_bytes(body.response_format)
+            yield audio.as_formatted_bytes(body.response_format)
 
     return StreamingResponse(resampled_audio_generator(), media_type=f"audio/{body.response_format}")
