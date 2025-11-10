@@ -227,7 +227,7 @@ class AudioChatStream:
 
 # https://platform.openai.com/docs/api-reference/chat/create
 @router.post("/v1/chat/completions", response_model=ChatCompletion | ChatCompletionChunk)
-async def handle_completions(  # noqa: C901
+async def handle_completions(
     chat_completion_client: CompletionClientDependency,
     transcription_client: TranscriptionClientDependency,
     speech_client: SpeechClientDependency,

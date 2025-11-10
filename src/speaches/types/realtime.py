@@ -143,7 +143,7 @@ class BaseConversationItem(BaseModel):
     @model_validator(mode="before")
     @classmethod
     # HACK: this is a workaround for `ConversationItemCreateEvent` as clients would rarely provide the status field causing a `ValidationError` to be raised. A `model_validator` is used instead of providing a default value because I want to bet getting typing errors from pyright if the field is not provided within the server code.
-    def add_default_status_value(cls, data: Any) -> Any:  # noqa: ANN401
+    def add_default_status_value(cls, data: Any) -> Any:
         if isinstance(data, dict) and "status" not in data:
             logger.warning(f"ConversationItem: {data} is missing 'status' field. Defaulting to 'completed'.")
             data["status"] = "completed"

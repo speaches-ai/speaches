@@ -9,16 +9,19 @@ ignore = [
     "FIX",
     "TD", # disable todo warnings
     "ERA",  # allow commented out code
-    "ANN003", # missing kwargs
+    "ANN002", # missing args type annotation
+    "ANN003", # missing kwargs type annotation
+    "ANN401", # allow any
     "B006",
     "B008",
     "COM812", # trailing comma
-    "D10",  # disabled required docstrings
-    "D401",
+    "C90", # https://docs.astral.sh/ruff/rules/#mccabe-c90
+    "D",  # disable docstring warnings
+    "EM101",
     "EM102",
     "FBT001",
     "FBT002",
-    "PLR0913",
+    "PLR09",
     "PLR2004", # magic
     "RET504",
     "RET505",

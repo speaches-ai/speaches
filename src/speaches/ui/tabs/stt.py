@@ -19,7 +19,7 @@ TRANSLATION_ENDPOINT = "/v1/audio/translations"
 DEFAULT_RESPONSE_FORMAT: ResponseFormat = "text"
 
 
-def create_stt_tab(config: Config) -> None:  # noqa: C901, PLR0915
+def create_stt_tab(config: Config) -> None:
     async def update_whisper_model_dropdown(request: gr.Request) -> gr.Dropdown:
         openai_client = openai_client_from_gradio_req(request, config)
         models = (await openai_client.models.list()).data

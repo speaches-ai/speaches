@@ -198,7 +198,7 @@ async def create_text_audio_stream_reply(
 # )
 
 
-def create_audio_chat_tab(config: Config) -> None:  # noqa: C901
+def create_audio_chat_tab(config: Config) -> None:
     async def create_reply(
         message: GradioMessage,
         _history: list[gr.ChatMessage],

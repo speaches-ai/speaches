@@ -105,7 +105,7 @@ class SelfDisposingModel[T]:
             assert self.model is not None
             return self.model
 
-    def __exit__(self, *_args) -> None:  # noqa: ANN002
+    def __exit__(self, *_args) -> None:
         self._decrement_ref()
 
 

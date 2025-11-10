@@ -221,23 +221,23 @@ def datachannel_handler(ctx: SessionContext, channel: RTCDataChannel) -> None:
     channel.on("message")(lambda message: message_handler(ctx, message))
 
     @channel.on("open")
-    def _handle_datachannel_open(*args, **kwargs) -> None:  # noqa: ANN002
+    def _handle_datachannel_open(*args, **kwargs) -> None:
         logger.info(f"Data channel opened: {channel.id} (args={args}, kwargs={kwargs})")
 
     @channel.on("close")
-    def _handle_datachannel_close(*args, **kwargs) -> None:  # noqa: ANN002
+    def _handle_datachannel_close(*args, **kwargs) -> None:
         logger.info(f"Data channel closed: {channel.id} (args={args}, kwargs={kwargs})")
 
     @channel.on("closing")
-    def _handle_datachannel_closing(*args, **kwargs) -> None:  # noqa: ANN002
+    def _handle_datachannel_closing(*args, **kwargs) -> None:
         logger.info(f"Data channel closing: {channel.id} (args={args}, kwargs={kwargs})")
 
     @channel.on("error")
-    def _handle_datachannel_error(*args, **kwargs) -> None:  # noqa: ANN002
+    def _handle_datachannel_error(*args, **kwargs) -> None:
         logger.error(f"Data channel error: {channel.id} (args={args}, kwargs={kwargs})")
 
     @channel.on("bufferedamountlow")
-    def _handle_datachannel_bufferedamountlow(*args, **kwargs) -> None:  # noqa: ANN002
+    def _handle_datachannel_bufferedamountlow(*args, **kwargs) -> None:
         logger.info(f"Data channel buffered amount low: {channel.id} (args={args}, kwargs={kwargs})")
 
 

@@ -18,7 +18,7 @@ class TextChunker(Protocol):
     async def __aiter__(self) -> AsyncGenerator[str]:
         """Iterate through chunks of text.
         Different implementations may chunk text differently.
-        """  # noqa: D205
+        """
         yield ""
 
 
@@ -81,7 +81,7 @@ class SentenceChunker:
     def add_token(self, token: str) -> None:
         """Add a token (text chunk) to the chunker."""
         if self._is_closed:
-            raise RuntimeError("Cannot add tokens to a closed SentenceChunker")  # noqa: EM101
+            raise RuntimeError("Cannot add tokens to a closed SentenceChunker")
 
         self._content += token
         self._new_token_event.set()
@@ -192,7 +192,7 @@ class EOFTextChunker:
     def add_token(self, token: str) -> None:
         """Add a token (text chunk) to the chunker."""
         if self._is_closed:
-            raise RuntimeError("Cannot add tokens to a closed EOFTextChunker")  # noqa: EM101
+            raise RuntimeError("Cannot add tokens to a closed EOFTextChunker")
 
         self._content += token
         self._new_token_event.set()

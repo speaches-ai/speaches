@@ -31,10 +31,10 @@ class BaseMessageManager(abc.ABC):
         self.event_pubsub = event_pubsub
 
     @abc.abstractmethod
-    async def receiver(self, ws: Any) -> None: ...  # noqa: ANN401
+    async def receiver(self, ws: Any) -> None: ...
 
     @abc.abstractmethod
-    async def sender(self, ws: Any) -> None: ...  # noqa: ANN401
+    async def sender(self, ws: Any) -> None: ...
 
     async def wait_for(self, event_type: str) -> Event:
         q = self.event_pubsub.subscribe()
@@ -46,7 +46,7 @@ class BaseMessageManager(abc.ABC):
         finally:
             self.event_pubsub.subscribers.remove(q)
 
-    async def run(self, ws: Any) -> None:  # noqa: ANN401
+    async def run(self, ws: Any) -> None:
         async with asyncio.TaskGroup() as tg:
             receiver_task = tg.create_task(self.receiver(ws), name="receiver")
             sender_task = tg.create_task(self.sender(ws), name="sender")

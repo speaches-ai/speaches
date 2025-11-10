@@ -38,13 +38,13 @@ class AudioStreamTrack(MediaStreamTrack):
     async def recv(self) -> AudioFrame:
         """Receive the next audio frame."""
         if not self._running:
-            raise MediaStreamError("Track has ended")  # noqa: EM101
+            raise MediaStreamError("Track has ended")
 
         try:
             frame = await self.frame_queue.get()
             await asyncio.sleep(FRAME_DELAY)
         except asyncio.CancelledError as e:
-            raise MediaStreamError("Track has ended") from e  # noqa: EM101
+            raise MediaStreamError("Track has ended") from e
         else:
             return frame
 

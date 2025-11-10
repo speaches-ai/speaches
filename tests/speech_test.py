@@ -22,7 +22,7 @@ DEFAULT_INPUT = "Hello, world!"
 async def test_create_speech_formats(openai_client: AsyncOpenAI, response_format: SpeechResponseFormat) -> None:
     await openai_client.audio.speech.create(
         model=SPEECH_MODEL_ID,
-        voice=VOICE_ID,  # type: ignore  # noqa: PGH003
+        voice=VOICE_ID,
         input=DEFAULT_INPUT,
         response_format=response_format,
     )
@@ -44,7 +44,7 @@ GOOD_MODEL_VOICE_PAIRS: list[tuple[str, str]] = [
 async def test_create_speech_good_model_voice_pair(openai_client: AsyncOpenAI, model: str, voice: str) -> None:
     await openai_client.audio.speech.create(
         model=model,
-        voice=voice,  # type: ignore  # noqa: PGH003
+        voice=voice,
         input=DEFAULT_INPUT,
         response_format=DEFAULT_SPEECH_RESPONSE_FORMAT,
     )
@@ -66,7 +66,7 @@ BAD_MODEL_VOICE_PAIRS: list[tuple[str, str]] = [
 #     with pytest.raises((UnprocessableEntityError, APIConnectionError)):
 #         await openai_client.audio.speech.create(
 #             model=model,
-#             voice=voice,  # type: ignore  # noqa: PGH003
+#             voice=voice,
 #             input=DEFAULT_INPUT,
 #             response_format=DEFAULT_RESPONSE_FORMAT,
 #         )
@@ -83,7 +83,7 @@ async def test_create_speech_with_varying_speed(openai_client: AsyncOpenAI) -> N
     for speed in SUPPORTED_SPEEDS:
         res = await openai_client.audio.speech.create(
             model=SPEECH_MODEL_ID,
-            voice=VOICE_ID,  # type: ignore  # noqa: PGH003
+            voice=VOICE_ID,
             input=DEFAULT_INPUT,
             response_format="pcm",
             speed=speed,
@@ -105,7 +105,7 @@ async def test_create_speech_with_unsupported_speed(openai_client: AsyncOpenAI, 
     with pytest.raises(UnprocessableEntityError):
         await openai_client.audio.speech.create(
             model=SPEECH_MODEL_ID,
-            voice=VOICE_ID,  # type: ignore  # noqa: PGH003
+            voice=VOICE_ID,
             input=DEFAULT_INPUT,
             response_format="pcm",
             speed=speed,
@@ -122,7 +122,7 @@ VALID_SAMPLE_RATES = [16000, 22050, 24000, 48000]
 async def test_speech_valid_resample(openai_client: AsyncOpenAI, sample_rate: int) -> None:
     res = await openai_client.audio.speech.create(
         model=SPEECH_MODEL_ID,
-        voice=VOICE_ID,  # type: ignore  # noqa: PGH003
+        voice=VOICE_ID,
         input=DEFAULT_INPUT,
         response_format="wav",
         extra_body={"sample_rate": sample_rate},
@@ -142,7 +142,7 @@ async def test_speech_invalid_resample(openai_client: AsyncOpenAI, sample_rate: 
     with pytest.raises(UnprocessableEntityError):
         await openai_client.audio.speech.create(
             model=SPEECH_MODEL_ID,
-            voice=VOICE_ID,  # type: ignore  # noqa: PGH003
+            voice=VOICE_ID,
             input=DEFAULT_INPUT,
             response_format="wav",
             extra_body={"sample_rate": sample_rate},

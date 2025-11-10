@@ -26,7 +26,7 @@ class APIProxyError(Exception):
         hint: str | None = None,
         suggestions: list[str] | None = None,
         status_code: int = 500,
-        debug: Any = None,  # noqa: ANN401
+        debug: Any = None,
         error_id: str | None = None,
         timestamp: str | None = None,
     ) -> None:

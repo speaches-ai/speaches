@@ -67,7 +67,7 @@ def create_completion_params(
     )
 
 
-def conversation_item_to_chat_message(  # noqa: PLR0911
+def conversation_item_to_chat_message(
     item: ConversationItem,
 ) -> ChatCompletionMessageParam | None:
     match item.type:
