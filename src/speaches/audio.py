@@ -1,13 +1,20 @@
 import io
 import logging
-from typing import BinaryIO
+from typing import BinaryIO, cast
 
 import numpy as np
 import soundfile as sf
 
-SAMPLES_PER_SECOND = 16000
-
 logger = logging.getLogger(__name__)
+
+
+# NOTE: `signal.resample_poly` **might** be a better option for resampling audio data
+def resample_audio_data(
+    data: np.typing.NDArray[np.float32], sample_rate: int, target_sample_rate: int
+) -> np.typing.NDArray[np.float32]:
+    ratio = target_sample_rate / sample_rate
+    target_length = int(len(data) * ratio)
+    return np.interp(np.linspace(0, len(data), target_length), np.arange(len(data)), data).astype(np.float32)
 
 
 # aip 'Write a function `resample_audio` which would take in RAW PCM 16-bit signed, little-endian audio data represented as bytes (`audio_bytes`) and resample it (either downsample or upsample) from `sample_rate` to `target_sample_rate` using numpy'
@@ -44,18 +51,17 @@ def convert_audio_format(
     return converted_audio_bytes_buffer.getvalue()
 
 
-def audio_samples_from_file(file: BinaryIO) -> np.typing.NDArray[np.float32]:
-    audio_and_sample_rate = sf.read(
+def audio_samples_from_file(file: BinaryIO, sample_rate: int) -> np.typing.NDArray[np.float32]:
+    audio_data, _sample_rate = sf.read(
         file,
         format="RAW",
         channels=1,
-        samplerate=SAMPLES_PER_SECOND,
+        samplerate=sample_rate,
         subtype="PCM_16",
         dtype="float32",
         endian="LITTLE",
     )
-    audio = audio_and_sample_rate[0]
-    return audio  # pyright: ignore[reportReturnType]
+    return cast("np.typing.NDArray[np.float32]", audio_data)
 
 
 class Audio:

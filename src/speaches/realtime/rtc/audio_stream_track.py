@@ -8,9 +8,8 @@ from av.audio.frame import AudioFrame
 import numpy as np
 from openai.types.beta.realtime import ResponseAudioDeltaEvent
 
-from speaches.audio import audio_samples_from_file
+from speaches.audio import audio_samples_from_file, resample_audio_data
 from speaches.realtime.context import SessionContext
-from speaches.realtime.input_audio_buffer_event_router import resample_audio_data
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +57,7 @@ class AudioStreamTrack(MediaStreamTrack):
                     return
 
                 # copied from `input_audio_buffer.append` handler
-                audio_array = audio_samples_from_file(io.BytesIO(base64.b64decode(event.delta)))
+                audio_array = audio_samples_from_file(io.BytesIO(base64.b64decode(event.delta)), sample_rate=24000)
                 audio_array = resample_audio_data(audio_array, 24000, 48000)
 
                 # Convert to int16 if not already
