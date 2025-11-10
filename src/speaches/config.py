@@ -69,6 +69,13 @@ class Config(BaseSettings):
     0: Unload the model immediately after usage.
     """
 
+    vad_model_ttl: int = Field(default=-1, ge=-1)
+    """
+    Time in seconds until a voice activation detection (VAD) model is unloaded after last usage.
+    -1: Never unload the model.
+    0: Unload the model immediately after usage.
+    """
+
     api_key: SecretStr | None = None
     """
     If set, the API key will be required for all requests.

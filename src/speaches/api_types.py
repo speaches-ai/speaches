@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ModelTask = Literal["automatic-speech-recognition", "text-to-speech", "speaker-embedding"]
+ModelTask = Literal["automatic-speech-recognition", "text-to-speech", "speaker-embedding", "voice-activity-detection"]
 
 # https://platform.openai.com/docs/api-reference/audio/createSpeech#audio-createspeech-response_format
 DEFAULT_SPEECH_RESPONSE_FORMAT = "mp3"

@@ -23,6 +23,7 @@ OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_WHISPER_CONFIG = WhisperConfig()
 DEFAULT_STT_TTL = 0
 DEFAULT_TTS_TTL = 0
+DEFAULT_VAD_TTL = 0
 api_key = os.getenv("OPENAI_API_KEY")
 if api_key is None:
     api_key = "cant-be-empty"  # HACK
@@ -30,6 +31,7 @@ DEFAULT_CONFIG = Config(
     whisper=DEFAULT_WHISPER_CONFIG,
     stt_model_ttl=DEFAULT_STT_TTL,
     tts_model_ttl=DEFAULT_TTS_TTL,
+    vad_model_ttl=DEFAULT_VAD_TTL,
     # disable the UI as it slightly increases the app startup time due to the imports it's doing
     enable_ui=False,
     chat_completion_base_url="https://api.openai.com/v1",

@@ -31,7 +31,7 @@ async def test_model_unloaded_after_ttl(aclient_factory: AclientFactory) -> None
 @pytest.mark.asyncio
 async def test_ttl_resets_after_usage(aclient_factory: AclientFactory) -> None:
     ttl = 5
-    config = Config(stt_model_ttl=ttl, enable_ui=False)
+    config = Config(stt_model_ttl=ttl, enable_ui=False, vad_model_ttl=0)
     async with aclient_factory(config) as aclient:
         await aclient.post(f"/api/ps/{MODEL_ID}")
         res = (await aclient.get("/api/ps")).json()
@@ -75,7 +75,7 @@ async def test_ttl_resets_after_usage(aclient_factory: AclientFactory) -> None:
 @pytest.mark.asyncio
 async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory) -> None:
     ttl = 0
-    config = Config(stt_model_ttl=ttl, enable_ui=False)
+    config = Config(stt_model_ttl=ttl, enable_ui=False, vad_model_ttl=ttl)
     async with aclient_factory(config) as aclient:
         async with await anyio.open_file("audio.wav", "rb") as f:
             data = await f.read()
@@ -85,7 +85,8 @@ async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory)
                 "/v1/audio/transcriptions", files={"file": ("audio.wav", data, "audio/wav")}, data={"model": MODEL_ID}
             )
         )
-        await asyncio.sleep(0.1)  # wait for the server to start processing the request
+        # wait for the server to start processing the request. NOTE: this used to be 0.1 but I had to increase it to 0.25 since now a VAD model is loader prior to STT
+        await asyncio.sleep(0.25)
         res = await aclient.delete(f"/api/ps/{MODEL_ID}")
         assert res.status_code == 409, res.text
 
@@ -99,7 +100,7 @@ async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory)
 @pytest.mark.asyncio
 async def test_model_cant_be_loaded_twice(aclient_factory: AclientFactory) -> None:
     ttl = -1
-    config = Config(stt_model_ttl=ttl, enable_ui=False)
+    config = Config(stt_model_ttl=ttl, enable_ui=False, vad_model_ttl=0)
     async with aclient_factory(config) as aclient:
         res = await aclient.post(f"/api/ps/{MODEL_ID}")
         assert res.status_code == 201
@@ -114,7 +115,7 @@ async def test_model_cant_be_loaded_twice(aclient_factory: AclientFactory) -> No
 @pytest.mark.asyncio
 async def test_model_is_unloaded_after_request_when_ttl_is_zero(aclient_factory: AclientFactory) -> None:
     ttl = 0
-    config = Config(stt_model_ttl=ttl, enable_ui=False)
+    config = Config(stt_model_ttl=ttl, enable_ui=False, vad_model_ttl=ttl)
     async with aclient_factory(config) as aclient:
         async with await anyio.open_file("audio.wav", "rb") as f:
             data = await f.read()

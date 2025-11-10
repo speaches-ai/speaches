@@ -11,6 +11,7 @@ from openai import AsyncOpenAI
 
 from speaches.dependencies import (
     ConfigDependency,
+    ExecutorRegistryDependency,
     TranscriptionClientDependency,
 )
 from speaches.realtime.context import SessionContext
@@ -58,6 +59,7 @@ async def realtime(
     model: str,
     config: ConfigDependency,
     transcription_client: TranscriptionClientDependency,
+    executor_registry: ExecutorRegistryDependency,
     intent: str = "conversation",
     language: str | None = None,
     transcription_model: str | None = None,
@@ -92,6 +94,7 @@ async def realtime(
     ctx = SessionContext(
         transcription_client=transcription_client,
         completion_client=completion_client,
+        vad_model_manager=executor_registry.vad.model_manager,
         session=create_session_object_configuration(model, intent, language, transcription_model),
     )
     message_manager = WsServerMessageManager(ctx.pubsub)

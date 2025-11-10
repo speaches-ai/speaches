@@ -3,14 +3,13 @@ from io import BytesIO
 import logging
 from typing import Literal
 
-from faster_whisper.transcribe import get_speech_timestamps
-from faster_whisper.vad import VadOptions
 import numpy as np
 from numpy.typing import NDArray
 import openai
 from openai.types.beta.realtime.error_event import Error
 
 from speaches.audio import audio_samples_from_file
+from speaches.executors.silero_vad_v5 import VadOptions, get_speech_timestamps, to_ms_speech_timestamps
 from speaches.realtime.context import SessionContext
 from speaches.realtime.event_router import EventRouter
 from speaches.realtime.input_audio_buffer import (
@@ -54,22 +53,15 @@ def resample_audio_data(data: NDArray[np.float32], sample_rate: int, target_samp
     return np.interp(np.linspace(0, len(data), target_length), np.arange(len(data)), data).astype(np.float32)
 
 
-# TODO: also found in src/speaches/routers/vad.py. Remove duplication
-def to_ms_speech_timestamps(speech_timestamps: list[SpeechTimestamp]) -> list[SpeechTimestamp]:
-    for i in range(len(speech_timestamps)):
-        speech_timestamps[i]["start"] = speech_timestamps[i]["start"] // MS_SAMPLE_RATE
-        speech_timestamps[i]["end"] = speech_timestamps[i]["end"] // MS_SAMPLE_RATE
-    return speech_timestamps
-
-
 def vad_detection_flow(
-    input_audio_buffer: InputAudioBuffer, turn_detection: TurnDetection
+    input_audio_buffer: InputAudioBuffer, turn_detection: TurnDetection, ctx: SessionContext
 ) -> InputAudioBufferSpeechStartedEvent | InputAudioBufferSpeechStoppedEvent | None:
     audio_window = input_audio_buffer.data[-MAX_VAD_WINDOW_SIZE_SAMPLES:]
 
     speech_timestamps = to_ms_speech_timestamps(
         get_speech_timestamps(
             audio_window,
+            model_manager=ctx.vad_model_manager,
             vad_options=VadOptions(
                 threshold=turn_detection.threshold,
                 min_silence_duration_ms=turn_detection.silence_duration_ms,
@@ -87,7 +79,7 @@ def vad_detection_flow(
         if speech_timestamp is None:
             return None
         input_audio_buffer.vad_state.audio_start_ms = (
-            input_audio_buffer.duration_ms - len(audio_window) // MS_SAMPLE_RATE + speech_timestamp["start"]
+            input_audio_buffer.duration_ms - len(audio_window) // MS_SAMPLE_RATE + speech_timestamp.start
         )
         return InputAudioBufferSpeechStartedEvent(
             item_id=input_audio_buffer.id,
@@ -105,7 +97,7 @@ def vad_detection_flow(
                 audio_end_ms=input_audio_buffer.vad_state.audio_end_ms,
             )
 
-        elif speech_timestamp["end"] < 3000 and input_audio_buffer.duration_ms > 3000:  # FIX: magic number
+        elif speech_timestamp.end < 3000 and input_audio_buffer.duration_ms > 3000:  # FIX: magic number
             input_audio_buffer.vad_state.audio_end_ms = (
                 input_audio_buffer.duration_ms - turn_detection.prefix_padding_ms
             )
@@ -130,7 +122,7 @@ def handle_input_audio_buffer_append(ctx: SessionContext, event: InputAudioBuffe
     input_audio_buffer = ctx.input_audio_buffers[input_audio_buffer_id]
     input_audio_buffer.append(audio_chunk)
     if ctx.session.turn_detection is not None:
-        vad_event = vad_detection_flow(input_audio_buffer, ctx.session.turn_detection)
+        vad_event = vad_detection_flow(input_audio_buffer, ctx.session.turn_detection, ctx)
         if vad_event is not None:
             ctx.pubsub.publish_nowait(vad_event)
 

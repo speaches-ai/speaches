@@ -19,7 +19,6 @@ from speaches.api_types import (
 )
 from speaches.dependencies import (
     AudioFileDependency,
-    ConfigDependency,
     ExecutorRegistryDependency,
 )
 from speaches.executors.shared.handler_protocol import (
@@ -28,7 +27,9 @@ from speaches.executors.shared.handler_protocol import (
     TranscriptionRequest,
     TranslationRequest,
     TranslationResponse,
+    VadRequest,
 )
+from speaches.executors.silero_vad_v5 import VadOptions
 from speaches.model_aliases import ModelId
 from speaches.routers.utils import find_executor_for_model_or_raise, get_model_card_data_or_raise
 from speaches.text_utils import format_as_sse
@@ -42,6 +43,9 @@ RESPONSE_FORMATS = ("text", "json", "verbose_json", "srt", "vtt")
 
 # https://platform.openai.com/docs/api-reference/audio/createTranscription#audio-createtranscription-response_format
 DEFAULT_RESPONSE_FORMAT: ResponseFormat = "json"
+
+# NOTE: copied from `faster_whisper.transcribe`
+DEFAULT_VAD_OPTIONS = VadOptions(min_silence_duration_ms=160, max_speech_duration_s=30)
 
 
 def translation_response_to_http_response(res: TranslationResponse) -> Response:  # noqa: RET503
@@ -57,25 +61,27 @@ def translation_response_to_http_response(res: TranslationResponse) -> Response:
     response_model=str | openai.types.audio.Translation | openai.types.audio.TranslationVerbose,
 )
 def translate_file(
-    config: ConfigDependency,
     executor_registry: ExecutorRegistryDependency,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
     prompt: Annotated[str | None, Form()] = None,
     response_format: Annotated[ResponseFormat, Form()] = DEFAULT_RESPONSE_FORMAT,
     temperature: Annotated[float, Form()] = 0.0,
-    vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response:
-    effective_vad_filter = config._unstable_vad_filter if vad_filter is None else vad_filter  # noqa: SLF001
     model_card_data = get_model_card_data_or_raise(model)
     executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.translation)
+
+    vad_request = VadRequest(audio_data=audio, vad_options=DEFAULT_VAD_OPTIONS)
+    speech_segments = executor_registry.vad.model_manager.handle_vad_request(vad_request)
+
     translation_request = TranslationRequest(
         audio_data=audio,
         model=model,
         prompt=prompt,
         response_format=response_format,
         temperature=temperature,
-        vad_filter=effective_vad_filter,
+        speech_segments=speech_segments,
+        vad_options=DEFAULT_VAD_OPTIONS,
     )
     res = executor.model_manager.handle_translation_request(translation_request)
     return translation_response_to_http_response(res)
@@ -116,7 +122,6 @@ def transcription_response_to_http_response(
     response_model=str | openai.types.audio.Transcription | openai.types.audio.TranscriptionVerbose,
 )
 def transcribe_file(
-    config: ConfigDependency,
     executor_registry: ExecutorRegistryDependency,
     request: Request,
     audio: AudioFileDependency,
@@ -133,12 +138,8 @@ def transcribe_file(
     stream: Annotated[bool, Form()] = False,
     # non standard parameters
     hotwords: Annotated[str | None, Form()] = None,
-    vad_filter: Annotated[bool | None, Form()] = None,
     without_timestamps: Annotated[bool, Form()] = True,
 ) -> Response | StreamingResponse:
-    # Use config default if vad_filter not explicitly provided
-    effective_vad_filter = vad_filter if vad_filter is not None else config._unstable_vad_filter  # noqa: SLF001
-
     timestamp_granularities = asyncio.run(get_timestamp_granularities(request))
     if timestamp_granularities != DEFAULT_TIMESTAMP_GRANULARITIES and response_format != "verbose_json":
         logger.warning(
@@ -152,6 +153,9 @@ def transcribe_file(
         model, transcription_model_card_data, executor_registry.transcription
     )
 
+    vad_request = VadRequest(audio_data=audio, vad_options=DEFAULT_VAD_OPTIONS)
+    speech_segments = executor_registry.vad.model_manager.handle_vad_request(vad_request)
+
     transcription_request = TranscriptionRequest(
         audio_data=audio,
         model=model,
@@ -162,11 +166,10 @@ def transcribe_file(
         timestamp_granularities=timestamp_granularities,
         stream=stream,
         hotwords=hotwords,
-        vad_filter=effective_vad_filter,
+        speech_segments=speech_segments,
+        vad_options=DEFAULT_VAD_OPTIONS,
         without_timestamps=without_timestamps,
     )
     res = transcription_executor.model_manager.handle_transcription_request(transcription_request)
-    print("yooo")
-    logger.error(f"{res=}")
     http_res = transcription_response_to_http_response(res)
     return http_res

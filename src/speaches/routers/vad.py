@@ -9,41 +9,22 @@ from fastapi import (
     APIRouter,
     Form,
 )
-from faster_whisper.vad import VadOptions, get_speech_timestamps
-from pydantic import BaseModel
 
-from speaches.dependencies import AudioFileDependency
+from speaches.dependencies import AudioFileDependency, ExecutorRegistryDependency
+from speaches.executors.shared.handler_protocol import VadRequest
+from speaches.executors.silero_vad_v5 import MODEL_ID, SAMPLE_RATE, SpeechTimestamp, VadOptions, to_ms_speech_timestamps
 from speaches.model_aliases import ModelId
-
-# NOTE: this should match the default value in `decode_audio` which gets called by `AudioFileDependency`
-SAMPLE_RATE = 16000
-MS_SAMPLE_RATE = SAMPLE_RATE // 1000
-MODEL_ID = "silero_vad_v5"
-
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["voice-activity-detection"])
 
 
-class SpeechTimestamp(BaseModel):
-    start: int
-    end: int
-
-
-def to_ms_speech_timestamps(speech_timestamps: list[SpeechTimestamp]) -> list[SpeechTimestamp]:
-    for i in range(len(speech_timestamps)):
-        speech_timestamps[i].start = speech_timestamps[i].start // MS_SAMPLE_RATE
-        speech_timestamps[i].end = speech_timestamps[i].end // MS_SAMPLE_RATE
-    return speech_timestamps
-
-
 # TODO: adapt parameter names from here https://platform.openai.com/docs/api-reference/realtime-sessions/create#realtime-sessions-create-turn_detection
-# TODO: use model manager
-# TODO: use CudaExecutionProvider
 @router.post("/v1/audio/speech/timestamps")
 def detect_speech_timestamps(
     audio: AudioFileDependency,
+    executor_registry: ExecutorRegistryDependency,
     model: Annotated[ModelId, Form()] = MODEL_ID,
     threshold: Annotated[
         float,
@@ -90,6 +71,7 @@ def detect_speech_timestamps(
     ] = 0,
 ) -> list[SpeechTimestamp]:
     assert model == MODEL_ID, f"Only '{MODEL_ID}' model is supported"
+
     vad_options = VadOptions(
         threshold=threshold,
         neg_threshold=neg_threshold,  # pyright: ignore[reportArgumentType]
@@ -98,10 +80,10 @@ def detect_speech_timestamps(
         min_silence_duration_ms=min_silence_duration_ms,
         speech_pad_ms=speech_pad_ms,
     )
-    speech_timestamps = to_ms_speech_timestamps(
-        [
-            SpeechTimestamp.model_validate(x)
-            for x in get_speech_timestamps(audio, vad_options=vad_options, sampling_rate=SAMPLE_RATE)
-        ]
-    )
+
+    vad_request = VadRequest(audio_data=audio, model_id=model, vad_options=vad_options, sampling_rate=SAMPLE_RATE)
+
+    speech_timestamps_raw = executor_registry.vad.model_manager.handle_vad_request(vad_request)
+
+    speech_timestamps = to_ms_speech_timestamps(speech_timestamps_raw)
     return speech_timestamps

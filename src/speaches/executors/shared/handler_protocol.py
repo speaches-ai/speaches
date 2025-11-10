@@ -6,8 +6,7 @@ import openai.types.audio
 from pydantic import BaseModel, ConfigDict
 
 from speaches.api_types import SpeechResponseFormat, TimestampGranularities
-
-# TODO: add `VadHandler`
+from speaches.executors.silero_vad_v5 import SpeechTimestamp, VadOptions
 
 MimeType = str
 
@@ -46,6 +45,19 @@ class SpeechHandler(Protocol):
     def handle_speech_request(self, request: SpeechRequest, **kwargs) -> SpeechResponse: ...
 
 
+class VadRequest(BaseModel):
+    audio_data: np.typing.NDArray[np.float32]
+    vad_options: VadOptions
+    model_id: str = "silero_vad_v5"
+    sampling_rate: int = 16000
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class VadHandler(Protocol):
+    def handle_vad_request(self, request: VadRequest, **kwargs) -> list[SpeechTimestamp]: ...
+
+
 class TranscriptionRequest(BaseModel):
     audio_data: np.typing.NDArray[np.float32]
     model: str
@@ -56,7 +68,8 @@ class TranscriptionRequest(BaseModel):
     temperature: float = 0.0
     hotwords: str | None = None
     timestamp_granularities: TimestampGranularities
-    vad_filter: bool = False
+    speech_segments: list[SpeechTimestamp]
+    vad_options: VadOptions
     without_timestamps: bool = True
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -94,7 +107,8 @@ class TranslationRequest(BaseModel):
     prompt: str | None = None
     response_format: openai.types.AudioResponseFormat = "json"
     temperature: float = 0.0
-    vad_filter: bool = False
+    speech_segments: list[SpeechTimestamp]
+    vad_options: VadOptions
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

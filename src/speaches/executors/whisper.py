@@ -19,6 +19,7 @@ from speaches.executors.shared.handler_protocol import (  # noqa: TC001
     TranslationRequest,
     TranslationResponse,
 )
+from speaches.executors.silero_vad_v5 import merge_segments
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 
 LIBRARY_NAME = "ctranslate2"
 TASK_NAME_TAG = "automatic-speech-recognition"
+
 logger = logging.getLogger(__name__)
 
 hf_model_filter = HfModelFilter(
@@ -144,6 +146,10 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
+            clip_timestamps = merge_segments(
+                request.speech_segments,
+                request.vad_options,
+            )
             segments, transcription_info = whisper_model.transcribe(
                 request.audio_data,
                 task="transcribe",
@@ -151,7 +157,8 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 initial_prompt=request.prompt,
                 word_timestamps="word" in request.timestamp_granularities,
                 temperature=request.temperature,
-                vad_filter=request.vad_filter,
+                vad_filter=False,
+                clip_timestamps=clip_timestamps,  # pyright: ignore[reportArgumentType]
                 hotwords=request.hotwords,
                 without_timestamps=request.without_timestamps,
             )
@@ -171,14 +178,16 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
     def handle_streaming_transcription_request(
         self,
         request: TranscriptionRequest,
-        *,
-        use_batch_inference_pipeline: bool | None = None,
         **_kwargs,
     ) -> Generator[StreamingTranscriptionEvent]:
         timelog_start = time.perf_counter()
         with self.load_model(request.model) as whisper:
-            whisper_model = BatchedInferencePipeline(model=whisper) if use_batch_inference_pipeline else whisper
+            whisper_model = BatchedInferencePipeline(model=whisper)
 
+            clip_timestamps = merge_segments(
+                request.speech_segments,
+                request.vad_options,
+            )
             segments, _transcription_info = whisper_model.transcribe(
                 request.audio_data,
                 task="transcribe",
@@ -186,7 +195,8 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 initial_prompt=request.prompt,
                 word_timestamps="word" in request.timestamp_granularities,
                 temperature=request.temperature,
-                vad_filter=request.vad_filter,
+                vad_filter=False,
+                clip_timestamps=clip_timestamps,  # pyright: ignore[reportArgumentType]
                 hotwords=request.hotwords,
                 without_timestamps=request.without_timestamps,
             )
