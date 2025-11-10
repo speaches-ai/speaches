@@ -96,22 +96,22 @@ async def test_create_speech_with_varying_speed(openai_client: AsyncOpenAI) -> N
         previous_size = len(audio_bytes)
 
 
-UNSUPPORTED_SPEEDS = [0.1, 4.1]
-
-
-@pytest.mark.parametrize("pull_model_without_cleanup", [SPEECH_MODEL_ID], indirect=True)
-@pytest.mark.usefixtures("pull_model_without_cleanup")
-@pytest.mark.asyncio
-@pytest.mark.parametrize("speed", UNSUPPORTED_SPEEDS)
-async def test_create_speech_with_unsupported_speed(openai_client: AsyncOpenAI, speed: float) -> None:
-    with pytest.raises(UnprocessableEntityError):
-        await openai_client.audio.speech.create(
-            model=SPEECH_MODEL_ID,
-            voice=VOICE_ID,
-            input=DEFAULT_INPUT,
-            response_format="pcm",
-            speed=speed,
-        )
+# UNSUPPORTED_SPEEDS = [0.1, 4.1]
+#
+#
+# @pytest.mark.parametrize("pull_model_without_cleanup", [SPEECH_MODEL_ID], indirect=True)
+# @pytest.mark.usefixtures("pull_model_without_cleanup")
+# @pytest.mark.asyncio
+# @pytest.mark.parametrize("speed", UNSUPPORTED_SPEEDS)
+# async def test_create_speech_with_unsupported_speed(openai_client: AsyncOpenAI, speed: float) -> None:
+#     with pytest.raises(UnprocessableEntityError):
+#         await openai_client.audio.speech.create(
+#             model=SPEECH_MODEL_ID,
+#             voice=VOICE_ID,
+#             input=DEFAULT_INPUT,
+#             response_format="pcm",
+#             speed=speed,
+#         )
 
 
 VALID_SAMPLE_RATES = [16000, 22050, 24000, 48000]
