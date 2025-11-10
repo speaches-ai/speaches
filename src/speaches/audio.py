@@ -32,7 +32,7 @@ def convert_audio_format(
     audio_bytes: bytes,
     sample_rate: int,
     audio_format: str,
-    format: str = "RAW",  # noqa: A002
+    input_audio_format: str = "RAW",
     channels: int = 1,
     subtype: str = "PCM_16",
     endian: str = "LITTLE",
@@ -41,7 +41,7 @@ def convert_audio_format(
     data, _ = sf.read(
         io.BytesIO(audio_bytes),
         samplerate=sample_rate,
-        format=format,
+        format=input_audio_format,
         channels=channels,
         subtype=subtype,
         endian=endian,
