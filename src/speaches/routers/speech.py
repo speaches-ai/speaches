@@ -99,25 +99,26 @@ def synthesize(
         text=body.input,
         speed=body.speed,
     )
-    # HACK: here we assume that the ValueError is only raised for invalid input data which may not be correct. This is a workaround for avoiding raising `HTTPException` from the executor code
     try:
         audio_generator = executor.model_manager.handle_speech_request(
             speech_request,
         )
-    except ValueError as e:
-        logger.exception("Value error during speech synthesis")
-        raise HTTPException(status_code=422, detail=str(e)) from e
-    if body.stream_format == "sse":
-        return StreamingResponse(
-            speech_audio_events_to_sse(audio_gen_to_speech_audio_events(audio_generator)),
-            media_type="text/event-stream",
-        )
+        if body.stream_format == "sse":
+            return StreamingResponse(
+                speech_audio_events_to_sse(audio_gen_to_speech_audio_events(audio_generator)),
+                media_type="text/event-stream",
+            )
 
-    return StreamingResponse(
-        stream_audio_as_formatted_bytes(
-            audio_generator,
-            audio_format=body.response_format,
-            sample_rate=body.sample_rate,
-        ),
-        media_type=response_format_to_mime_type(body.response_format),
-    )
+        return StreamingResponse(
+            stream_audio_as_formatted_bytes(
+                audio_generator,
+                audio_format=body.response_format,
+                sample_rate=body.sample_rate,
+            ),
+            media_type=response_format_to_mime_type(body.response_format),
+        )
+    except ValueError as e:
+        if "speed must be between" in str(e):
+            logger.warning("Unsupported speed value requested for speech synthesis")
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        raise
