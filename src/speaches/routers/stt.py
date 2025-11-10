@@ -71,11 +71,11 @@ def translate_file(
     model_card_data = get_model_card_data_or_raise(model)
     executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.translation)
 
-    vad_request = VadRequest(audio_data=audio, vad_options=DEFAULT_VAD_OPTIONS)
+    vad_request = VadRequest(audio=audio, vad_options=DEFAULT_VAD_OPTIONS)
     speech_segments = executor_registry.vad.model_manager.handle_vad_request(vad_request)
 
     translation_request = TranslationRequest(
-        audio_data=audio,
+        audio=audio,
         model=model,
         prompt=prompt,
         response_format=response_format,
@@ -151,11 +151,11 @@ def transcribe_file(
         model, transcription_model_card_data, executor_registry.transcription
     )
 
-    vad_request = VadRequest(audio_data=audio, vad_options=DEFAULT_VAD_OPTIONS)
+    vad_request = VadRequest(audio=audio, vad_options=DEFAULT_VAD_OPTIONS)
     speech_segments = executor_registry.vad.model_manager.handle_vad_request(vad_request)
 
     transcription_request = TranscriptionRequest(
-        audio_data=audio,
+        audio=audio,
         model=model,
         language=language,
         prompt=prompt,

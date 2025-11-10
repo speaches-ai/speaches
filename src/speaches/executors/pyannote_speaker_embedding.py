@@ -126,7 +126,7 @@ class PyannoteSpeakerEmbeddingModelManager(BaseModelManager[InferenceSession]):
         with self.load_model(request.model_id) as model:
             input_name = model.get_inputs()[0].name
 
-            audio_data = request.audio_data.astype(np.float32)
+            audio_data = request.audio.data
 
             if len(audio_data.shape) == 1:
                 audio_data = audio_data.reshape(1, -1)

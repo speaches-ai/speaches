@@ -3,13 +3,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-SAMPLES_PER_SECOND = 16000
-SAMPLE_WIDTH = 2
-BYTES_PER_SECOND = SAMPLES_PER_SECOND * SAMPLE_WIDTH
-# 2 BYTES = 16 BITS = 1 SAMPLE
-# 1 SECOND OF AUDIO = 32000 BYTES = 16000 SAMPLES
-
-
 type Device = Literal["cpu", "cuda", "auto"]
 
 # https://github.com/OpenNMT/CTranslate2/blob/master/docs/quantization.md#quantize-on-model-conversion

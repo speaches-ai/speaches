@@ -175,7 +175,7 @@ class SileroVADModelManager(BaseModelManager[SileroVADModel]):
 
     def handle_vad_request(self, request: VadRequest, **_kwargs) -> list[SpeechTimestamp]:
         return get_speech_timestamps(
-            request.audio_data,
+            request.audio.data,
             model_manager=self,
             model_id=request.model_id,
             vad_options=request.vad_options,

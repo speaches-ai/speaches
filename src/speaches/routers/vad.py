@@ -81,7 +81,7 @@ def detect_speech_timestamps(
         speech_pad_ms=speech_pad_ms,
     )
 
-    vad_request = VadRequest(audio_data=audio, model_id=model, vad_options=vad_options, sampling_rate=SAMPLE_RATE)
+    vad_request = VadRequest(audio=audio, model_id=model, vad_options=vad_options, sampling_rate=SAMPLE_RATE)
 
     speech_timestamps_raw = executor_registry.vad.model_manager.handle_vad_request(vad_request)
 

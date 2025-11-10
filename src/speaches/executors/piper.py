@@ -11,7 +11,7 @@ from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
 from speaches.api_types import SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS, Model
-from speaches.audio import convert_audio_format, resample_audio
+from speaches.audio import convert_audio_format, resample_audio_bytes
 from speaches.config import OrtOptions  # noqa: TC001
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse  # noqa: TC001
@@ -182,7 +182,7 @@ def generate_audio(
     start = time.perf_counter()
     for audio_bytes in piper_tts.synthesize_stream_raw(text, length_scale=1.0 / speed):
         if sample_rate != piper_tts.config.sample_rate:
-            audio_bytes = resample_audio(audio_bytes, piper_tts.config.sample_rate, sample_rate)  # noqa: PLW2901
+            audio_bytes = resample_audio_bytes(audio_bytes, piper_tts.config.sample_rate, sample_rate)  # noqa: PLW2901
         yield audio_bytes
     logger.info(f"Generated audio for {len(text)} characters in {time.perf_counter() - start}s")
 

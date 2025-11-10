@@ -5,13 +5,13 @@ from typing import BinaryIO
 import numpy as np
 import soundfile as sf
 
-from speaches.config import SAMPLES_PER_SECOND
+SAMPLES_PER_SECOND = 16000
 
 logger = logging.getLogger(__name__)
 
 
 # aip 'Write a function `resample_audio` which would take in RAW PCM 16-bit signed, little-endian audio data represented as bytes (`audio_bytes`) and resample it (either downsample or upsample) from `sample_rate` to `target_sample_rate` using numpy'
-def resample_audio(audio_bytes: bytes, sample_rate: int, target_sample_rate: int) -> bytes:
+def resample_audio_bytes(audio_bytes: bytes, sample_rate: int, target_sample_rate: int) -> bytes:
     audio_data = np.frombuffer(audio_bytes, dtype=np.int16)
     duration = len(audio_data) / sample_rate
     target_length = int(duration * target_sample_rate)
@@ -61,26 +61,38 @@ def audio_samples_from_file(file: BinaryIO) -> np.typing.NDArray[np.float32]:
 class Audio:
     def __init__(
         self,
-        data: np.typing.NDArray[np.float32] = np.array([], dtype=np.float32),
-        start: float = 0.0,
+        data: np.typing.NDArray[np.float32],
+        sample_rate: int,
     ) -> None:
         self.data = data
-        self.start = start
+        self.sample_rate = sample_rate
 
     def __repr__(self) -> str:
-        return f"Audio(start={self.start:.2f}, end={self.end:.2f})"
-
-    @property
-    def end(self) -> float:
-        return self.start + self.duration
+        return f"Audio(duration={self.duration:.2f}s, sample_rate={self.sample_rate}Hz, samples={len(self.data)})"
 
     @property
     def duration(self) -> float:
-        return len(self.data) / SAMPLES_PER_SECOND
+        return len(self.data) / self.sample_rate
 
-    def after(self, ts: float) -> "Audio":
-        assert ts <= self.duration
-        return Audio(self.data[int(ts * SAMPLES_PER_SECOND) :], start=ts)
+    @property
+    def size_in_bits(self) -> int:
+        return self.data.nbytes * 8
+
+    @property
+    def size_in_bytes(self) -> int:
+        return self.data.nbytes
+
+    @property
+    def size_in_kb(self) -> float:
+        return self.size_in_bytes / 1024.0
+
+    @property
+    def size_in_mb(self) -> float:
+        return self.size_in_bytes / (1024.0 * 1024.0)
+
+    # def after(self, seconds: float) -> "Audio":
+    #     assert seconds <= self.duration, f"Seconds ({seconds}) must be less than or equal to duration ({self.duration})"
+    #     return Audio(self.data[int(seconds * self.sample_rate) :], sample_rate=self.sample_rate)
 
     def extend(self, data: np.typing.NDArray[np.float32]) -> None:
         self.data = np.append(self.data, data)

@@ -29,14 +29,14 @@ router = APIRouter(tags=["speaker-embedding"])
 )
 def create_speech_embedding(
     executor_registry: ExecutorRegistryDependency,
-    audio_data: AudioFileDependency,
+    audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
 ) -> CreateEmbeddingResponse:
     model_card_data = get_model_card_data_or_raise(model)
     executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.speaker_embedding)
 
     speaker_embedding_request = SpeakerEmbeddingRequest(
-        audio_data=audio_data,
+        audio=audio,
         model_id=model,
     )
     speaker_embedding = executor.model_manager.handle_speaker_embedding_request(speaker_embedding_request)
@@ -44,5 +44,5 @@ def create_speech_embedding(
         object="list",
         data=[EmbeddingObject(embedding=speaker_embedding.tolist())],
         model=model,
-        usage=EmbeddingUsage(prompt_tokens=len(audio_data), total_tokens=len(audio_data)),
+        usage=EmbeddingUsage(prompt_tokens=len(audio.data), total_tokens=len(audio.data)),
     )

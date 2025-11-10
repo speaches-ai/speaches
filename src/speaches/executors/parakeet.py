@@ -127,7 +127,7 @@ class ParakeetModelManager(BaseModelManager[TextResultsAsrAdapter]):
             # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
             # TODO: Use request.speech_segments for audio chunking
 
-            results = parakeet.with_timestamps().recognize(request.audio_data)
+            results = parakeet.with_timestamps().recognize(request.audio.data)
 
             match request.response_format:
                 case "text":

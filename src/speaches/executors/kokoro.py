@@ -15,7 +15,7 @@ from speaches.api_types import (
     SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS,
     Model,
 )
-from speaches.audio import convert_audio_format, resample_audio
+from speaches.audio import convert_audio_format, resample_audio_bytes
 from speaches.config import OrtOptions
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse
@@ -264,6 +264,6 @@ def generate_audio(
         normalized_audio_data = (audio_data * np.iinfo(np.int16).max).astype(np.int16)
         audio_bytes = normalized_audio_data.tobytes()
         if sample_rate != SAMPLE_RATE:
-            audio_bytes = resample_audio(audio_bytes, SAMPLE_RATE, sample_rate)
+            audio_bytes = resample_audio_bytes(audio_bytes, SAMPLE_RATE, sample_rate)
         yield audio_bytes
     logger.info(f"Generated audio for {len(text)} characters in {time.perf_counter() - start}s")

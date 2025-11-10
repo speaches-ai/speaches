@@ -6,6 +6,7 @@ import openai.types.audio
 from pydantic import BaseModel, ConfigDict
 
 from speaches.api_types import SpeechResponseFormat, TimestampGranularities
+from speaches.audio import Audio
 from speaches.executors.silero_vad_v5 import SpeechTimestamp, VadOptions
 
 MimeType = str
@@ -13,7 +14,7 @@ MimeType = str
 
 class SpeakerEmbeddingRequest(BaseModel):
     model_id: str
-    audio_data: np.typing.NDArray[np.float32]
+    audio: Audio
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -46,7 +47,7 @@ class SpeechHandler(Protocol):
 
 
 class VadRequest(BaseModel):
-    audio_data: np.typing.NDArray[np.float32]
+    audio: Audio
     vad_options: VadOptions
     model_id: str = "silero_vad_v5"
     sampling_rate: int = 16000
@@ -59,7 +60,7 @@ class VadHandler(Protocol):
 
 
 class TranscriptionRequest(BaseModel):
-    audio_data: np.typing.NDArray[np.float32]
+    audio: Audio
     model: str
     stream: bool = False
     language: str | None = None
@@ -102,7 +103,7 @@ class TranscriptionHandler(Protocol):
 
 
 class TranslationRequest(BaseModel):
-    audio_data: np.typing.NDArray[np.float32]
+    audio: Audio
     model: str
     prompt: str | None = None
     response_format: openai.types.AudioResponseFormat = "json"

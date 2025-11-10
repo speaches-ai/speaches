@@ -155,7 +155,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 request.vad_options,
             )
             segments, transcription_info = whisper_model.transcribe(
-                request.audio_data,
+                request.audio.data,
                 task="transcribe",
                 language=request.language,
                 initial_prompt=request.prompt,
@@ -175,7 +175,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 response_format=request.response_format,
             )
             logger.info(
-                f"Transcribed {len(request.audio_data) / 16000} seconds of audio in {time.perf_counter() - timelog_start} seconds"
+                f"Transcribed {request.audio.duration} seconds of audio in {time.perf_counter() - timelog_start} seconds"
             )
             return res
 
@@ -193,7 +193,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 request.vad_options,
             )
             segments, _transcription_info = whisper_model.transcribe(
-                request.audio_data,
+                request.audio.data,
                 task="transcribe",
                 language=request.language,
                 initial_prompt=request.prompt,
@@ -214,7 +214,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 type="transcript.text.done", text="".join(segment.text for segment in segments), logprobs=None
             )
         logger.info(
-            f"Transcribed {len(request.audio_data) / 16000} seconds of audio in {time.perf_counter() - timelog_start} seconds"
+            f"Transcribed {request.audio.duration} seconds of audio in {time.perf_counter() - timelog_start} seconds"
         )
 
     def handle_transcription_request(
@@ -238,7 +238,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
             whisper_model = BatchedInferencePipeline(model=whisper)
 
             segments, transcription_info = whisper_model.transcribe(
-                request.audio_data,
+                request.audio.data,
                 task="translate",
                 initial_prompt=request.prompt,
                 temperature=request.temperature,
