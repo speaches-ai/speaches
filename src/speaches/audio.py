@@ -1,18 +1,11 @@
-from __future__ import annotations
-
 import io
 import logging
-from typing import TYPE_CHECKING, BinaryIO
+from typing import BinaryIO
 
 import numpy as np
 import soundfile as sf
 
 from speaches.config import SAMPLES_PER_SECOND
-
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
-
-    from speaches.routers.speech import ResponseFormat
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +24,7 @@ def resample_audio(audio_bytes: bytes, sample_rate: int, target_sample_rate: int
 def convert_audio_format(
     audio_bytes: bytes,
     sample_rate: int,
-    audio_format: ResponseFormat,
+    audio_format: str,
     format: str = "RAW",  # noqa: A002
     channels: int = 1,
     subtype: str = "PCM_16",
@@ -51,7 +44,7 @@ def convert_audio_format(
     return converted_audio_bytes_buffer.getvalue()
 
 
-def audio_samples_from_file(file: BinaryIO) -> NDArray[np.float32]:
+def audio_samples_from_file(file: BinaryIO) -> np.typing.NDArray[np.float32]:
     audio_and_sample_rate = sf.read(
         file,
         format="RAW",
@@ -68,7 +61,7 @@ def audio_samples_from_file(file: BinaryIO) -> NDArray[np.float32]:
 class Audio:
     def __init__(
         self,
-        data: NDArray[np.float32] = np.array([], dtype=np.float32),
+        data: np.typing.NDArray[np.float32] = np.array([], dtype=np.float32),
         start: float = 0.0,
     ) -> None:
         self.data = data
@@ -85,9 +78,9 @@ class Audio:
     def duration(self) -> float:
         return len(self.data) / SAMPLES_PER_SECOND
 
-    def after(self, ts: float) -> Audio:
+    def after(self, ts: float) -> "Audio":
         assert ts <= self.duration
         return Audio(self.data[int(ts * SAMPLES_PER_SECOND) :], start=ts)
 
-    def extend(self, data: NDArray[np.float32]) -> None:
+    def extend(self, data: np.typing.NDArray[np.float32]) -> None:
         self.data = np.append(self.data, data)

@@ -26,10 +26,6 @@ class WhisperConfig(BaseModel):
     compute_type: Quantization = "default"  # TODO: should this even be a configuration option?
     cpu_threads: int = 0
     num_workers: int = 1
-    use_batched_mode: bool = False
-    """
-    Whether to use batch mode(introduced in 1.1.0 `faster-whisper` release) for inference. This will likely become the default in the future and the configuration option will be removed.
-    """
 
 
 class OrtOptions(BaseModel):

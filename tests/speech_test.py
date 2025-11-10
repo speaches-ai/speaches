@@ -4,10 +4,10 @@ from openai import AsyncOpenAI, UnprocessableEntityError
 import pytest
 import soundfile as sf
 
-from speaches.routers.speech import (
-    DEFAULT_RESPONSE_FORMAT,
-    SUPPORTED_RESPONSE_FORMATS,
-    ResponseFormat,
+from speaches.api_types import (
+    DEFAULT_SPEECH_RESPONSE_FORMAT,
+    SUPPORTED_SPEECH_RESPONSE_FORMATS,
+    SpeechResponseFormat,
 )
 
 SPEECH_MODEL_ID = "speaches-ai/Kokoro-82M-v1.0-ONNX"
@@ -18,8 +18,8 @@ DEFAULT_INPUT = "Hello, world!"
 @pytest.mark.parametrize("pull_model_without_cleanup", [SPEECH_MODEL_ID], indirect=True)
 @pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
-@pytest.mark.parametrize("response_format", SUPPORTED_RESPONSE_FORMATS)
-async def test_create_speech_formats(openai_client: AsyncOpenAI, response_format: ResponseFormat) -> None:
+@pytest.mark.parametrize("response_format", SUPPORTED_SPEECH_RESPONSE_FORMATS)
+async def test_create_speech_formats(openai_client: AsyncOpenAI, response_format: SpeechResponseFormat) -> None:
     await openai_client.audio.speech.create(
         model=SPEECH_MODEL_ID,
         voice=VOICE_ID,  # type: ignore  # noqa: PGH003
@@ -46,7 +46,7 @@ async def test_create_speech_good_model_voice_pair(openai_client: AsyncOpenAI, m
         model=model,
         voice=voice,  # type: ignore  # noqa: PGH003
         input=DEFAULT_INPUT,
-        response_format=DEFAULT_RESPONSE_FORMAT,
+        response_format=DEFAULT_SPEECH_RESPONSE_FORMAT,
     )
 
 

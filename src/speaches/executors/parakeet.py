@@ -7,10 +7,16 @@ import huggingface_hub
 import onnx_asr
 from onnx_asr.adapters import TextResultsAsrAdapter
 from onnx_asr.models import NemoConformerTdt
+import openai.types.audio
 
 from speaches.api_types import Model
 from speaches.config import OrtOptions
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
+from speaches.executors.shared.handler_protocol import (
+    NonStreamingTranscriptionResponse,
+    StreamingTranscriptionEvent,
+    TranscriptionRequest,
+)
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -107,3 +113,38 @@ class ParakeetModelManager(BaseModelManager[TextResultsAsrAdapter]):
     def _load_fn(self, model_id: str) -> TextResultsAsrAdapter:
         providers = get_ort_providers_with_options(self.ort_opts)
         return onnx_asr.load_model(model_id, providers=providers)
+
+    def handle_non_streaming_transcription_request(
+        self,
+        request: TranscriptionRequest,
+        **_kwargs,
+    ) -> NonStreamingTranscriptionResponse:
+        if request.response_format not in ("text", "json"):
+            raise ValueError(
+                f"'{request.response_format}' response format is not supported for '{request.model}' model."
+            )
+        with self.load_model(request.model) as parakeet:
+            # TODO: issue warnings when client specifies unsupported parameters like `prompt`, `temperature`, `hotwords`, etc.
+
+            results = parakeet.with_timestamps().recognize(request.audio_data)
+
+            match request.response_format:
+                case "text":
+                    return results.text, "text/plain"
+                case "json":
+                    return openai.types.audio.Transcription(text=results.text)
+
+    def handle_streaming_transcription_request(
+        self,
+        request: TranscriptionRequest,
+        **_kwargs,
+    ) -> Generator[StreamingTranscriptionEvent]:
+        raise NotImplementedError(f"'{request.model}' model doesn't support streaming transcription.")
+
+    def handle_transcription_request(
+        self, request: TranscriptionRequest, **kwargs
+    ) -> NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent]:
+        if request.stream:
+            return self.handle_streaming_transcription_request(request, **kwargs)
+        else:
+            return self.handle_non_streaming_transcription_request(request, **kwargs)

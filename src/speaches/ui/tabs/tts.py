@@ -3,12 +3,12 @@ from tempfile import NamedTemporaryFile
 
 import gradio as gr
 
-from speaches.config import Config
-from speaches.routers.speech import (
-    MAX_SAMPLE_RATE,
-    MIN_SAMPLE_RATE,
-    SUPPORTED_RESPONSE_FORMATS,
+from speaches.api_types import (
+    MAX_SPEECH_SAMPLE_RATE,
+    MIN_SPEECH_SAMPLE_RATE,
+    SUPPORTED_SPEECH_RESPONSE_FORMATS,
 )
+from speaches.config import Config
 from speaches.ui.utils import http_client_from_gradio_req, openai_client_from_gradio_req
 
 DEFAULT_TEXT = "A rainbow is an optical phenomenon caused by refraction, internal reflection and dispersion of light in water droplets resulting in a continuous spectrum of light appearing in the sky."
@@ -64,14 +64,14 @@ def create_tts_tab(config: Config) -> None:
             outputs=[voice_dropdown],
         )
         response_fromat_dropdown = gr.Dropdown(
-            choices=SUPPORTED_RESPONSE_FORMATS,
+            choices=SUPPORTED_SPEECH_RESPONSE_FORMATS,
             label="Response Format",
             value="wav",
         )
         speed_slider = gr.Slider(minimum=0.25, maximum=4.0, step=0.05, label="Speed", value=1.0)
         sample_rate_slider = gr.Number(
-            minimum=MIN_SAMPLE_RATE,
-            maximum=MAX_SAMPLE_RATE,
+            minimum=MIN_SPEECH_SAMPLE_RATE,
+            maximum=MAX_SPEECH_SAMPLE_RATE,
             label="Desired Sample Rate",
             info="""
 Setting this will resample the generated audio to the desired sample rate.

@@ -8,7 +8,10 @@ if TYPE_CHECKING:
 from speaches.executors.kokoro import KokoroModelManager, kokoro_model_registry
 from speaches.executors.parakeet import ParakeetModelManager, parakeet_model_registry
 from speaches.executors.piper import PiperModelManager, piper_model_registry
-from speaches.executors.pyannote import PyannoteModelManager, pyannote_model_registry
+from speaches.executors.pyannote_speaker_embedding import (
+    PyannoteSpeakerEmbeddingModelManager,
+    pyannote_speaker_embedding_model_registry,
+)
 from speaches.executors.shared.executor import Executor
 from speaches.executors.whisper import WhisperModelManager, whisper_model_registry
 
@@ -41,14 +44,18 @@ class ExecutorRegistry:
         )
         self._pyannote_executor = Executor(
             name="pyannote",
-            model_manager=PyannoteModelManager(config.stt_model_ttl, config.unstable_ort_opts),
-            model_registry=pyannote_model_registry,
+            model_manager=PyannoteSpeakerEmbeddingModelManager(config.stt_model_ttl, config.unstable_ort_opts),
+            model_registry=pyannote_speaker_embedding_model_registry,
             task="speaker-embedding",
         )
 
     @property
     def transcription(self):  # noqa: ANN201
         return (self._whisper_executor, self._parakeet_executor)
+
+    @property
+    def translation(self):  # noqa: ANN201
+        return (self._whisper_executor,)
 
     @property
     def text_to_speech(self):  # noqa: ANN201

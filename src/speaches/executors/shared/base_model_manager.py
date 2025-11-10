@@ -88,7 +88,7 @@ class SelfDisposingModel[T]:
             logger.debug(f"Decremented ref count for {self.model_id}, {self.ref_count=}")
             if self.ref_count <= 0:
                 if self.ttl > 0:
-                    logger.info(f"Model {self.model_id} is idle, scheduling offload in {self.ttl}s")
+                    logger.debug(f"Model {self.model_id} is idle, scheduling offload in {self.ttl}s")
                     self.expire_timer = threading.Timer(self.ttl, self.unload)
                     self.expire_timer.start()
                 elif self.ttl == 0:

@@ -10,10 +10,11 @@ import huggingface_hub
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
-from speaches.api_types import Model
-from speaches.audio import resample_audio
+from speaches.api_types import SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS, Model
+from speaches.audio import convert_audio_format, resample_audio
 from speaches.config import OrtOptions  # noqa: TC001
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
+from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse  # noqa: TC001
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -199,3 +200,32 @@ class PiperModelManager(BaseModelManager["PiperVoice"]):
         inf_sess = InferenceSession(model_files.model, providers=providers)
         conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
+
+    def handle_speech_request(
+        self,
+        request: SpeechRequest,
+        **_kwargs,
+    ) -> SpeechResponse:
+        if request.speed < 0.25 or request.speed > 4.0:
+            msg = (f"Speed must be between 0.25 and 4.0, got {request.speed}",)
+            raise ValueError(msg)
+        # TODO: maybe check voice
+        with self.load_model(request.model) as piper_tts:
+            audio_generator = generate_audio(
+                piper_tts, request.input, speed=request.speed, sample_rate=request.sample_rate
+            )
+            # these file formats can't easily be streamed because they have headers and/or metadata
+            if request.response_format in SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS:
+                audio_data = b"".join(audio_bytes for audio_bytes in audio_generator)
+                audio_data = convert_audio_format(
+                    audio_data, request.sample_rate or piper_tts.config.sample_rate, request.response_format
+                )
+                return audio_data, f"audio/{request.response_format}"
+            if request.response_format != "pcm":
+                audio_generator = (
+                    convert_audio_format(
+                        audio_bytes, request.sample_rate or piper_tts.config.sample_rate, request.response_format
+                    )
+                    for audio_bytes in audio_generator
+                )
+            return audio_generator, f"audio/{request.response_format}"

@@ -3,12 +3,17 @@ import logging
 from pathlib import Path
 
 import huggingface_hub
-from onnxruntime import InferenceSession
+import numpy as np
+from onnxruntime import InferenceSession, SessionOptions
 from pydantic import BaseModel
 
 from speaches.api_types import Model
 from speaches.config import OrtOptions
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
+from speaches.executors.shared.handler_protocol import (
+    SpeakerEmbeddingRequest,
+    SpeakerEmbeddingResponse,
+)
 from speaches.hf_utils import (
     HfModelFilter,
     get_cached_model_repos_info,
@@ -41,7 +46,7 @@ MODEL_ID_BLACKLIST = {
 }
 
 
-class PyannoteModelRegistry(ModelRegistry):
+class PyannoteSpeakerEmbeddingModelRegistry(ModelRegistry):
     def list_remote_models(self) -> Generator[Model, None, None]:
         models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
 
@@ -99,16 +104,71 @@ class PyannoteModelRegistry(ModelRegistry):
         )
 
 
-pyannote_model_registry = PyannoteModelRegistry(hf_model_filter=hf_model_filter)
+pyannote_speaker_embedding_model_registry = PyannoteSpeakerEmbeddingModelRegistry(hf_model_filter=hf_model_filter)
 
 
-class PyannoteModelManager(BaseModelManager[InferenceSession]):
+class PyannoteSpeakerEmbeddingModelManager(BaseModelManager[InferenceSession]):
     def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
         super().__init__(ttl)
         self.ort_opts = ort_opts
 
     def _load_fn(self, model_id: str) -> InferenceSession:
-        model_files = pyannote_model_registry.get_model_files(model_id)
+        model_files = pyannote_speaker_embedding_model_registry.get_model_files(model_id)
         providers = get_ort_providers_with_options(self.ort_opts)
-        inf_sess = InferenceSession(model_files.model, providers=providers)
+        sess_options = SessionOptions()
+        # XXX: why did i add the comment below
+        # https://github.com/microsoft/onnxruntime/issues/1319#issuecomment-843945505
+        sess_options.log_severity_level = 3
+        inf_sess = InferenceSession(model_files.model, providers=providers, sess_options=sess_options)
         return inf_sess
+
+    def handle_speaker_embedding_request(self, request: SpeakerEmbeddingRequest, **_kwargs) -> SpeakerEmbeddingResponse:
+        with self.load_model(request.model_id) as model:
+            input_name = model.get_inputs()[0].name
+
+            audio_data = request.audio_data.astype(np.float32)
+
+            if len(audio_data.shape) == 1:
+                audio_data = audio_data.reshape(1, -1)
+
+            outputs = model.run(None, {input_name: audio_data})
+            embedding = outputs[0]
+
+            if len(embedding.shape) > 1:  # pyright: ignore[reportAttributeAccessIssue]
+                embedding = embedding.squeeze()  # pyright: ignore[reportAttributeAccessIssue]
+
+            embedding = embedding / np.linalg.norm(embedding)  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+            return embedding
+
+
+# if __name__ == "__main__":
+#     from speaches.dependencies import get_config
+#
+#     config = get_config()
+#
+#     model_manager = PyannoteModelManager(ttl=config.tts_model_ttl, ort_opts=config.unstable_ort_opts)
+#
+#     remote_models = list(pyannote_model_registry.list_remote_models())
+#     for model in remote_models:
+#         pyannote_model_registry.download_model_files(model.id)
+#     model_id = remote_models[0].id
+#     with model_manager.load_model(model_id) as model:
+#         print("=" * 50)
+#         print("INPUT DETAILS:")
+#         print("=" * 50)
+#         for input_meta in model.get_inputs():
+#             print(f"Name: {input_meta.name}")
+#             print(f"Shape: {input_meta.shape}")
+#             print(f"Type: {input_meta.type}")
+#             print("-" * 50)
+#
+#         # Get output details
+#         print("\n" + "=" * 50)
+#         print("OUTPUT DETAILS:")
+#         print("=" * 50)
+#         for output_meta in model.get_outputs():
+#             print(f"Name: {output_meta.name}")
+#             print(f"Shape: {output_meta.shape}")
+#             print(f"Type: {output_meta.type}")
+#             print("-" * 50)

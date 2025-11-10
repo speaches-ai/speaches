@@ -36,9 +36,9 @@ def get_model_card_data_or_raise(model_id: str) -> huggingface_hub.ModelCardData
     return model_card_data
 
 
-def find_executor_for_model_or_raise(
-    model_id: str, model_card_data: huggingface_hub.ModelCardData, executors: Iterable[Executor]
-) -> Executor:
+def find_executor_for_model_or_raise[T: Executor](
+    model_id: str, model_card_data: huggingface_hub.ModelCardData, executors: Iterable[T]
+) -> T:
     for executor in executors:
         if executor.can_handle_model(model_id, model_card_data):
             return executor

@@ -14,6 +14,7 @@ from fastapi import (
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from faster_whisper.audio import decode_audio
 from httpx import ASGITransport, AsyncClient
+import numpy as np
 from numpy import float32
 from numpy.typing import NDArray
 from openai import AsyncOpenAI
@@ -78,9 +79,18 @@ def audio_file_dependency(
             f"Decoding audio file: {file.filename}, content_type: {file.content_type}, header: {file.headers}, size: {file.size}"
         )
         start = time.perf_counter()
-        audio = decode_audio(file.file, sampling_rate=16000)
-        elapsed, duration = time.perf_counter() - start, len(audio) / 16000
-        logger.debug(f"Decoded {duration:.5f}s of audio in {elapsed:.5f}s (RTF: {elapsed / duration:.5f})")
+
+        if file.content_type in ("audio/pcm", "audio/raw"):
+            logger.debug(f"Detected {file.content_type}, parsing as s16le monochannel")
+            raw_bytes = file.file.read()
+            audio_int16 = np.frombuffer(raw_bytes, dtype=np.int16)
+            audio = audio_int16.astype(np.float32) / 32768.0
+            elapsed, duration = time.perf_counter() - start, len(audio) / 16000
+            logger.debug(f"Decoded {duration:.5f}s of audio in {elapsed:.5f}s (RTF: {elapsed / duration:.5f})")
+        else:
+            audio = decode_audio(file.file, sampling_rate=16000)
+            elapsed, duration = time.perf_counter() - start, len(audio) / 16000
+            logger.debug(f"Decoded {duration:.5f}s of audio in {elapsed:.5f}s (RTF: {elapsed / duration:.5f})")
     except av.error.InvalidDataError as e:
         raise HTTPException(
             status_code=415,

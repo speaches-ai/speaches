@@ -1,3 +1,5 @@
+import asyncio
+from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime
 import os
 from typing import Any
@@ -51,3 +53,49 @@ def format_api_proxy_error(exc: "APIProxyError", context: str = "") -> str:
         f"Debug: {exc.debug}\nContext: {context}\nTimestamp: {exc.timestamp}" if debug_mode and exc.debug else ""
     )
     return f"[ERROR] {user_message}\nSuggestions: {', '.join(suggestions)}" + (f"\n{debug_info}" if debug_info else "")
+
+
+def async_to_sync_generator[T](async_gen: AsyncGenerator[T, None]) -> Generator[T, None, None]:
+    try:
+        # Try to get the current event loop
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop, create a new one
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        should_close_loop = True
+    else:
+        should_close_loop = False
+
+    try:
+        while True:
+            try:
+                # Get the next item from the async generator
+                if should_close_loop:
+                    item = loop.run_until_complete(async_gen.__anext__())
+                else:
+                    # If there's already a running loop, we need to run in a thread
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(asyncio.run, async_gen.__anext__())
+                        item = future.result()
+                yield item
+            except StopAsyncIteration:
+                break
+    finally:
+        # Clean up the async generator
+        try:
+            if should_close_loop:
+                loop.run_until_complete(async_gen.aclose())
+            else:
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, async_gen.aclose())
+                    future.result()
+        except Exception:  # noqa: BLE001, S110
+            pass  # Ignore cleanup errors
+
+        if should_close_loop:
+            loop.close()

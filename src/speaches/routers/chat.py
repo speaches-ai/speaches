@@ -30,8 +30,7 @@ from speaches.dependencies import (
     SpeechClientDependency,
     TranscriptionClientDependency,
 )
-from speaches.routers.stt import format_as_sse
-from speaches.text_utils import SentenceChunker
+from speaches.text_utils import SentenceChunker, format_as_sse
 from speaches.types.chat import (
     ChatCompletionAssistantMessageParam,
     ChatCompletionContentPartTextParam,

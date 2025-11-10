@@ -1,14 +1,24 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING
 
-from faster_whisper import WhisperModel
+from faster_whisper import BatchedInferencePipeline, WhisperModel
+import faster_whisper.transcribe
 import huggingface_hub
+import openai.types.audio
 from pydantic import BaseModel
 
 from speaches.api_types import Model
 from speaches.executors.shared.base_model_manager import BaseModelManager
+from speaches.executors.shared.handler_protocol import (  # noqa: TC001
+    NonStreamingTranscriptionResponse,
+    StreamingTranscriptionEvent,
+    TranscriptionRequest,
+    TranslationRequest,
+    TranslationResponse,
+)
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -17,18 +27,20 @@ from speaches.hf_utils import (
     list_model_files,
 )
 from speaches.model_registry import ModelRegistry
+from speaches.text_utils import format_as_srt, format_as_vtt
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterable
     from pathlib import Path
 
     from speaches.config import (
         WhisperConfig,
     )
+    from speaches.routers.stt import ResponseFormat
+
 
 LIBRARY_NAME = "ctranslate2"
 TASK_NAME_TAG = "automatic-speech-recognition"
-
 logger = logging.getLogger(__name__)
 
 hf_model_filter = HfModelFilter(
@@ -122,3 +134,209 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
             cpu_threads=self.whisper_config.cpu_threads,
             num_workers=self.whisper_config.num_workers,
         )
+
+    def handle_non_streaming_transcription_request(
+        self,
+        request: TranscriptionRequest,
+        **_kwargs,
+    ) -> NonStreamingTranscriptionResponse:
+        timelog_start = time.perf_counter()
+        with self.load_model(request.model) as whisper:
+            whisper_model = BatchedInferencePipeline(model=whisper)
+
+            segments, transcription_info = whisper_model.transcribe(
+                request.audio_data,
+                task="transcribe",
+                language=request.language,
+                initial_prompt=request.prompt,
+                word_timestamps="word" in request.timestamp_granularities,
+                temperature=request.temperature,
+                vad_filter=request.vad_filter,
+                hotwords=request.hotwords,
+                without_timestamps=request.without_timestamps,
+            )
+
+            segments = list(segments)
+
+            res = segments_to_transcription_response(
+                segments,
+                transcription_info,
+                response_format=request.response_format,
+            )
+            logger.info(
+                f"Transcribed {len(request.audio_data) / 16000} seconds of audio in {time.perf_counter() - timelog_start} seconds"
+            )
+            return res
+
+    def handle_streaming_transcription_request(
+        self,
+        request: TranscriptionRequest,
+        *,
+        use_batch_inference_pipeline: bool | None = None,
+        **_kwargs,
+    ) -> Generator[StreamingTranscriptionEvent]:
+        timelog_start = time.perf_counter()
+        with self.load_model(request.model) as whisper:
+            whisper_model = BatchedInferencePipeline(model=whisper) if use_batch_inference_pipeline else whisper
+
+            segments, _transcription_info = whisper_model.transcribe(
+                request.audio_data,
+                task="transcribe",
+                language=request.language,
+                initial_prompt=request.prompt,
+                word_timestamps="word" in request.timestamp_granularities,
+                temperature=request.temperature,
+                vad_filter=request.vad_filter,
+                hotwords=request.hotwords,
+                without_timestamps=request.without_timestamps,
+            )
+
+            for segment in segments:
+                yield openai.types.audio.TranscriptionTextDeltaEvent(
+                    type="transcript.text.delta", delta=segment.text, logprobs=None
+                )
+
+            yield openai.types.audio.TranscriptionTextDoneEvent(
+                type="transcript.text.done", text="".join(segment.text for segment in segments), logprobs=None
+            )
+        logger.info(
+            f"Transcribed {len(request.audio_data) / 16000} seconds of audio in {time.perf_counter() - timelog_start} seconds"
+        )
+
+    def handle_transcription_request(
+        self, request: TranscriptionRequest, **kwargs
+    ) -> NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent]:
+        if request.stream:
+            return self.handle_streaming_transcription_request(request, **kwargs)
+        else:
+            return self.handle_non_streaming_transcription_request(request, **kwargs)
+
+    def handle_translation_request(
+        self,
+        request: TranslationRequest,
+        **_kwargs,
+    ) -> TranslationResponse:
+        with self.load_model(request.model) as whisper:
+            whisper_model = BatchedInferencePipeline(model=whisper)
+
+            segments, transcription_info = whisper_model.transcribe(
+                request.audio_data,
+                task="translate",
+                initial_prompt=request.prompt,
+                temperature=request.temperature,
+            )
+
+            segments = list(segments)
+
+            return segments_to_translation_response(
+                segments,
+                transcription_info,
+                response_format=request.response_format,
+            )
+
+
+def segments_to_text(segments: Iterable[faster_whisper.transcribe.Segment]) -> str:
+    return "".join(segment.text for segment in segments).strip()
+
+
+def segments_to_transcription_response(
+    segments: list[faster_whisper.transcribe.Segment],
+    transcription_info: faster_whisper.transcribe.TranscriptionInfo,
+    response_format: ResponseFormat,
+) -> NonStreamingTranscriptionResponse:
+    match response_format:
+        case "text":
+            return segments_to_text(segments), "text/plain"
+        case "json":
+            return openai.types.audio.Transcription(
+                text=segments_to_text(segments),
+            )
+
+        case "verbose_json":
+            return openai.types.audio.TranscriptionVerbose(
+                language=transcription_info.language,
+                duration=transcription_info.duration,
+                text=segments_to_text(segments),
+                segments=[
+                    openai.types.audio.TranscriptionSegment(
+                        id=segment.id,
+                        seek=segment.seek,
+                        start=segment.start,
+                        end=segment.end,
+                        text=segment.text,
+                        tokens=segment.tokens,
+                        temperature=segment.temperature or 0,  # FIX: hardcoded
+                        avg_logprob=segment.avg_logprob,
+                        compression_ratio=segment.compression_ratio,
+                        no_speech_prob=segment.no_speech_prob,
+                    )
+                    for segment in segments
+                ],
+                words=[
+                    openai.types.audio.TranscriptionWord(
+                        start=word.start,
+                        end=word.end,
+                        word=word.word,
+                    )
+                    for segment in segments
+                    for word in (segment.words or [])
+                ]
+                if transcription_info.transcription_options.word_timestamps
+                else None,
+            )
+
+        case "vtt":
+            return "".join(
+                format_as_vtt(segment.text, segment.start, segment.end, i) for i, segment in enumerate(segments)
+            ), "text/vtt"
+
+        case "srt":
+            return "".join(
+                format_as_srt(segment.text, segment.start, segment.end, i) for i, segment in enumerate(segments)
+            ), "text/plain"
+
+
+def segments_to_translation_response(
+    segments: list[faster_whisper.transcribe.Segment],
+    transcription_info: faster_whisper.transcribe.TranscriptionInfo,
+    response_format: ResponseFormat,
+) -> TranslationResponse:
+    match response_format:
+        case "text":
+            return segments_to_text(segments), "text/plain"
+        case "json":
+            return openai.types.audio.Translation(
+                text=segments_to_text(segments),
+            )
+
+        case "verbose_json":
+            return openai.types.audio.TranslationVerbose(
+                language=transcription_info.language,
+                duration=transcription_info.duration,
+                text=segments_to_text(segments),
+                segments=[
+                    openai.types.audio.TranscriptionSegment(
+                        id=segment.id,
+                        seek=segment.seek,
+                        start=segment.start,
+                        end=segment.end,
+                        text=segment.text,
+                        tokens=segment.tokens,
+                        temperature=segment.temperature or 0,  # FIX: hardcoded
+                        avg_logprob=segment.avg_logprob,
+                        compression_ratio=segment.compression_ratio,
+                        no_speech_prob=segment.no_speech_prob,
+                    )
+                    for segment in segments
+                ],
+            )
+
+        case "vtt":
+            return "".join(
+                format_as_vtt(segment.text, segment.start, segment.end, i) for i, segment in enumerate(segments)
+            ), "text/vtt"
+
+        case "srt":
+            return "".join(
+                format_as_srt(segment.text, segment.start, segment.end, i) for i, segment in enumerate(segments)
+            ), "text/plain"

@@ -53,6 +53,10 @@ def setup_logger(log_level: str) -> None:
                 "level": "INFO",
                 "handlers": ["stdout"],
             },
+            "openai": {
+                "level": "INFO",
+                "handlers": ["stdout"],
+            },
         },
     }
 

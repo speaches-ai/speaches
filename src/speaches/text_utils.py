@@ -1,13 +1,7 @@
-from __future__ import annotations
-
 import asyncio
+from collections.abc import AsyncGenerator
 import re
-from typing import TYPE_CHECKING, Protocol
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Iterable
-
-    from speaches.api_types import TranscriptionSegment
+from typing import Protocol
 
 
 class TextChunker(Protocol):
@@ -28,8 +22,8 @@ class TextChunker(Protocol):
         yield ""
 
 
-def segments_to_text(segments: Iterable[TranscriptionSegment]) -> str:
-    return "".join(segment.text for segment in segments).strip()
+def format_as_sse(data: str) -> str:
+    return f"data: {data}\n\n"
 
 
 def srt_format_timestamp(ts: float) -> str:
@@ -48,9 +42,9 @@ def vtt_format_timestamp(ts: float) -> str:
     return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}.{int(milliseconds):03d}"
 
 
-def segments_to_vtt(segment: TranscriptionSegment, i: int) -> str:
-    start = segment.start if i > 0 else 0.0
-    result = f"{vtt_format_timestamp(start)} --> {vtt_format_timestamp(segment.end)}\n{segment.text}\n\n"
+def format_as_vtt(text: str, start: float, end: float, i: int) -> str:
+    start = start if i > 0 else 0.0
+    result = f"{vtt_format_timestamp(start)} --> {vtt_format_timestamp(end)}\n{text}\n\n"
 
     if i == 0:
         return f"WEBVTT\n\n{result}"
@@ -58,8 +52,8 @@ def segments_to_vtt(segment: TranscriptionSegment, i: int) -> str:
         return result
 
 
-def segments_to_srt(segment: TranscriptionSegment, i: int) -> str:
-    return f"{i + 1}\n{srt_format_timestamp(segment.start)} --> {srt_format_timestamp(segment.end)}\n{segment.text}\n\n"
+def format_as_srt(text: str, start: float, end: float, i: int) -> str:
+    return f"{i + 1}\n{srt_format_timestamp(start)} --> {srt_format_timestamp(end)}\n{text}\n\n"
 
 
 MIN_SENTENCE_LENGTH = 20

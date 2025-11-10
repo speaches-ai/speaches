@@ -1,0 +1,106 @@
+from collections.abc import Generator
+from typing import Protocol
+
+import numpy as np
+import openai.types.audio
+from pydantic import BaseModel, ConfigDict
+
+from speaches.api_types import SpeechResponseFormat, TimestampGranularities
+
+# TODO: add `VadHandler`
+
+MimeType = str
+
+
+class SpeakerEmbeddingRequest(BaseModel):
+    model_id: str
+    audio_data: np.typing.NDArray[np.float32]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+type SpeakerEmbeddingResponse = np.typing.NDArray[np.float32]
+
+
+class SpeakerEmbeddingHandler(Protocol):
+    def handle_speaker_embedding_request(
+        self, request: SpeakerEmbeddingRequest, **kwargs
+    ) -> SpeakerEmbeddingResponse: ...
+
+
+class SpeechRequest(BaseModel):
+    model: str
+    voice: str
+    input: str
+    instructions: str | None
+    response_format: SpeechResponseFormat
+    speed: float
+    stream_format: str
+    sample_rate: int | None
+
+
+SpeechResponse = tuple[bytes, MimeType] | tuple[Generator[bytes], MimeType]
+
+
+class SpeechHandler(Protocol):
+    def handle_speech_request(self, request: SpeechRequest, **kwargs) -> SpeechResponse: ...
+
+
+class TranscriptionRequest(BaseModel):
+    audio_data: np.typing.NDArray[np.float32]
+    model: str
+    stream: bool = False
+    language: str | None = None
+    prompt: str | None = None
+    response_format: openai.types.AudioResponseFormat = "json"
+    temperature: float = 0.0
+    hotwords: str | None = None
+    timestamp_granularities: TimestampGranularities
+    vad_filter: bool = False
+    without_timestamps: bool = True
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+NonStreamingTranscriptionResponse = (
+    tuple[str, MimeType] | openai.types.audio.Transcription | openai.types.audio.TranscriptionVerbose
+)
+StreamingTranscriptionEvent = (
+    openai.types.audio.TranscriptionTextDeltaEvent | openai.types.audio.TranscriptionTextDoneEvent
+)
+
+
+class TranscriptionHandler(Protocol):
+    def handle_non_streaming_transcription_request(
+        self, request: TranscriptionRequest, **kwargs
+    ) -> NonStreamingTranscriptionResponse: ...
+
+    def handle_streaming_transcription_request(
+        self, request: TranscriptionRequest, **kwargs
+    ) -> Generator[StreamingTranscriptionEvent]: ...
+
+    def handle_transcription_request(
+        self, request: TranscriptionRequest, **kwargs
+    ) -> NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent]:
+        if request.stream:
+            return self.handle_streaming_transcription_request(request, **kwargs)
+        else:
+            return self.handle_non_streaming_transcription_request(request, **kwargs)
+
+
+class TranslationRequest(BaseModel):
+    audio_data: np.typing.NDArray[np.float32]
+    model: str
+    prompt: str | None = None
+    response_format: openai.types.AudioResponseFormat = "json"
+    temperature: float = 0.0
+    vad_filter: bool = False
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+TranslationResponse = tuple[str, MimeType] | openai.types.audio.Translation | openai.types.audio.TranslationVerbose
+
+
+class TranslationHandler(Protocol):
+    def handle_translation_request(self, request: TranslationRequest, **kwargs) -> TranslationResponse: ...
