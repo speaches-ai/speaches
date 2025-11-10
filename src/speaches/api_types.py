@@ -14,7 +14,6 @@ OPENAI_SUPPORTED_SPEECH_VOICE_NAMES = ("alloy", "ash", "ballad", "coral", "echo"
 # https://platform.openai.com/docs/guides/text-to-speech/supported-output-formats
 type SpeechResponseFormat = Literal["pcm", "mp3", "wav", "flac", "opus", "aac"]
 SUPPORTED_SPEECH_RESPONSE_FORMATS = ("pcm", "mp3", "wav", "flac", "opus", "aac")
-SUPPORTED_STREAMABLE_SPEECH_RESPONSE_FORMATS = ("pcm", "mp3")
 
 MIN_SPEECH_SAMPLE_RATE = 8000
 MAX_SPEECH_SAMPLE_RATE = 48000

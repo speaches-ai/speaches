@@ -2,7 +2,7 @@ from collections.abc import Generator
 import logging
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -10,13 +10,12 @@ from speaches.api_types import (
     DEFAULT_SPEECH_RESPONSE_FORMAT,
     MAX_SPEECH_SAMPLE_RATE,
     MIN_SPEECH_SAMPLE_RATE,
-    SUPPORTED_STREAMABLE_SPEECH_RESPONSE_FORMATS,
     SpeechAudioDeltaEvent,
     SpeechAudioDoneEvent,
     SpeechAudioTokenUsage,
     SpeechResponseFormat,
 )
-from speaches.audio import Audio
+from speaches.audio import Audio, stream_audio_as_formatted_bytes
 from speaches.dependencies import ExecutorRegistryDependency
 from speaches.executors.shared.handler_protocol import SpeechRequest
 from speaches.model_aliases import ModelId
@@ -26,6 +25,29 @@ from speaches.text_utils import format_as_sse, strip_emojis, strip_markdown_emph
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["speech-to-text"])
+
+RESPONSE_FORMAT_MIME_TYPE_MAP = {
+    "pcm": "audio/pcm",
+    "mp3": "audio/mpeg",
+    "wav": "audio/wav",
+    "flac": "audio/flac",
+    "opus": "audio/opus",
+    "aac": "audio/aac",
+}
+
+
+def response_format_to_mime_type(response_format: SpeechResponseFormat) -> str:
+    mime_type = RESPONSE_FORMAT_MIME_TYPE_MAP[response_format]
+    # Adding additional information to help client in decoding
+    # Per https://voysis.readme.io/docs/audio-guidelines
+    # NOTE: I'm not sure how widely supported these additional parameters are so for now they are commented out
+    # if response_format == "pcm":
+    #     mime_type += f";rate={audio.sample_rate}"
+    #     mime_type += ";bits=16"
+    #     mime_type += ";encoding=signed-int"
+    #     mime_type += ";channels=1"
+    #     mime_type += ";big-endian=false"
+    return mime_type
 
 
 class CreateSpeechRequestBody(BaseModel):
@@ -60,12 +82,11 @@ def speech_audio_events_to_sse(
 
 
 # https://platform.openai.com/docs/api-reference/audio/createSpeech
-# NOTE: `response_model=None` because `Response | StreamingResponse` are not serializable by Pydantic.
-@router.post("/v1/audio/speech", response_model=None)
+@router.post("/v1/audio/speech")
 def synthesize(
     executor_registry: ExecutorRegistryDependency,
     body: CreateSpeechRequestBody,
-) -> Response | StreamingResponse:
+) -> StreamingResponse:
     model_card_data = get_model_card_data_or_raise(body.model)
     executor = find_executor_for_model_or_raise(body.model, model_card_data, executor_registry.text_to_speech)
 
@@ -92,22 +113,11 @@ def synthesize(
             media_type="text/event-stream",
         )
 
-    # HACK: some response formats may not directly map to soundfile formats
-    # HACK: some response formats may not directly map to mime types
-    if body.response_format not in SUPPORTED_STREAMABLE_SPEECH_RESPONSE_FORMATS:
-        audio = Audio.concatenate(list(audio_generator))
-        if body.sample_rate is not None:
-            audio = audio.resample(body.sample_rate)
-        return Response(
-            content=audio.as_formatted_bytes(body.response_format),
-            media_type=f"audio/{body.response_format}",
-        )
-
-    def resampled_audio_generator() -> Generator[bytes]:
-        for audio in audio_generator:
-            if body.sample_rate is not None:
-                audio.resample(body.sample_rate)
-
-            yield audio.as_formatted_bytes(body.response_format)
-
-    return StreamingResponse(resampled_audio_generator(), media_type=f"audio/{body.response_format}")
+    return StreamingResponse(
+        stream_audio_as_formatted_bytes(
+            audio_generator,
+            audio_format=body.response_format,
+            sample_rate=body.sample_rate,
+        ),
+        media_type=response_format_to_mime_type(body.response_format),
+    )
