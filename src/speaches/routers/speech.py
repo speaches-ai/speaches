@@ -1,3 +1,4 @@
+from collections.abc import Generator
 import logging
 
 from fastapi import APIRouter, HTTPException, Response
@@ -8,8 +9,10 @@ from speaches.api_types import (
     DEFAULT_SPEECH_RESPONSE_FORMAT,
     MAX_SPEECH_SAMPLE_RATE,
     MIN_SPEECH_SAMPLE_RATE,
+    SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS,
     SpeechResponseFormat,
 )
+from speaches.audio import Audio
 from speaches.dependencies import ExecutorRegistryDependency
 from speaches.executors.shared.handler_protocol import SpeechRequest
 from speaches.model_aliases import ModelId
@@ -50,22 +53,33 @@ def synthesize(
     speech_request = SpeechRequest(
         model=body.model,
         voice=body.voice,
-        input=body.input,
-        response_format=body.response_format,
-        instructions=None,
+        text=body.input,
         speed=body.speed,
-        stream_format="pcm",
-        sample_rate=body.sample_rate,
     )
     # HACK: here we assume that the ValueError is only raised for invalid input data which may not be correct. This is a workaround for avoiding raising `HTTPException` from the executor code
     try:
-        res, mime_type = executor.model_manager.handle_speech_request(
+        audio_generator = executor.model_manager.handle_speech_request(
             speech_request,
         )
     except ValueError as e:
         logger.exception("Value error during speech synthesis")
         raise HTTPException(status_code=422, detail=str(e)) from e
-    if isinstance(res, bytes):
-        return Response(res, media_type=mime_type)
-    else:
-        return StreamingResponse(res, media_type=mime_type)
+    # HACK: some response formats may not directly map to soundfile formats
+    # HACK: some response formats may not directly map to mime types
+    if body.response_format in SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS:
+        audio = Audio.concatenate(list(audio_generator))
+        if body.sample_rate is not None:
+            audio = audio.resample(body.sample_rate)
+        return Response(
+            content=audio.as_formatted_bytes(body.response_format),
+            media_type=f"audio/{body.response_format}",
+        )
+
+    def resampled_audio_generator() -> Generator[bytes]:
+        for audio in audio_generator:
+            if body.sample_rate is not None:
+                audio.resample(body.sample_rate)
+
+            yield audio.as_bytes() if body.response_format == "pcm" else audio.as_formatted_bytes(body.response_format)
+
+    return StreamingResponse(resampled_audio_generator(), media_type=f"audio/{body.response_format}")

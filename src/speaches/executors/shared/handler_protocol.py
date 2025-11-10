@@ -5,7 +5,7 @@ import numpy as np
 import openai.types.audio
 from pydantic import BaseModel, ConfigDict
 
-from speaches.api_types import SpeechResponseFormat, TimestampGranularities
+from speaches.api_types import TimestampGranularities
 from speaches.audio import Audio
 from speaches.executors.silero_vad_v5 import SpeechTimestamp, VadOptions
 
@@ -31,15 +31,11 @@ class SpeakerEmbeddingHandler(Protocol):
 class SpeechRequest(BaseModel):
     model: str
     voice: str
-    input: str
-    instructions: str | None
-    response_format: SpeechResponseFormat
+    text: str
     speed: float
-    stream_format: str
-    sample_rate: int | None
 
 
-SpeechResponse = tuple[bytes, MimeType] | tuple[Generator[bytes], MimeType]
+SpeechResponse = Generator[Audio]
 
 
 class SpeechHandler(Protocol):

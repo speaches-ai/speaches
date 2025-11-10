@@ -7,11 +7,12 @@ import time
 from typing import TYPE_CHECKING, Literal
 
 import huggingface_hub
+import numpy as np
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
-from speaches.api_types import SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS, Model
-from speaches.audio import convert_audio_format, resample_audio_bytes
+from speaches.api_types import Model
+from speaches.audio import Audio
 from speaches.config import OrtOptions  # noqa: TC001
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse  # noqa: TC001
@@ -173,20 +174,6 @@ class PiperModelRegistry(ModelRegistry):
 piper_model_registry = PiperModelRegistry(hf_model_filter=hf_model_filter)
 
 
-# TODO: async generator https://github.com/mikeshardmind/async-utils/blob/354b93a276572aa54c04212ceca5ac38fedf34ab/src/async_utils/gen_transform.py#L147
-def generate_audio(
-    piper_tts: PiperVoice, text: str, *, speed: float = 1.0, sample_rate: int | None = None
-) -> Generator[bytes, None, None]:
-    if sample_rate is None:
-        sample_rate = piper_tts.config.sample_rate
-    start = time.perf_counter()
-    for audio_bytes in piper_tts.synthesize_stream_raw(text, length_scale=1.0 / speed):
-        if sample_rate != piper_tts.config.sample_rate:
-            audio_bytes = resample_audio_bytes(audio_bytes, piper_tts.config.sample_rate, sample_rate)  # noqa: PLW2901
-        yield audio_bytes
-    logger.info(f"Generated audio for {len(text)} characters in {time.perf_counter() - start}s")
-
-
 class PiperModelManager(BaseModelManager["PiperVoice"]):
     def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
         super().__init__(ttl)
@@ -211,21 +198,9 @@ class PiperModelManager(BaseModelManager["PiperVoice"]):
             raise ValueError(msg)
         # TODO: maybe check voice
         with self.load_model(request.model) as piper_tts:
-            audio_generator = generate_audio(
-                piper_tts, request.input, speed=request.speed, sample_rate=request.sample_rate
-            )
-            # these file formats can't easily be streamed because they have headers and/or metadata
-            if request.response_format in SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS:
-                audio_data = b"".join(audio_bytes for audio_bytes in audio_generator)
-                audio_data = convert_audio_format(
-                    audio_data, request.sample_rate or piper_tts.config.sample_rate, request.response_format
-                )
-                return audio_data, f"audio/{request.response_format}"
-            if request.response_format != "pcm":
-                audio_generator = (
-                    convert_audio_format(
-                        audio_bytes, request.sample_rate or piper_tts.config.sample_rate, request.response_format
-                    )
-                    for audio_bytes in audio_generator
-                )
-            return audio_generator, f"audio/{request.response_format}"
+            start = time.perf_counter()
+            for audio_bytes in piper_tts.synthesize_stream_raw(request.text, length_scale=1.0 / request.speed):
+                audio_data_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
+                audio_data = audio_data_int16.astype(np.float32) / 32768.0
+                yield Audio(audio_data, sample_rate=piper_tts.config.sample_rate)
+            logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")

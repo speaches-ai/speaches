@@ -6,16 +6,14 @@ from typing import Literal
 
 import huggingface_hub
 from kokoro_onnx import Kokoro
-import numpy as np
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
 from speaches.api_types import (
     OPENAI_SUPPORTED_SPEECH_VOICE_NAMES,
-    SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS,
     Model,
 )
-from speaches.audio import convert_audio_format, resample_audio_bytes
+from speaches.audio import Audio
 from speaches.config import OrtOptions
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse
@@ -216,54 +214,18 @@ class KokoroModelManager(BaseModelManager[Kokoro]):
                 msg = f"Voice '{request.voice}' is not supported. Supported voices: {VOICES}"
                 raise ValueError(msg)
 
+        voice_language = next(v.language for v in VOICES if v.name == request.voice)
         with self.load_model(request.model) as tts:
-            audio_generator = generate_audio(
-                tts,
-                request.input,
+            start = time.perf_counter()
+            async_stream = tts.create_stream(
+                request.text,
                 request.voice,
+                lang=voice_language,
                 speed=request.speed,
-                sample_rate=request.sample_rate,
             )
-            # these file formats can't easily be streamed because they have headers and/or metadata
-            if request.response_format in SUPPORTED_NON_STREAMABLE_SPEECH_RESPONSE_FORMATS:
-                audio_data = b"".join(list(audio_generator))
-                audio_data = convert_audio_format(
-                    audio_data, request.sample_rate or SAMPLE_RATE, request.response_format
-                )
-                return audio_data, f"audio/{request.response_format}"
-            if request.response_format != "pcm":
-                audio_generator = (
-                    convert_audio_format(audio_bytes, request.sample_rate or SAMPLE_RATE, request.response_format)
-                    for audio_bytes in audio_generator
-                )
-            return audio_generator, f"audio/{request.response_format}"
+            # HACK: converting an async generator to a sync generator
+            sync_stream = async_to_sync_generator(async_stream)
+            for audio_data, _ in sync_stream:
+                yield Audio(audio_data, sample_rate=SAMPLE_RATE)
 
-
-def generate_audio(
-    kokoro_tts: Kokoro,
-    text: str,
-    voice: str,
-    *,
-    speed: float = 1.0,
-    sample_rate: int | None = None,
-) -> Generator[bytes]:
-    if sample_rate is None:
-        sample_rate = SAMPLE_RATE
-    voice_language = next(v.language for v in VOICES if v.name == voice)
-    start = time.perf_counter()
-    async_stream = kokoro_tts.create_stream(
-        text,
-        voice,
-        lang=voice_language,
-        speed=speed,
-    )
-    # HACK: converting an async generator to a sync generator
-    sync_stream = async_to_sync_generator(async_stream)
-    for audio_data, _ in sync_stream:
-        assert isinstance(audio_data, np.ndarray) and audio_data.dtype == np.float32 and isinstance(sample_rate, int)
-        normalized_audio_data = (audio_data * np.iinfo(np.int16).max).astype(np.int16)
-        audio_bytes = normalized_audio_data.tobytes()
-        if sample_rate != SAMPLE_RATE:
-            audio_bytes = resample_audio_bytes(audio_bytes, SAMPLE_RATE, sample_rate)
-        yield audio_bytes
-    logger.info(f"Generated audio for {len(text)} characters in {time.perf_counter() - start}s")
+        logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")
