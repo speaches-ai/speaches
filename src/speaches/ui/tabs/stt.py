@@ -66,7 +66,7 @@ def create_stt_tab(config: Config) -> None:
         response_format: ResponseFormat,
         temperature: float,
         model: str,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[str]:
         try:
             with Path(file_path).open("rb") as file:  # noqa: ASYNC230
                 kwargs = {
@@ -95,7 +95,7 @@ def create_stt_tab(config: Config) -> None:
         temperature: float,
         stream: bool,
         request: gr.Request,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[str]:
         try:
             if not file_path:
                 msg = "No audio file provided in whisper_handler (stt.py). Please record or upload audio."

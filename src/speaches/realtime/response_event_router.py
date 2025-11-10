@@ -98,7 +98,7 @@ class ResponseHandler:
         self.task: asyncio.Task[None] | None = None
 
     @contextmanager
-    def add_output_item[T: ServerConversationItem](self, item: T) -> Generator[T, None, None]:
+    def add_output_item[T: ServerConversationItem](self, item: T) -> Generator[T]:
         self.response.output.append(item)
         self.pubsub.publish_nowait(ResponseOutputItemAddedEvent(response_id=self.id, item=item))
         yield item
@@ -111,7 +111,7 @@ class ResponseHandler:
     @contextmanager
     def add_item_content[T: ConversationItemContentText | ConversationItemContentAudio](
         self, item: ConversationItemMessage, content: T
-    ) -> Generator[T, None, None]:
+    ) -> Generator[T]:
         item.content.append(content)
         self.pubsub.publish_nowait(
             ResponseContentPartAddedEvent(response_id=self.id, item_id=item.id, part=content.to_part())

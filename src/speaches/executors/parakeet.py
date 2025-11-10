@@ -50,7 +50,7 @@ class NemoConformerTdtModelFiles(TypedDict):
 
 
 class NemoConformerTdtModelRegistry(ModelRegistry[Model, NemoConformerTdtModelFiles]):
-    def list_remote_models(self) -> Generator[Model, None, None]:
+    def list_remote_models(self) -> Generator[Model]:
         models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
         for model in models:
             assert model.created_at is not None and model.card_data is not None, model
@@ -62,7 +62,7 @@ class NemoConformerTdtModelRegistry(ModelRegistry[Model, NemoConformerTdtModelFi
                 task=TASK_NAME_TAG,
             )
 
-    def list_local_models(self) -> Generator[Model, None, None]:
+    def list_local_models(self) -> Generator[Model]:
         cached_model_repos_info = get_cached_model_repos_info()
         for cached_repo_info in cached_model_repos_info:
             model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)

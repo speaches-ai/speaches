@@ -47,7 +47,7 @@ MODEL_ID_BLACKLIST = {
 
 
 class PyannoteSpeakerEmbeddingModelRegistry(ModelRegistry):
-    def list_remote_models(self) -> Generator[Model, None, None]:
+    def list_remote_models(self) -> Generator[Model]:
         models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
 
         for model in models:
@@ -72,7 +72,7 @@ class PyannoteSpeakerEmbeddingModelRegistry(ModelRegistry):
                 logger.exception(f"Skipping (unexpected error): {model.id}")
                 continue
 
-    def list_local_models(self) -> Generator[Model, None, None]:
+    def list_local_models(self) -> Generator[Model]:
         cached_model_repos_info = get_cached_model_repos_info()
         for cached_repo_info in cached_model_repos_info:
             if cached_repo_info.repo_id in MODEL_ID_BLACKLIST:

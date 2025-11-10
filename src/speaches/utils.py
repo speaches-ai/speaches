@@ -55,7 +55,7 @@ def format_api_proxy_error(exc: "APIProxyError", context: str = "") -> str:
     return f"[ERROR] {user_message}\nSuggestions: {', '.join(suggestions)}" + (f"\n{debug_info}" if debug_info else "")
 
 
-def async_to_sync_generator[T](async_gen: AsyncGenerator[T, None]) -> Generator[T, None, None]:
+def async_to_sync_generator[T](async_gen: AsyncGenerator[T]) -> Generator[T]:
     try:
         # Try to get the current event loop
         loop = asyncio.get_running_loop()

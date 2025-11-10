@@ -137,11 +137,11 @@ class SileroVADModel:
 
 
 class SileroVADModelRegistry(ModelRegistry):
-    def list_remote_models(self) -> Generator[Model, None, None]:
+    def list_remote_models(self) -> Generator[Model]:
         return
         yield  # pyright: ignore[reportUnreachable]
 
-    def list_local_models(self) -> Generator[Model, None, None]:
+    def list_local_models(self) -> Generator[Model]:
         encoder_path = Path(get_assets_path()) / "silero_encoder_v5.onnx"
         if encoder_path.exists():
             yield Model(

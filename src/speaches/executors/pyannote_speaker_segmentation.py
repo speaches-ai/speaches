@@ -42,7 +42,7 @@ MODEL_ID_WHITELIST = {"onnx-community/pyannote-segmentation-3.0"}
 
 
 class PyannoteSpeakerSegmentationModelRegistry(ModelRegistry):
-    def list_remote_models(self) -> Generator[Model, None, None]:
+    def list_remote_models(self) -> Generator[Model]:
         for model_id in MODEL_ID_WHITELIST:
             yield Model(
                 id=model_id,
@@ -52,7 +52,7 @@ class PyannoteSpeakerSegmentationModelRegistry(ModelRegistry):
                 # task=TASK_NAME_TAG,
             )
 
-    def list_local_models(self) -> Generator[Model, None, None]:
+    def list_local_models(self) -> Generator[Model]:
         cached_model_repos_info = get_cached_model_repos_info()
         for cached_repo_info in cached_model_repos_info:
             if cached_repo_info.repo_id in MODEL_ID_WHITELIST:

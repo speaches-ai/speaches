@@ -173,7 +173,7 @@ def get_model_repo_path(model_id: str, *, cache_dir: str | Path | None = None) -
 
 def list_model_files(
     model_id: str, glob_pattern: str = "**/*", *, cache_dir: str | Path | None = None
-) -> Generator[Path, None, None]:
+) -> Generator[Path]:
     repo_path = get_model_repo_path(model_id, cache_dir=cache_dir)
     if repo_path is None:
         return None

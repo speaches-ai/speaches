@@ -31,7 +31,7 @@ class PubSub[T: BaseModel]:
         self.subscribers.add(subscriber)
         return subscriber
 
-    async def poll(self) -> AsyncGenerator[T, None]:
+    async def poll(self) -> AsyncGenerator[T]:
         subscriber = Queue[T]()
         self.subscribers.add(subscriber)
         try:
@@ -44,7 +44,7 @@ class PubSub[T: BaseModel]:
 
 
 class EventPubSub(PubSub[Event]):
-    async def subscribe_to(self, event_type: str) -> AsyncGenerator[Event, None]:
+    async def subscribe_to(self, event_type: str) -> AsyncGenerator[Event]:
         if event_type not in SERVER_EVENT_TYPES | CLIENT_EVENT_TYPES:
             raise ValueError(f"Invalid event type: {event_type}")
         subscriber = Queue[Event]()

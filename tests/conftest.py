@@ -49,7 +49,7 @@ def pytest_configure() -> None:
 
 # NOTE: not being used. Keeping just in case. Needs to be modified to work similarly to `aclient_factory`
 @pytest.fixture
-def client() -> Generator[TestClient, None, None]:
+def client() -> Generator[TestClient]:
     with TestClient(create_app()) as client:
         yield client
 
@@ -64,7 +64,7 @@ async def aclient_factory(mocker: MockerFixture) -> AclientFactory:
     """Returns a context manager that provides an `AsyncClient` instance with `app` using the provided configuration."""
 
     @asynccontextmanager
-    async def inner(config: Config = DEFAULT_CONFIG) -> AsyncGenerator[AsyncClient, None]:
+    async def inner(config: Config = DEFAULT_CONFIG) -> AsyncGenerator[AsyncClient]:
         from speaches.executors.shared.registry import ExecutorRegistry
 
         # NOTE: all calls to `get_config` should be patched. One way to test that this works is to update the original `get_config` to raise an exception and see if the tests fail
@@ -86,7 +86,7 @@ async def aclient_factory(mocker: MockerFixture) -> AclientFactory:
 
 
 @pytest_asyncio.fixture()
-async def aclient(aclient_factory: AclientFactory) -> AsyncGenerator[AsyncClient, None]:
+async def aclient(aclient_factory: AclientFactory) -> AsyncGenerator[AsyncClient]:
     async with aclient_factory() as aclient:
         yield aclient
 
@@ -109,7 +109,7 @@ def actual_openai_client() -> AsyncOpenAI:
 @pytest_asyncio.fixture()
 async def dynamic_openai_client(
     target: Literal["speaches", "openai"], aclient_factory: AclientFactory
-) -> AsyncGenerator[AsyncOpenAI, None]:
+) -> AsyncGenerator[AsyncOpenAI]:
     assert target in ["speaches", "openai"]
     if target == "openai":
         yield AsyncOpenAI(base_url=OPENAI_BASE_URL, max_retries=0)
@@ -147,7 +147,7 @@ async def pull_model_without_cleanup(request: pytest.FixtureRequest, aclient: As
 
 # NOTE: not being used anywhere. Technically more correct than `pull_model_without_cleanup` as it cleans up after itself but the overhead of pulling the model for each test is too high.
 @pytest_asyncio.fixture()
-async def pull_model_with_cleanup(request: pytest.FixtureRequest, aclient: AsyncClient) -> AsyncGenerator[None, None]:
+async def pull_model_with_cleanup(request: pytest.FixtureRequest, aclient: AsyncClient) -> AsyncGenerator[None]:
     res = await aclient.post(f"/v1/models/{request.param}")
     res.raise_for_status()
     yield

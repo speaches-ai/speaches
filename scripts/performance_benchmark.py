@@ -214,7 +214,7 @@ def limit_concurrency[**P, R](
 
 
 @contextlib.asynccontextmanager
-async def model_available_fixture(model_id: str, client: AsyncClient) -> AsyncGenerator[None, None]:
+async def model_available_fixture(model_id: str, client: AsyncClient) -> AsyncGenerator[None]:
     get_running_models_res = await client.get("/api/ps")
     running_models = get_running_models_res.json()["models"]
     for running_model in running_models:

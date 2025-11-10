@@ -70,7 +70,7 @@ logger = logging.getLogger(__name__)
 
 
 class PiperModelRegistry(ModelRegistry):
-    def list_remote_models(self) -> Generator[PiperModel, None, None]:
+    def list_remote_models(self) -> Generator[PiperModel]:
         models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
 
         for model in models:
@@ -119,7 +119,7 @@ class PiperModelRegistry(ModelRegistry):
                 logger.exception(f"Skipping (unexpected error): {model.id}")
                 continue
 
-    def list_local_models(self) -> Generator[PiperModel, None, None]:
+    def list_local_models(self) -> Generator[PiperModel]:
         cached_model_repos_info = get_cached_model_repos_info()
         for cached_repo_info in cached_model_repos_info:
             model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)

@@ -141,10 +141,10 @@ class Audio:
 
 
 def stream_audio_as_formatted_bytes(
-    audio_generator: Generator[Audio, None, None],
+    audio_generator: Generator[Audio],
     audio_format: Literal["aac", "pcm", "opus", "mp3", "flac", "wav"],
     sample_rate: int | None = None,
-) -> Generator[bytes, None, None]:
+) -> Generator[bytes]:
     if audio_format == "pcm":
         for audio in audio_generator:
             if sample_rate is not None:
