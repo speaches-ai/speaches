@@ -25,6 +25,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
+      - if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q -q
+          sudo apt-get install --yes ffmpeg
+      - if: runner.os == 'macOS'
+        run: brew install ffmpeg
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
