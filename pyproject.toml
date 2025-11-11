@@ -29,14 +29,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "anyio>=4.9.0",
-    "basedpyright>=1.30.1",
     "pytest-antilru>=2.0.0",
     "mkdocs-material>=9.6.15",
     "mkdocstrings[python]>=0.29.1",
     "pytest-asyncio>=1.0.0",
     "pytest-xdist>=3.8.0",
     "pytest>=8.4.1",
-    "ruff>=0.12.3",
     "srt>=3.5.3",
     "webvtt-py>=0.5.1",
     "pre-commit>=4.2.0",
@@ -45,6 +43,8 @@ dev = [
     "mdx-truly-sane-lists>=1.3",
     "datamodel-code-generator>=0.31.2",
     "httpx-sse>=0.4.1",
+    "basedpyright>=1.33.0",
+    "ruff>=0.14.4",
 ]
 ui = [
     "gradio>=5.49.1",
