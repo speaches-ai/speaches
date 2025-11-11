@@ -4,7 +4,7 @@ from pathlib import Path
 
 import huggingface_hub
 import numpy as np
-from onnxruntime import InferenceSession, SessionOptions
+from onnxruntime import InferenceSession, SessionOptions  # pyright: ignore[reportAttributeAccessIssue]
 from pydantic import BaseModel
 
 from speaches.api_types import Model
