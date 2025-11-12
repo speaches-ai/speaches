@@ -15,10 +15,8 @@ MODEL_CARD_DOESNT_EXISTS_ERROR_MESSAGE = """The model repository does not contai
 
 
 class HfModelFilterDict(TypedDict):
+    filter: list[str] | None
     model_name: str | None
-    library: str | None
-    task: str | None
-    tags: list[str] | None
 
 
 class HfModelFilter(BaseModel):
@@ -55,21 +53,19 @@ class HfModelFilter(BaseModel):
         return True
 
     def list_model_kwargs(self) -> HfModelFilterDict:
-        kwargs: HfModelFilterDict = {
-            "model_name": None,
-            "library": None,
-            "task": None,
-            "tags": None,
-        }
+        kwargs = {"filter": []}
         if self.library_name is not None:
-            kwargs["library"] = self.library_name
+            kwargs["filter"].append(self.library_name)
         if self.task is not None:
-            kwargs["task"] = self.task
+            kwargs["filter"].append(self.task)
         if self.tags is not None and len(self.tags) > 0:
-            kwargs["tags"] = list(self.tags)
+            kwargs["filter"].extend(list(self.tags))
         if self.model_name is not None:
-            kwargs["model_name"] = self.model_name
-        return kwargs
+            kwargs["model_name"] = self.model_name  # pyright: ignore[reportArgumentType]
+
+        if len(kwargs["filter"]) == 0:
+            kwargs.pop("filter")
+        return kwargs  # pyright: ignore[reportReturnType]
 
 
 def get_cached_model_repos_info() -> list[huggingface_hub.CachedRepoInfo]:
