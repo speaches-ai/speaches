@@ -8,6 +8,7 @@ import onnx_asr
 from onnx_asr.adapters import TextResultsAsrAdapter
 from onnx_asr.models import NemoConformerTdt
 import openai.types.audio
+from opentelemetry import trace
 
 from speaches.api_types import Model
 from speaches.config import OrtOptions
@@ -25,6 +26,7 @@ from speaches.hf_utils import (
     list_model_files,
 )
 from speaches.model_registry import ModelRegistry
+from speaches.tracing import traced, traced_generator
 
 # TODO: support model quants
 
@@ -33,6 +35,7 @@ TASK_NAME_TAG = "automatic-speech-recognition"
 # TAGS = {"nemo-conformer-tdt"} # NOTE: I've tried to use this tag however it seems to be derived (likely from config.json) and isn't present when parsing the local model card
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 hf_model_filter = HfModelFilter(
     model_name="istupakov/parakeet-tdt",
@@ -114,6 +117,7 @@ class ParakeetModelManager(BaseModelManager[TextResultsAsrAdapter]):
         providers = get_ort_providers_with_options(self.ort_opts)
         return onnx_asr.load_model(model_id, providers=providers)
 
+    @traced()
     def handle_non_streaming_transcription_request(
         self,
         request: TranscriptionRequest,
@@ -135,6 +139,7 @@ class ParakeetModelManager(BaseModelManager[TextResultsAsrAdapter]):
                 case "json":
                     return openai.types.audio.Transcription(text=results.text)
 
+    @traced_generator()
     def handle_streaming_transcription_request(
         self,
         request: TranscriptionRequest,

@@ -5,6 +5,7 @@ from pathlib import Path
 import huggingface_hub
 import numpy as np
 from onnxruntime import InferenceSession, SessionOptions  # pyright: ignore[reportAttributeAccessIssue]
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from speaches.api_types import Model
@@ -21,6 +22,7 @@ from speaches.hf_utils import (
     list_model_files,
 )
 from speaches.model_registry import ModelRegistry
+from speaches.tracing import traced
 
 LIBRARY_NAME = "onnx"
 TASK_NAME_TAG = "speaker-embedding"
@@ -40,6 +42,7 @@ hf_model_filter = HfModelFilter(
 
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 MODEL_ID_BLACKLIST = {
     "eek/wespeaker-voxceleb-resnet293-LM"  # reason: doesn't have `task` tag, also has pytorch binary file, onnx model file isn't named `model.onnx`
@@ -122,6 +125,7 @@ class PyannoteSpeakerEmbeddingModelManager(BaseModelManager[InferenceSession]):
         inf_sess = InferenceSession(model_files.model, providers=providers, sess_options=sess_options)
         return inf_sess
 
+    @traced()
     def handle_speaker_embedding_request(self, request: SpeakerEmbeddingRequest, **_kwargs) -> SpeakerEmbeddingResponse:
         with self.load_model(request.model_id) as model:
             input_name = model.get_inputs()[0].name

@@ -7,6 +7,7 @@ from typing import Literal
 
 import huggingface_hub
 from onnxruntime import InferenceSession
+from opentelemetry import trace
 from piper.config import PiperConfig, SynthesisConfig
 from piper.voice import PiperVoice
 from pydantic import BaseModel, computed_field
@@ -24,6 +25,7 @@ from speaches.hf_utils import (
     list_model_files,
 )
 from speaches.model_registry import ModelRegistry
+from speaches.tracing import traced_generator
 
 PiperVoiceQuality = Literal["x_low", "low", "medium", "high"]
 PIPER_VOICE_QUALITY_SAMPLE_RATE_MAP: dict[PiperVoiceQuality, int] = {
@@ -67,6 +69,7 @@ hf_model_filter = HfModelFilter(
 
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class PiperModelRegistry(ModelRegistry):
@@ -180,6 +183,7 @@ class PiperModelManager(BaseModelManager["PiperVoice"]):
         conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 
+    @traced_generator()
     def handle_speech_request(
         self,
         request: SpeechRequest,

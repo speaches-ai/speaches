@@ -1,3 +1,5 @@
+from collections.abc import Callable, Generator
+import functools
 import logging
 
 from opentelemetry import metrics, trace
@@ -14,6 +16,50 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 logger = logging.getLogger(__name__)
+
+
+def traced[**P, T](
+    span_name: str | None = None,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            tracer = trace.get_tracer(func.__module__)
+            name = span_name if span_name is not None else func.__qualname__
+            with tracer.start_as_current_span(name) as span:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    span.record_exception(e)
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                    raise
+
+        return wrapper
+
+    return decorator
+
+
+def traced_generator[**P, T](
+    span_name: str | None = None,
+) -> Callable[[Callable[P, Generator[T]]], Callable[P, Generator[T]]]:
+    def decorator(func: Callable[P, Generator[T]]) -> Callable[P, Generator[T]]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Generator[T]:
+            tracer = trace.get_tracer(func.__module__)
+            name = span_name if span_name is not None else func.__qualname__
+            span = tracer.start_span(name)
+            try:
+                yield from func(*args, **kwargs)
+            except Exception as e:
+                span.record_exception(e)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                raise
+            finally:
+                span.end()
+
+        return wrapper
+
+    return decorator
 
 
 def setup_telemetry(endpoint: str, service_name: str) -> None:

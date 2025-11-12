@@ -7,12 +7,14 @@ from typing import TYPE_CHECKING, TypedDict
 
 from faster_whisper.utils import get_assets_path
 import numpy as np
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from speaches.api_types import Model
 from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
 from speaches.hf_utils import HfModelFilter
 from speaches.model_registry import ModelRegistry
+from speaches.tracing import traced
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -28,6 +30,7 @@ MODEL_ID = "silero_vad_v5"
 SAMPLE_RATE_MS = SAMPLE_RATE // 1000
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 # The code below is adapted from https://github.com/snakers4/silero-vad.
@@ -173,6 +176,7 @@ class SileroVADModelManager(BaseModelManager[SileroVADModel]):
         providers = get_ort_providers_with_options(self.ort_opts)
         return SileroVADModel(model_files.encoder, model_files.decoder, providers)
 
+    @traced()
     def handle_vad_request(self, request: VadRequest, **_kwargs) -> list[SpeechTimestamp]:
         return get_speech_timestamps(
             request.audio.data,

@@ -8,6 +8,7 @@ from faster_whisper import BatchedInferencePipeline, WhisperModel
 import faster_whisper.transcribe
 import huggingface_hub
 import openai.types.audio
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from speaches.api_types import Model
@@ -29,6 +30,7 @@ from speaches.hf_utils import (
 )
 from speaches.model_registry import ModelRegistry
 from speaches.text_utils import format_as_srt, format_as_vtt
+from speaches.tracing import traced, traced_generator
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
@@ -44,6 +46,7 @@ LIBRARY_NAME = "ctranslate2"
 TASK_NAME_TAG = "automatic-speech-recognition"
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 hf_model_filter = HfModelFilter(
     library_name=LIBRARY_NAME,
@@ -137,6 +140,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
             num_workers=self.whisper_config.num_workers,
         )
 
+    @traced()
     def handle_non_streaming_transcription_request(
         self,
         request: TranscriptionRequest,
@@ -179,6 +183,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
             )
             return res
 
+    @traced_generator()
     def handle_streaming_transcription_request(
         self,
         request: TranscriptionRequest,
@@ -225,6 +230,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         else:
             return self.handle_non_streaming_transcription_request(request, **kwargs)
 
+    @traced()
     def handle_translation_request(
         self,
         request: TranslationRequest,

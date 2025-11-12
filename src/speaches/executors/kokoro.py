@@ -27,6 +27,7 @@ from speaches.hf_utils import (
 from speaches.model_registry import (
     ModelRegistry,
 )
+from speaches.tracing import traced_generator
 from speaches.utils import async_to_sync_generator
 
 SAMPLE_RATE = 24000  # the default sample rate for Kokoro
@@ -196,6 +197,7 @@ class KokoroModelManager(BaseModelManager[Kokoro]):
         inf_sess = InferenceSession(model_files.model, providers=providers)
         return Kokoro.from_session(inf_sess, str(model_files.voices))
 
+    @traced_generator()
     def handle_speech_request(
         self,
         request: SpeechRequest,
