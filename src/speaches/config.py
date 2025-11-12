@@ -117,3 +117,16 @@ class Config(BaseSettings):
     chat_completion_api_key: SecretStr = SecretStr("cant-be-empty")
 
     unstable_ort_opts: OrtOptions = OrtOptions()
+
+    otel_exporter_otlp_endpoint: str | None = None
+    """
+    OpenTelemetry OTLP exporter endpoint. If set, telemetry will be enabled.
+    Example: 'http://localhost:4317'
+    Shadows OTEL_EXPORTER_OTLP_ENDPOINT environment variable.
+    """
+
+    otel_service_name: str = "speaches"
+    """
+    OpenTelemetry service name for identifying this application in traces.
+    Shadows OTEL_SERVICE_NAME environment variable.
+    """

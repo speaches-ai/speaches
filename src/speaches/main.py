@@ -73,6 +73,21 @@ def create_app() -> FastAPI:
 
     logger.debug(f"Config: {config}")
 
+    # Initialize OpenTelemetry if endpoint is configured
+    if config.otel_exporter_otlp_endpoint:
+        from speaches.tracing import setup_telemetry
+
+        setup_telemetry(config.otel_exporter_otlp_endpoint, config.otel_service_name)
+
+        # Auto-instrument common libraries
+        from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+        from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
+        AsyncioInstrumentor().instrument()
+        HTTPXClientInstrumentor().instrument()
+        LoggingInstrumentor().instrument()
+
     # Create main app WITHOUT global authentication
     app = FastAPI(
         title="Speaches",
@@ -80,6 +95,12 @@ def create_app() -> FastAPI:
         license_info={"name": "MIT License", "identifier": "MIT"},
         openapi_tags=TAGS_METADATA,
     )
+
+    # Instrument FastAPI app if telemetry is enabled
+    if config.otel_exporter_otlp_endpoint:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+        FastAPIInstrumentor.instrument_app(app)
 
     # Register global exception handler for APIProxyError
     @app.exception_handler(APIProxyError)
