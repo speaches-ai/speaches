@@ -2447,7 +2447,9 @@ dependencies = [
     { name = "ctranslate2" },
     { name = "fastapi" },
     { name = "faster-whisper" },
+    { name = "gradio" },
     { name = "httpx" },
+    { name = "httpx-sse" },
     { name = "httpx-ws" },
     { name = "huggingface-hub", extra = ["hf-transfer"] },
     { name = "kokoro-onnx", extra = ["gpu"] },
@@ -2468,7 +2470,6 @@ dev = [
     { name = "anyio" },
     { name = "basedpyright" },
     { name = "datamodel-code-generator" },
-    { name = "httpx-sse" },
     { name = "mdx-truly-sane-lists" },
     { name = "mkdocs-material" },
     { name = "mkdocs-render-swagger-plugin" },
@@ -2499,10 +2500,6 @@ opentelemetry = [
     { name = "opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3" },
 ]
-ui = [
-    { name = "gradio" },
-    { name = "httpx-sse" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -2515,10 +2512,9 @@ requires-dist = [
     { name = "datamodel-code-generator", marker = "extra == 'dev'", specifier = ">=0.31.2" },
     { name = "fastapi", specifier = ">=0.121.1" },
     { name = "faster-whisper", specifier = ">=1.1.1" },
-    { name = "gradio", marker = "extra == 'ui'", specifier = ">=5.49.1" },
+    { name = "gradio", specifier = ">=5.49.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "httpx-sse", marker = "extra == 'dev'", specifier = ">=0.4.1" },
-    { name = "httpx-sse", marker = "extra == 'ui'", specifier = ">=0.4.1" },
+    { name = "httpx-sse", specifier = ">=0.4.1" },
     { name = "httpx-ws", specifier = ">=0.7.2" },
     { name = "huggingface-hub", extras = ["hf-transfer"], specifier = ">=0.33.4" },
     { name = "kokoro-onnx", extras = ["gpu"], specifier = ">=0.4.5,<0.5.0" },
@@ -2560,7 +2556,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.35.0" },
     { name = "webvtt-py", marker = "extra == 'dev'", specifier = ">=0.5.1" },
 ]
-provides-extras = ["dev", "ui", "opentelemetry"]
+provides-extras = ["dev", "opentelemetry"]
 
 [[package]]
 name = "speaches-cli"

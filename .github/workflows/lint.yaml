@@ -37,5 +37,5 @@ jobs:
           enable-cache: true
           activate-environment: true
       - run: uv python install
-      - run: uv sync --extra dev --extra ui
+      - run: uv sync --extra dev
       - run: uv run basedpyright .

@@ -27,10 +27,10 @@ COPY --chown=ubuntu --from=ghcr.io/astral-sh/uv:0.8.22 /uv /bin/uv
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --compile-bytecode --no-install-project --extra ui
+    uv sync --frozen --compile-bytecode --no-install-project
 COPY --chown=ubuntu . .
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --compile-bytecode --extra ui
+    uv sync --frozen --compile-bytecode
 # Creating a directory for the cache to avoid the following error:
 # PermissionError: [Errno 13] Permission denied: '/home/ubuntu/.cache/huggingface/hub'
 # This error occurs because the volume is mounted as root and the `ubuntu` user doesn't have permission to write to it. Pre-creating the directory solves this issue.
