@@ -122,6 +122,6 @@ cd speaches
 uv python install
 uv venv
 source .venv/bin/activate
-uv sync --all-extras
+uv sync
 uvicorn --factory --host 0.0.0.0 speaches.main:create_app
 ```

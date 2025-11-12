@@ -43,24 +43,33 @@ dependencies = [
     "opentelemetry-instrumentation-openai>=0.37.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "anyio>=4.9.0",
-    "pytest-antilru>=2.0.0",
+  {include-group = "docs"},
+  {include-group = "lint"},
+  {include-group = "test"}
+]
+docs = [
+    "mdx-truly-sane-lists>=1.3",
     "mkdocs-material>=9.6.15",
+    "mkdocs-render-swagger-plugin>=0.1.2",
     "mkdocstrings[python]>=0.29.1",
+]
+lint = [
+    "basedpyright>=1.33.0",
+    "pre-commit>=4.2.0",
+    "ruff>=0.14.4",
+]
+test = [
+    "anyio>=4.9.0",
+    "datamodel-code-generator>=0.31.2",
+    "pytest-antilru>=2.0.0",
     "pytest-asyncio>=1.0.0",
+    "pytest-mock>=3.14.1",
     "pytest-xdist>=3.8.0",
     "pytest>=8.4.1",
     "srt>=3.5.3",
     "webvtt-py>=0.5.1",
-    "pre-commit>=4.2.0",
-    "pytest-mock>=3.14.1",
-    "mkdocs-render-swagger-plugin>=0.1.2",
-    "mdx-truly-sane-lists>=1.3",
-    "datamodel-code-generator>=0.31.2",
-    "basedpyright>=1.33.0",
-    "ruff>=0.14.4",
 ]
 
 [build-system]

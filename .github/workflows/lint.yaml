@@ -25,7 +25,7 @@ jobs:
           enable-cache: true
           activate-environment: true
       - run: uv python install
-      - run: uv sync --extra dev
+      - run: uv sync
       - run: uv run ruff check .
       - run: uv run ruff format --check --diff .
   basedpyright:
@@ -37,5 +37,5 @@ jobs:
           enable-cache: true
           activate-environment: true
       - run: uv python install
-      - run: uv sync --extra dev
+      - run: uv sync
       - run: uv run basedpyright .
