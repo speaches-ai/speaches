@@ -26,6 +26,21 @@ dependencies = [
     "openai[realtime]>=2.7.1",
     "gradio>=5.49.1",
     "httpx-sse>=0.4.1",
+    "opentelemetry-distro>=0.50b0",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-instrumentation-asgi==0.50b0",
+    "opentelemetry-instrumentation-asyncio==0.50b0",
+    "opentelemetry-instrumentation-logging==0.50b0",
+    "opentelemetry-instrumentation-threading==0.50b0",
+    "opentelemetry-instrumentation-urllib==0.50b0",
+    # "opentelemetry-instrumentation-wsgi==0.50b0"
+    "opentelemetry-instrumentation-fastapi==0.50b0",
+    "opentelemetry-instrumentation-grpc==0.50b0",
+    "opentelemetry-instrumentation-httpx==0.50b0",
+    "opentelemetry-instrumentation-requests==0.50b0",
+    "opentelemetry-instrumentation-urllib3==0.50b0",
+    "opentelemetry-instrumentation-openai-v2>=2.1b0",
+    "opentelemetry-instrumentation-openai>=0.37.1",
 ]
 
 [project.optional-dependencies]
@@ -46,23 +61,6 @@ dev = [
     "datamodel-code-generator>=0.31.2",
     "basedpyright>=1.33.0",
     "ruff>=0.14.4",
-]
-opentelemetry = [
-    "opentelemetry-distro>=0.50b0",
-    "opentelemetry-exporter-otlp>=1.27.0",
-    "opentelemetry-instrumentation-asgi==0.50b0",
-    "opentelemetry-instrumentation-asyncio==0.50b0",
-    "opentelemetry-instrumentation-logging==0.50b0",
-    "opentelemetry-instrumentation-threading==0.50b0",
-    "opentelemetry-instrumentation-urllib==0.50b0",
-    # "opentelemetry-instrumentation-wsgi==0.50b0"
-    "opentelemetry-instrumentation-fastapi==0.50b0",
-    "opentelemetry-instrumentation-grpc==0.50b0",
-    "opentelemetry-instrumentation-httpx==0.50b0",
-    "opentelemetry-instrumentation-requests==0.50b0",
-    "opentelemetry-instrumentation-urllib3==0.50b0",
-    "opentelemetry-instrumentation-openai-v2>=2.1b0",
-    "opentelemetry-instrumentation-openai>=0.37.1",
 ]
 
 [build-system]
