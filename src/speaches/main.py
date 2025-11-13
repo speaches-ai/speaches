@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 import logging
 import os
 import uuid
@@ -19,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import RedirectResponse
 
-from speaches.dependencies import ApiKeyDependency, get_config
+from speaches.dependencies import ApiKeyDependency, get_config, get_executor_registry
 from speaches.logger import setup_logger
 from speaches.routers.chat import (
     router as chat_router,
@@ -66,6 +68,23 @@ TAGS_METADATA = [
 ]
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    logger = logging.getLogger(__name__)
+    config = get_config()
+
+    if config.preload_models:
+        logger.info(f"Preloading {len(config.preload_models)} models on startup")
+        executor_registry = get_executor_registry()
+
+        for model_id in config.preload_models:
+            logger.info(f"Downloading model: {model_id}")
+            executor_registry.download_model_by_id(model_id)
+            logger.info(f"Successfully downloaded model: {model_id}")
+
+    yield
+
+
 def create_app() -> FastAPI:
     config = get_config()  # HACK
     setup_logger(config.log_level)
@@ -94,6 +113,7 @@ def create_app() -> FastAPI:
         version="0.8.3",  # TODO: update this on release
         license_info={"name": "MIT License", "identifier": "MIT"},
         openapi_tags=TAGS_METADATA,
+        lifespan=lifespan,
     )
 
     # Instrument FastAPI app if telemetry is enabled

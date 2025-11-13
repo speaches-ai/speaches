@@ -13,7 +13,10 @@ from speaches.executors.pyannote_speaker_embedding import (
     pyannote_speaker_embedding_model_registry,
 )
 from speaches.executors.shared.executor import Executor
-from speaches.executors.silero_vad_v5 import SileroVADModelManager, silero_vad_model_registry
+from speaches.executors.silero_vad_v5 import (
+    SileroVADModelManager,
+    silero_vad_model_registry,
+)
 from speaches.executors.whisper import WhisperModelManager, whisper_model_registry
 
 
@@ -85,3 +88,9 @@ class ExecutorRegistry:
             self._pyannote_executor,
             self._vad_executor,
         )
+
+    def download_model_by_id(self, model_id: str) -> bool:
+        for executor in self.all_executors():
+            if model_id in [model.id for model in executor.model_registry.list_remote_models()]:
+                return executor.model_registry.download_model_files_if_not_exist(model_id)
+        raise ValueError(f"Model '{model_id}' not found")

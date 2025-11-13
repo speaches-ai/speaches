@@ -130,3 +130,11 @@ class Config(BaseSettings):
     OpenTelemetry service name for identifying this application in traces.
     Shadows OTEL_SERVICE_NAME environment variable.
     """
+
+    preload_models: list[str] = []
+    """
+    List of model IDs to download during application startup.
+    Models will be downloaded sequentially if they do not already exist locally.
+    Application will exit if any model fails to download or is not found in the registry.
+    Example: ["Systran/faster-whisper-tiny", "rhasspy/piper-voices"]
+    """
