@@ -1,5 +1,6 @@
 from functools import lru_cache
 import logging
+from pathlib import Path
 import time
 from typing import Annotated, cast
 
@@ -88,7 +89,7 @@ def audio_file_dependency(
         else:
             audio_data = cast("np.typing.NDArray[float32]", decode_audio(file.file, sampling_rate=16000))
         elapsed = time.perf_counter() - start
-        audio = Audio(audio_data, sample_rate=16000)
+        audio = Audio(audio_data, sample_rate=16000, name=Path(file.filename).stem if file.filename else None)
         logger.debug(f"Decoded {audio.duration}s of audio in {elapsed:.5f}s (RTF: {elapsed / audio.duration})")
         return audio
     except av.error.InvalidDataError as e:

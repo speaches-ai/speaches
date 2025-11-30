@@ -77,9 +77,11 @@ class Audio:
         self,
         data: np.typing.NDArray[np.float32],
         sample_rate: int,
+        name: str | None = None,
     ) -> None:
         self.data = data
         self.sample_rate = sample_rate
+        self.name = name
 
     def __repr__(self) -> str:
         return f"Audio(duration={self.duration:.2f}s, sample_rate={self.sample_rate}Hz, samples={len(self.data)})"
