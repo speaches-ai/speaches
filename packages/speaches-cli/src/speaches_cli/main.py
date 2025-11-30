@@ -1,14 +1,36 @@
 import json
 import os
+import re
+from typing import override
 
+import click
 import httpx
 import typer
+from typer.core import TyperGroup
 
-app = typer.Typer()
-registry_app = typer.Typer()
-model_app = typer.Typer()
-audio_app = typer.Typer()
-audio_speech_app = typer.Typer()
+
+# Taken from: https://github.com/fastapi/typer/issues/132#issuecomment-2417492805
+class AliasGroup(TyperGroup):
+    _CMD_SPLIT_P = re.compile(r" ?[,|] ?")  # pyright: ignore[reportUnannotatedClassAttribute]
+
+    @override
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
+        cmd_name = self._group_cmd_name(cmd_name)
+        return super().get_command(ctx, cmd_name)
+
+    def _group_cmd_name(self, default_name: str) -> str:
+        for cmd in self.commands.values():
+            name = cmd.name
+            if name and default_name in self._CMD_SPLIT_P.split(name):
+                return name
+        return default_name
+
+
+app = typer.Typer(cls=AliasGroup)
+registry_app = typer.Typer(cls=AliasGroup)
+model_app = typer.Typer(cls=AliasGroup)
+audio_app = typer.Typer(cls=AliasGroup)
+audio_speech_app = typer.Typer(cls=AliasGroup)
 
 SPEACHES_BASE_URL = os.getenv("SPEACHES_BASE_URL", "http://localhost:8000")
 SPEACHES_OPENAI_BASE_URL = SPEACHES_BASE_URL + "/v1"
@@ -26,7 +48,7 @@ def dump_response(response: httpx.Response) -> None:
         print(response.text)
 
 
-@registry_app.command("ls")
+@registry_app.command("list | ls")
 def registry_ls(task: str | None = None) -> None:
     params: dict[str, str] = {}
     if task is not None:
@@ -35,7 +57,7 @@ def registry_ls(task: str | None = None) -> None:
     dump_response(response)
 
 
-@model_app.command("ls")
+@model_app.command("list | ls")
 def models_ls(task: str | None = None) -> None:
     params: dict[str, str] = {}
     if task is not None:
@@ -44,7 +66,7 @@ def models_ls(task: str | None = None) -> None:
     dump_response(response)
 
 
-@model_app.command("rm")
+@model_app.command("remove | rm")
 def model_rm(model_id: str) -> None:
     response = client.delete(f"{MODELS_URL}/{model_id}")
     dump_response(response)
