@@ -28,7 +28,7 @@ class HfModelFilter(BaseModel):
     def passes_filter(self, model_id: str, model_card_data: huggingface_hub.ModelCardData) -> bool:
         if self.model_name is not None:
             if self.model_name.lower() not in model_id.lower():
-                # logger.debug(f"Model ID '{model_id}' does not match filter model name '{self.model_name}'")
+                logger.debug(f"Model ID '{model_id}' does not match filter model name '{self.model_name}'")
                 # allow partial match (case insensitive)
                 return False
 
@@ -38,17 +38,17 @@ class HfModelFilter(BaseModel):
             # Handle both 'library_name' (correct) and 'library' (legacy/incorrect) fields
             model_library = model_card_data.library_name or getattr(model_card_data, "library", None)
             if model_library != self.library_name and self.library_name not in model_card_data_tags:
-                # logger.debug(
-                #     f"Model ID '{model_id}' does not match filter library '{self.library_name}': {model_card_data.to_dict()}"
-                # )
+                logger.debug(
+                    f"Model ID '{model_id}' does not match filter library '{self.library_name}': {model_card_data.to_dict()}"
+                )
                 return False
         if self.task is not None and (
             self.task != model_card_data.pipeline_tag and self.task not in model_card_data_tags
         ):
-            # logger.debug(f"Model ID '{model_id}' does not match filter task '{self.task}': {model_card_data.to_dict()}")
+            logger.debug(f"Model ID '{model_id}' does not match filter task '{self.task}': {model_card_data.to_dict()}")
             return False
-        if self.tags is not None and not self.tags.issubset(model_card_data_tags):  # noqa: SIM103
-            # logger.debug(f"Model ID '{model_id}' does not match filter tags '{self.tags}': {model_card_data.to_dict()}")
+        if self.tags is not None and not self.tags.issubset(model_card_data_tags):
+            logger.debug(f"Model ID '{model_id}' does not match filter tags '{self.tags}': {model_card_data.to_dict()}")
             return False
         return True
 
@@ -82,6 +82,7 @@ def get_model_card_data_from_cached_repo_info(
     files = list(revision.files)
     readme_cached_file_info = next((f for f in files if f.file_name == "README.md"), None)
     if readme_cached_file_info is None:
+        logger.debug(f"Model repo '{cached_repo_info.repo_id}' does not have README.md file in the cache")
         return None
     readme_file_path = readme_cached_file_info.file_path
     model_card = huggingface_hub.ModelCard.load(readme_file_path, repo_type="model")
