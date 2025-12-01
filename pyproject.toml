@@ -41,13 +41,14 @@ dependencies = [
     "opentelemetry-instrumentation-urllib3==0.50b0",
     "opentelemetry-instrumentation-openai-v2>=2.1b0",
     "opentelemetry-instrumentation-openai>=0.37.1",
+    "onnx-diarization>=0.1.0",
 ]
 
 [dependency-groups]
 dev = [
   {include-group = "docs"},
   {include-group = "lint"},
-  {include-group = "test"}
+  {include-group = "test"},
 ]
 docs = [
     "mdx-truly-sane-lists>=1.3",
