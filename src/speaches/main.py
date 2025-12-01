@@ -26,6 +26,9 @@ from speaches.logger import setup_logger
 from speaches.routers.chat import (
     router as chat_router,
 )
+from speaches.routers.diarization import (
+    router as diarization_router,
+)
 from speaches.routers.misc import (
     router as misc_router,
 )
@@ -158,6 +161,7 @@ def create_app() -> FastAPI:
     app.include_router(speech_router, dependencies=http_dependencies)
     app.include_router(speech_embedding_router, dependencies=http_dependencies)
     app.include_router(vad_router, dependencies=http_dependencies)
+    app.include_router(diarization_router, dependencies=http_dependencies)
 
     # WebSocket router WITHOUT authentication (handles its own)
     app.include_router(realtime_ws_router)

@@ -1,9 +1,17 @@
 import asyncio
+import base64
 from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime
+import io
+import logging
 import os
 from typing import Any
 import uuid
+
+import numpy as np
+import soundfile as sf
+
+logger = logging.getLogger(__name__)
 
 
 class APIProxyError(Exception):
@@ -99,3 +107,31 @@ def async_to_sync_generator[T](async_gen: AsyncGenerator[T]) -> Generator[T]:
 
         if should_close_loop:
             loop.close()
+
+
+# TODO: maybe add length validation. gte 2s lte 10s
+def parse_data_url_to_audio(data_url: str) -> np.typing.NDArray[np.float32]:
+    if not data_url.startswith("data:"):
+        msg = f"Invalid data URL format: {data_url[:50]}..."
+        raise ValueError(msg)
+
+    try:
+        header, encoded = data_url.split(",", 1)
+        audio_bytes = base64.b64decode(encoded)
+
+        mime_type = header.split(":")[1].split(";")[0]
+
+        if mime_type in ("audio/pcm", "audio/raw"):
+            audio_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
+            audio_data = audio_int16.astype(np.float32) / 32768.0
+        else:
+            audio_data, _sample_rate = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+
+            if len(audio_data.shape) > 1:
+                audio_data = audio_data.mean(axis=1)
+
+        return audio_data
+    except Exception as e:
+        logger.exception("Failed to parse data URL to audio")
+        msg = f"Failed to parse audio data URL: {e}"
+        raise ValueError(msg) from e
