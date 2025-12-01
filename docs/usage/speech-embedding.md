@@ -15,10 +15,10 @@ export SPEACHES_BASE_URL="http://localhost:8000"
 uvx speaches-cli registry ls --task speaker-embedding | jq '.data | [].id'
 
 # Downloading a model
-uvx speaches-cli model download deepghs/pyannote-embedding-onnx
+uvx speaches-cli model download Wespeaker/wespeaker-voxceleb-resnet34-LM
 
 # Check that the model has been installed
-uvx speaches-cli model ls --task speaker-embedding | jq '.data | map(select(.id == "deepghs/pyannote-embedding-onnx"))'
+uvx speaches-cli model ls --task speaker-embedding | jq '.data | map(select(.id == "Wespeaker/wespeaker-voxceleb-resnet34-LM"))'
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ uvx speaches-cli model ls --task speaker-embedding | jq '.data | map(select(.id 
 
 ```bash
 export SPEACHES_BASE_URL="http://localhost:8000"
-export EMBEDDING_MODEL_ID="deepghs/pyannote-embedding-onnx"
+export EMBEDDING_MODEL_ID="Wespeaker/wespeaker-voxceleb-resnet34-LM"
 
 curl -s "$SPEACHES_BASE_URL/v1/audio/speech/embedding" \
   -F "file=@audio.wav" \
@@ -43,7 +43,7 @@ curl -s "$SPEACHES_BASE_URL/v1/audio/speech/embedding" \
 
     with open('audio.wav', 'rb') as f:
         files = {'file': ('audio.wav', f)}
-        data = {'model': 'deepghs/pyannote-embedding-onnx'}
+        data = {'model': 'Wespeaker/wespeaker-voxceleb-resnet34-LM'}
         response = httpx.post(
             'http://localhost:8000/v1/audio/speech/embedding',
             files=files,
@@ -62,7 +62,7 @@ curl -s "$SPEACHES_BASE_URL/v1/audio/speech/embedding" \
 
     with open('audio.wav', 'rb') as f:
         files = {'file': ('audio.wav', f)}
-        data = {'model': 'deepghs/pyannote-embedding-onnx'}
+        data = {'model': 'Wespeaker/wespeaker-voxceleb-resnet34-LM'}
         response = requests.post(
             'http://localhost:8000/v1/audio/speech/embedding',
             files=files,
@@ -101,7 +101,7 @@ def cosine_similarity(embedding1: list[float], embedding2: list[float]) -> float
     vec2 = np.array(embedding2)
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
-model_id = 'deepghs/pyannote-embedding-onnx'
+model_id = 'Wespeaker/wespeaker-voxceleb-resnet34-LM'
 
 embedding1 = get_embedding('speaker1.wav', model_id)
 embedding2 = get_embedding('speaker2.wav', model_id)
@@ -154,7 +154,7 @@ class SpeakerVerifier:
 
 verifier = SpeakerVerifier(
     base_url='http://localhost:8000',
-    model_id='deepghs/pyannote-embedding-onnx',
+    model_id='Wespeaker/wespeaker-voxceleb-resnet34-LM',
     threshold=0.7
 )
 
@@ -182,7 +182,7 @@ The response follows a structure similar to OpenAI's text embedding endpoint:
       ]
     }
   ],
-  "model": "deepghs/pyannote-embedding-onnx",
+  "model": "Wespeaker/wespeaker-voxceleb-resnet34-LM",
   "usage": {
     "prompt_tokens": 48000,
     "total_tokens": 48000

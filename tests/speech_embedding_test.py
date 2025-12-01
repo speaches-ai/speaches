@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-EMBEDDING_MODEL_ID = "deepghs/pyannote-embedding-onnx"
+EMBEDDING_MODEL_ID = "Wespeaker/wespeaker-voxceleb-resnet34-LM"
 
 
 @pytest.mark.parametrize("pull_model_without_cleanup", [EMBEDDING_MODEL_ID], indirect=True)
@@ -35,7 +35,7 @@ async def test_create_speech_embedding(aclient: AsyncClient, tmp_path: Path) -> 
     assert result["data"][0]["object"] == "embedding"
     assert result["data"][0]["index"] == 0
     assert isinstance(result["data"][0]["embedding"], list)
-    assert len(result["data"][0]["embedding"]) == 512
+    assert len(result["data"][0]["embedding"]) == 256
     assert all(isinstance(x, float) for x in result["data"][0]["embedding"])
     assert "usage" in result
     assert "prompt_tokens" in result["usage"]
@@ -67,7 +67,7 @@ async def test_create_speech_embedding_with_real_audio(aclient: AsyncClient, tmp
     assert result["object"] == "list"
     assert len(result["data"]) == 1
     embedding = result["data"][0]["embedding"]
-    assert len(embedding) == 512
+    assert len(embedding) == 256
 
 
 @pytest.mark.asyncio

@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # MODEL_ID_BLACKLIST = {
 #     "eek/wespeaker-voxceleb-resnet293-LM"  # reason: doesn't have `task` tag, also has pytorch binary file, onnx model file isn't named `model.onnx`
 # }
-MODEL_ID_WHITELIST = {"onnx-community/pyannote-segmentation-3.0"}
+MODEL_ID_WHITELIST = {"fedirz/segmentation_community_1"}
 
 
 class PyannoteSpeakerSegmentationModelRegistry(ModelRegistry):
