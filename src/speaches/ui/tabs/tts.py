@@ -14,17 +14,17 @@ from speaches.ui.utils import http_client_from_gradio_req, openai_client_from_gr
 DEFAULT_TEXT = "A rainbow is an optical phenomenon caused by refraction, internal reflection and dispersion of light in water droplets resulting in a continuous spectrum of light appearing in the sky."
 
 
-def create_tts_tab(config: Config) -> None:
-    async def update_model_dropdown(request: gr.Request) -> gr.Dropdown:
-        openai_client = openai_client_from_gradio_req(request, config)
+def create_tts_tab(config: Config, api_key_input: gr.Textbox) -> None:
+    async def update_model_dropdown(api_key: str, request: gr.Request) -> gr.Dropdown:
+        openai_client = openai_client_from_gradio_req(request, config, api_key or None)
         models = (await openai_client.models.list(extra_query={"task": "text-to-speech"})).data
         model_ids: list[str] = [model.id for model in models]
         return gr.Dropdown(choices=model_ids, label="Model")
 
-    async def update_voices_dropdown(model_id: str | None, request: gr.Request) -> gr.Dropdown:
+    async def update_voices_dropdown(model_id: str | None, api_key: str, request: gr.Request) -> gr.Dropdown:
         if model_id is None:
             return gr.Dropdown(choices=[], label="Voice")
-        http_client = http_client_from_gradio_req(request, config)
+        http_client = http_client_from_gradio_req(request, config, api_key or None)
         res = (await http_client.get(f"/v1/models/{model_id}")).raise_for_status()
         data = res.json()
         voices = data["voices"]
@@ -37,9 +37,10 @@ def create_tts_tab(config: Config) -> None:
         response_format: str,
         speed: float,
         sample_rate: int | None,
+        api_key: str,
         request: gr.Request,
     ) -> Path:
-        openai_client = openai_client_from_gradio_req(request, config)
+        openai_client = openai_client_from_gradio_req(request, config, api_key or None)
         res = await openai_client.audio.speech.create(
             input=text,
             model=model,
@@ -60,7 +61,7 @@ def create_tts_tab(config: Config) -> None:
         voice_dropdown = gr.Dropdown(choices=[], label="Voice")
         stt_model_dropdown.change(
             update_voices_dropdown,
-            inputs=[stt_model_dropdown],
+            inputs=[stt_model_dropdown, api_key_input],
             outputs=[voice_dropdown],
         )
         response_fromat_dropdown = gr.Dropdown(
@@ -91,13 +92,14 @@ Default: None (No resampling)
                 response_fromat_dropdown,
                 speed_slider,
                 sample_rate_slider,
+                api_key_input,
             ],
             output,
         )
 
-        tab.select(update_model_dropdown, inputs=None, outputs=stt_model_dropdown)
+        tab.select(update_model_dropdown, inputs=[api_key_input], outputs=stt_model_dropdown)
         tab.select(
             update_voices_dropdown,
-            inputs=[stt_model_dropdown],
+            inputs=[stt_model_dropdown, api_key_input],
             outputs=[voice_dropdown],
         )

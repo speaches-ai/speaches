@@ -19,9 +19,9 @@ TRANSLATION_ENDPOINT = "/v1/audio/translations"
 DEFAULT_RESPONSE_FORMAT: ResponseFormat = "text"
 
 
-def create_stt_tab(config: Config) -> None:
-    async def update_whisper_model_dropdown(request: gr.Request) -> gr.Dropdown:
-        openai_client = openai_client_from_gradio_req(request, config)
+def create_stt_tab(config: Config, api_key_input: gr.Textbox) -> None:
+    async def update_whisper_model_dropdown(api_key: str, request: gr.Request) -> gr.Dropdown:
+        openai_client = openai_client_from_gradio_req(request, config, api_key or None)
         models = (await openai_client.models.list()).data
         model_ids: list[str] = [model.id for model in models]
         recommended_models = {model for model in model_ids if model.startswith("Systran")}
@@ -94,13 +94,14 @@ def create_stt_tab(config: Config) -> None:
         response_format: ResponseFormat,
         temperature: float,
         stream: bool,
+        api_key: str,
         request: gr.Request,
     ) -> AsyncGenerator[str]:
         try:
             if not file_path:
                 msg = "No audio file provided in whisper_handler (stt.py). Please record or upload audio."
                 raise APIProxyError(msg, suggestions=["Please record or upload an audio file."])
-            http_client = http_client_from_gradio_req(request, config)
+            http_client = http_client_from_gradio_req(request, config, api_key or None)
             endpoint = TRANSCRIPTION_ENDPOINT if task == "transcribe" else TRANSLATION_ENDPOINT
 
             if stream:
@@ -133,8 +134,16 @@ def create_stt_tab(config: Config) -> None:
         # NOTE: the inputs order must match the `whisper_handler` signature
         button.click(
             whisper_handler,
-            [audio, whisper_model_dropdown, task_dropdown, response_format, temperature_slider, stream_checkbox],
+            [
+                audio,
+                whisper_model_dropdown,
+                task_dropdown,
+                response_format,
+                temperature_slider,
+                stream_checkbox,
+                api_key_input,
+            ],
             output,
         )
 
-        tab.select(update_whisper_model_dropdown, inputs=None, outputs=whisper_model_dropdown)
+        tab.select(update_whisper_model_dropdown, inputs=[api_key_input], outputs=whisper_model_dropdown)

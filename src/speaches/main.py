@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 import logging
 import os
+from typing import TYPE_CHECKING
 import uuid
 
 from fastapi import (
@@ -30,6 +30,9 @@ from speaches.routers.diarization import (
     router as diarization_router,
 )
 from speaches.routers.misc import (
+    public_router as misc_public_router,
+)
+from speaches.routers.misc import (
     router as misc_router,
 )
 from speaches.routers.models import (
@@ -54,6 +57,9 @@ from speaches.routers.vad import (
     router as vad_router,
 )
 from speaches.utils import APIProxyError
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 # https://swagger.io/docs/specification/v3_0/grouping-operations-with-tags/
 # https://fastapi.tiangolo.com/tutorial/metadata/#metadata-for-tags
@@ -147,6 +153,9 @@ def create_app() -> FastAPI:
     async def _custom_http_exception_handler(request: Request, exc: HTTPException) -> Response:
         logger.error(f"HTTP error: {exc}")
         return await http_exception_handler(request, exc)
+
+    # Public routers WITHOUT authentication
+    app.include_router(misc_public_router)
 
     # HTTP routers WITH authentication (if API key is configured)
     http_dependencies = []

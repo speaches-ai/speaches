@@ -19,19 +19,25 @@ def base_url_from_gradio_req(request: gr.Request | None, config: Config) -> str:
     return f"{request.request.url.scheme}://{request.request.url.netloc}"
 
 
-def http_client_from_gradio_req(request: gr.Request, config: Config) -> httpx.AsyncClient:
+def http_client_from_gradio_req(
+    request: gr.Request, config: Config, user_api_key: str | None = None
+) -> httpx.AsyncClient:
     base_url = base_url_from_gradio_req(request, config)
+    headers = {}
+    if user_api_key:
+        headers["Authorization"] = f"Bearer {user_api_key}"
     return httpx.AsyncClient(
         base_url=base_url,
         timeout=TIMEOUT,
-        headers={"Authorization": f"Bearer {config.api_key}"} if config.api_key else None,
+        headers=headers if headers else None,
     )
 
 
-def openai_client_from_gradio_req(request: gr.Request, config: Config) -> AsyncOpenAI:
+def openai_client_from_gradio_req(request: gr.Request, config: Config, user_api_key: str | None = None) -> AsyncOpenAI:
     base_url = base_url_from_gradio_req(request, config)
+    api_key_value = user_api_key if user_api_key else "cant-be-empty"
     return AsyncOpenAI(
         base_url=f"{base_url}/v1",
-        api_key=config.api_key.get_secret_value() if config.api_key else "cant-be-empty",
+        api_key=api_key_value,
         max_retries=0,
     )
