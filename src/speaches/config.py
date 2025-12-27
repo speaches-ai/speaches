@@ -71,7 +71,12 @@ class Config(BaseSettings):
 
     api_key: SecretStr | None = None
     """
-    If set, the API key will be required for all requests.
+    If set, the API key will be required for all API requests.
+    The following endpoints remain publicly accessible without authentication:
+    - /health (health check endpoint)
+    - /docs (API documentation)
+    - /openapi.json (OpenAPI schema)
+    - Web UI (Gradio interface)
     """
     log_level: str = "debug"
     """

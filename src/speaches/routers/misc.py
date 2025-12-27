@@ -11,6 +11,8 @@ from speaches.model_aliases import ModelId
 from speaches.routers.utils import get_model_card_data_or_raise
 
 logger = logging.getLogger(__name__)
+
+public_router = APIRouter()
 router = APIRouter()
 
 
@@ -22,7 +24,7 @@ class RunningModelsResponse(BaseModel):
     models: list[str] = Field(..., description="List of model IDs that are currently loaded in memory.")
 
 
-@router.get("/health", tags=["diagnostic"])
+@public_router.get("/health", tags=["diagnostic"])
 def health() -> JSONResponse:
     return JSONResponse(status_code=200, content={"message": "OK"})
 

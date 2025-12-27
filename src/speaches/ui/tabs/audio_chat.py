@@ -198,16 +198,17 @@ async def create_text_audio_stream_reply(
 # )
 
 
-def create_audio_chat_tab(config: Config) -> None:
+def create_audio_chat_tab(config: Config, api_key_input: gr.Textbox) -> None:
     async def create_reply(
         message: GradioMessage,
         _history: list[gr.ChatMessage],
         model: str,
         stream: bool,
         state: VoiceChatState,
+        api_key: str,
         request: gr.Request,
     ) -> AsyncGenerator[list[gr.ChatMessage] | gr.ChatMessage]:
-        openai_client = openai_client_from_gradio_req(request, config)
+        openai_client = openai_client_from_gradio_req(request, config, api_key or None)
         # openai_client = AsyncOpenAI(base_url="https://api.openai.com/v1")  # HACK: for easier testing
 
         state.openai_messages.append(gradio_message_to_openai_message(message))
@@ -280,7 +281,7 @@ def create_audio_chat_tab(config: Config) -> None:
                 sources=["microphone", "upload"],
                 # value="Count from 1 to 5",  # HACK: for easier testing
             ),
-            additional_inputs=[chat_model_dropdown, stream_checkbox, state],
+            additional_inputs=[chat_model_dropdown, stream_checkbox, state, api_key_input],
         )
 
         # FIXME: doesn't work when this is the first tab that gets loaded
