@@ -24,7 +24,7 @@ from speaches.text_utils import format_as_sse, strip_emojis, strip_markdown_emph
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["speech-to-text"])
+router = APIRouter(tags=["text-to-speech"])
 
 RESPONSE_FORMAT_MIME_TYPE_MAP = {
     "pcm": "audio/pcm",
