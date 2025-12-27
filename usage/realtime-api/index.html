@@ -1,0 +1,1284 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://speaches.ai/usage/realtime-api/">
+      
+      
+        <link rel="prev" href="../voice-chat/">
+      
+      
+        <link rel="next" href="../vad/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>Realtime API - Speaches Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#demo" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Speaches Documentation" class="md-header__button md-logo" aria-label="Speaches Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Speaches Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Realtime API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/speaches-ai/speaches/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Speaches Documentation" class="md-nav__button md-logo" aria-label="Speaches Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Speaches Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/speaches-ai/speaches/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introduction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Usage / Capabilities
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Usage / Capabilities
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model-discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Model Discovery
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../speech-to-text/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Speech-to-Text
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../text-to-speech/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Text-to-Speech
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Voice Chat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Realtime API
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Realtime API
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      Demo
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openai-compatibility-and-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpenAI Compatibility and Extensions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenAI Compatibility and Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-differences-from-openai" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Differences from OpenAI
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operating-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Operating Modes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Operating Modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-conversation-mode-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Conversation Mode (Default)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-transcription-only-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Transcription-Only Mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-openai-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Standard OpenAI Behavior
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Standard OpenAI Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Event Flow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default Models
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#speaches-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Speaches Extensions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Speaches Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transcription-only-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transcription-Only Mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#net-openai-sdk-transcription-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      .NET OpenAI SDK - Transcription Only
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#javascript-simple-transcription" class="md-nav__link">
+    <span class="md-ellipsis">
+      JavaScript - Simple Transcription
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vad/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    VAD
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../open-webui-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Open WebUI Integration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      Demo
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openai-compatibility-and-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpenAI Compatibility and Extensions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenAI Compatibility and Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-differences-from-openai" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Differences from OpenAI
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operating-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Operating Modes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Operating Modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-conversation-mode-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Conversation Mode (Default)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-transcription-only-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Transcription-Only Mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-openai-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Standard OpenAI Behavior
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Standard OpenAI Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Event Flow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default Models
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#speaches-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Speaches Extensions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Speaches Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transcription-only-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transcription-Only Mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#net-openai-sdk-transcription-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      .NET OpenAI SDK - Transcription Only
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#javascript-simple-transcription" class="md-nav__link">
+    <span class="md-ellipsis">
+      JavaScript - Simple Transcription
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Realtime API</h1>
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Before proceeding, you should be familiar with the <a href="https://platform.openai.com/docs/guides/realtime">OpenAI Realtime API</a> and the relevant <a href="https://platform.openai.com/docs/api-reference/realtime-client-events">OpenAI API reference</a></p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Real-time performance can only be achieved when using CUDA for TTS and STT inference and an LLM provider with a high TPS (tokens per second) rate and low TTFT (time to first token).</p>
+</div>
+<h2 id="demo">Demo</h2>
+<video width="100%" controls>
+  <source src="https://github.com/user-attachments/assets/457a736d-4c29-4b43-984b-05cc4d9995bc" type="video/webm">
+</video>
+
+<p>(Excuse the breathing lol. Didn't have enough time to record a better demo)</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Follow the prerequisites in the <a href="../voice-chat/">voice chat</a> guide.</p>
+<h2 id="architecture">Architecture</h2>
+<p>The Speaches Realtime API provides an OpenAI-compatible WebSocket interface for real-time audio processing, supporting both conversational AI and transcription-only modes.</p>
+<h2 id="openai-compatibility-and-extensions">OpenAI Compatibility and Extensions</h2>
+<p>Speaches implements the OpenAI Realtime API specification with some extensions for enhanced usability, particularly for transcription-only scenarios.</p>
+<h3 id="key-differences-from-openai">Key Differences from OpenAI</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>OpenAI Realtime API</th>
+<th>Speaches Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Authentication</strong></td>
+<td>✅ Standard HTTP: <code>Authorization: Bearer your-key</code></td>
+<td>✅ Compatible: <code>Authorization: Bearer your-key</code>, <code>X-API-Key: your-key</code>, or <code>api_key</code> query param</td>
+</tr>
+<tr>
+<td><strong>Transcription-only mode</strong></td>
+<td>✅ Supported: <code>intent=transcription</code> parameter</td>
+<td>✅ Fully compatible</td>
+</tr>
+<tr>
+<td><strong>Model parameter behavior</strong></td>
+<td>Always conversation model</td>
+<td><strong>Extension</strong>: In transcription mode, <code>model</code> = transcription model</td>
+</tr>
+<tr>
+<td><strong>Additional parameters</strong></td>
+<td>Standard OpenAI params only</td>
+<td><strong>Extension</strong>: <code>language</code>, <code>transcription_model</code> parameters</td>
+</tr>
+<tr>
+<td><strong>Additional headers</strong></td>
+<td>Requires <code>OpenAI-Beta: realtime=v1</code> header</td>
+<td>No additional headers required</td>
+</tr>
+<tr>
+<td><strong>Dynamic transcription model</strong></td>
+<td>Full support via <code>session.update</code></td>
+<td>⚠️ <strong>Limitation</strong>: Changes apply only to new audio buffers</td>
+</tr>
+<tr>
+<td><strong>Dynamic speech synthesis model</strong></td>
+<td>Full support via <code>session.update</code></td>
+<td>✅ Supported via <code>session.update</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="operating-modes">Operating Modes</h2>
+<p>Speaches supports two primary operating modes, both compatible with OpenAI Realtime API:</p>
+<h3 id="1-conversation-mode-default">1. Conversation Mode (Default)</h3>
+<p><strong>Full interactive AI conversation with both speech input and output</strong></p>
+<p><strong>Event Flow:</strong>
+1. <code>input_audio_buffer.speech_started</code> → User starts speaking
+2. <code>input_audio_buffer.speech_stopped</code> → User stops speaking<br />
+3. <code>input_audio_buffer.committed</code> → Audio buffer processed
+4. <code>conversation.item.created</code> → Conversation item created
+5. <code>conversation.item.input_audio_transcription.completed</code> → Speech transcribed to text
+6. <code>response.created</code> → <strong>AI response generation begins</strong>
+7. Response generation events → AI generates text and audio response</p>
+<p><strong>Use Cases:</strong> Interactive voice assistants, conversational AI, voice chat applications</p>
+<h3 id="2-transcription-only-mode">2. Transcription-Only Mode</h3>
+<p><strong>Speech-to-text conversion without AI responses</strong></p>
+<p><strong>Event Flow:</strong>
+1. <code>input_audio_buffer.speech_started</code> → User starts speaking
+2. <code>input_audio_buffer.speech_stopped</code> → User stops speaking
+3. <code>input_audio_buffer.committed</code> → Audio buffer processed<br />
+4. <code>conversation.item.created</code> → Conversation item created
+5. <code>conversation.item.input_audio_transcription.completed</code> → <strong>Stops here - no response generation</strong></p>
+<p><strong>Use Cases:</strong> Live subtitles, meeting transcription, voice notes, accessibility applications</p>
+<h3 id="standard-openai-behavior">Standard OpenAI Behavior</h3>
+<p>When using <code>intent=conversation</code> (default), Speaches follows the OpenAI Realtime API specification exactly:</p>
+<h4 id="model-parameters">Model Parameters</h4>
+<ul>
+<li><strong>URL <code>model</code> parameter</strong>: Specifies the conversation model (e.g., <code>gpt-4o-realtime-preview</code>)</li>
+<li><strong><code>input_audio_transcription.model</code></strong>: Specifies the transcription model (e.g., <code>whisper-1</code>)</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1">// Standard OpenAI-compatible usage</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s2">&quot;wss://your-speaches-server/v1/realtime?model=gpt-4o-realtime-preview&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="s1">&#39;Authorization&#39;</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Bearer your-api-key&#39;</span>
+<span class="w">    </span><span class="c1">// Note: OpenAI also requires &#39;OpenAI-Beta&#39;: &#39;realtime=v1&#39; header</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">});</span>
+
+<span class="c1">// Session configuration (OpenAI standard)</span>
+<span class="c1">// Note: Speaches supports session.update, but transcription model changes</span>
+<span class="c1">// only apply to new audio buffers, not currently processing ones</span>
+<span class="nx">ws</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;session.update&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">session</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">input_audio_transcription</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;whisper-1&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}));</span>
+</code></pre></div>
+<h4 id="event-flow">Event Flow</h4>
+<ol>
+<li>Audio input triggers transcription via <code>input_audio_transcription.model</code></li>
+<li>Transcription completion automatically triggers response generation via conversation <code>model</code></li>
+<li>Response includes both text and audio output</li>
+</ol>
+<h3 id="default-models">Default Models</h3>
+<p>When models are not explicitly specified, Speaches uses these defaults:</p>
+<ul>
+<li><strong>Transcription model</strong>: <code>Systran/faster-distil-whisper-small.en</code></li>
+<li><strong>Speech synthesis model</strong>: <code>speaches-ai/Kokoro-82M-v1.0-ONNX</code> </li>
+<li><strong>Voice</strong>: <code>af_heart</code></li>
+</ul>
+<p><strong>Note</strong>: Default models must be available/downloaded, or session will fail. For transcription-only mode without specifying a model, ensure the default transcription model is installed.</p>
+<h3 id="speaches-extensions">Speaches Extensions</h3>
+<h4 id="transcription-only-mode">Transcription-Only Mode</h4>
+<p>For transcription-only scenarios (common with .NET OpenAI SDK and simple clients), Speaches provides an extension:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Transcription-only mode (Speaches extension)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span>
+<span class="w">  </span><span class="s2">&quot;wss://your-speaches-server/v1/realtime?model=deepdml/faster-whisper-large-v3-turbo-ct2&amp;intent=transcription&amp;api_key=your-api-key&quot;</span>
+<span class="p">);</span>
+
+<span class="c1">// Or with headers</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s2">&quot;wss://your-speaches-server/v1/realtime?model=deepdml/faster-whisper-large-v3-turbo-ct2&amp;intent=transcription&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="s1">&#39;Authorization&#39;</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Bearer your-api-key&#39;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div>
+<p><strong>Key differences in transcription mode:</strong>
+- <strong>URL <code>model</code> parameter</strong>: Specifies the transcription model (not conversation model)
+- <strong>Response generation</strong>: Disabled (<code>create_response=false</code>)
+- <strong>Conversation model</strong>: Uses default <code>gpt-4o-realtime-preview</code> (unused)</p>
+<h4 id="additional-parameters">Additional Parameters</h4>
+<p>Speaches supports additional URL parameters for enhanced flexibility:</p>
+<div class="highlight"><pre><span></span><code>/v1/realtime?model=your-model&amp;intent=transcription&amp;language=en&amp;transcription_model=whisper-1
+</code></pre></div>
+<ul>
+<li><strong><code>intent</code></strong>: <code>"conversation"</code> (default) or <code>"transcription"</code></li>
+<li><strong><code>language</code></strong>: ISO-639-1 language code for transcription (e.g., <code>"en"</code>, <code>"ru"</code>)</li>
+<li><strong><code>transcription_model</code></strong>: Explicit transcription model (overrides model parameter logic)</li>
+</ul>
+<h3 id="usage-examples">Usage Examples</h3>
+<h4 id="net-openai-sdk-transcription-only">.NET OpenAI SDK - Transcription Only</h4>
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">OpenAI.Realtime</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">OpenAI</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">options</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">OpenAIClientOptions</span><span class="p">();</span>
+<span class="n">options</span><span class="p">.</span><span class="n">Endpoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Uri</span><span class="p">(</span><span class="s">&quot;http://speaches:8000/v1&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">apiKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;sk-233dadawd&quot;</span><span class="p">;</span><span class="w"> </span><span class="c1">// your optional speaches API key</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">openAiClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">OpenAIClient</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">ClientModel</span><span class="p">.</span><span class="n">ApiKeyCredential</span><span class="p">(</span><span class="n">apiKey</span><span class="p">),</span><span class="w"> </span><span class="n">options</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">realtimeClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openAiClient</span><span class="p">.</span><span class="n">GetRealtimeClient</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">cancellationTokenSource</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">CancellationTokenSource</span><span class="p">();</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">realtimeClient</span><span class="p">.</span><span class="n">StartSessionAsync</span><span class="p">(</span><span class="s">&quot;your-transcription-model&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;transcription&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">RequestOptions</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">CancellationToken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cancellationTokenSource</span><span class="p">.</span><span class="n">Token</span><span class="p">,</span>
+<span class="p">});</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">transcriptionText</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringBuilder</span><span class="p">();</span>
+<span class="k">await</span><span class="w"> </span><span class="nf">foreach</span><span class="w"> </span><span class="p">(</span><span class="n">RealtimeUpdate</span><span class="w"> </span><span class="n">update</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">_session</span><span class="p">.</span><span class="n">ReceiveUpdatesAsync</span><span class="p">(</span><span class="n">cancellationToken</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">update</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">InputAudioTranscriptionDeltaUpdate</span><span class="w"> </span><span class="n">transcriptionDelta</span><span class="p">:</span>
+<span class="w">            </span><span class="n">transcriptionText</span><span class="p">.</span><span class="n">Append</span><span class="p">(</span><span class="n">transcriptionDelta</span><span class="p">.</span><span class="n">Delta</span><span class="p">);</span>
+<span class="w">            </span><span class="n">Console</span><span class="p">.</span><span class="n">Write</span><span class="p">(</span><span class="n">transcriptionDelta</span><span class="p">.</span><span class="n">Delta</span><span class="p">);</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="c1">// Handle other events as needed...</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="javascript-simple-transcription">JavaScript - Simple Transcription</h4>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s2">&quot;wss://speaches-server/v1/realtime?model=your-transcription-model&amp;intent=transcription&amp;api_key=your-api-key&quot;</span><span class="p">);</span>
+
+<span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;conversation.item.input_audio_transcription.completed&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Transcription:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">transcript</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li>You'll want to be using a dedicated microphone to ensure speech produced by the TTS model is not picked up. Otherwise, the VAD and STT model will pick up the TTS audio and transcribe it, resulting in a feedback loop.</li>
+<li><a href="https://platform.openai.com/docs/api-reference/realtime-client-events/response/cancel">"response.cancel"</a> and <a href="https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/truncate">"conversation.item.truncate"</a> client events are not supported. Interruption handling needs to be flushed out.</li>
+<li><a href="https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/create">"conversation.item.create"</a> with <code>content</code> field containing <code>input_audio</code> message is not supported</li>
+</ul>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Address the aforementioned limitations</li>
+<li>Image support</li>
+<li>Speech-to-speech model support</li>
+<li>Performance tuning / optimizations</li>
+<li><a href="https://github.com/speaches-ai/realtime-console">Realtime console</a> improvements</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.instant.progress", "navigation.instant.prefetch", "search.highlight", "search.share", "content.tabs.link", "content.code.copy"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+    
+  </body>
+</html>
