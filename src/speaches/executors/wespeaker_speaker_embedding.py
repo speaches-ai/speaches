@@ -5,7 +5,7 @@ from pathlib import Path
 import huggingface_hub
 from onnx_diarization.embedding import WeSpeakerEmbeddingModel
 from onnx_diarization.fbank import FbankExtractor
-from onnxruntime import InferenceSession, SessionOptions
+from onnxruntime import InferenceSession, SessionOptions  # pyright: ignore[reportAttributeAccessIssue]
 from opentelemetry import trace
 from pydantic import BaseModel
 

@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 from speaches.audio import Audio
 
+
 class KnownSpeaker(BaseModel):
     name: str
     audio: Audio
