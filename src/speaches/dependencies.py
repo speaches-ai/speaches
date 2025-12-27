@@ -64,8 +64,18 @@ async def verify_api_key(
     config: ConfigDependency, credentials: HTTPAuthorizationCredentials | None = Depends(security)
 ) -> None:
     assert config.api_key is not None
-    if credentials is None or credentials.credentials != config.api_key.get_secret_value():
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="API key required. Please provide an API key using the Authorization header with Bearer scheme.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if credentials.credentials != config.api_key.get_secret_value():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid API key. The provided API key is incorrect.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 ApiKeyDependency = Depends(verify_api_key)
