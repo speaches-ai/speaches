@@ -20,7 +20,7 @@ from speaches.executors.shared.handler_protocol import (  # noqa: TC001
     TranslationRequest,
     TranslationResponse,
 )
-from speaches.executors.silero_vad_v5 import merge_segments
+from speaches.executors.silero_vad_v5 import SAMPLE_RATE, merge_segments
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -154,10 +154,13 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
-            clip_timestamps = merge_segments(
+            merged_segments = merge_segments(
                 request.speech_segments,
                 request.vad_options,
             )
+            clip_timestamps = [
+                {"start": seg["start"] / SAMPLE_RATE, "end": seg["end"] / SAMPLE_RATE} for seg in merged_segments
+            ]
             segments, transcription_info = whisper_model.transcribe(
                 request.audio.data,
                 task="transcribe",
@@ -166,7 +169,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 word_timestamps="word" in request.timestamp_granularities,
                 temperature=request.temperature,
                 vad_filter=False,
-                clip_timestamps=clip_timestamps,  # pyright: ignore[reportArgumentType]
+                clip_timestamps=clip_timestamps,
                 hotwords=request.hotwords,
                 without_timestamps=request.without_timestamps,
             )
@@ -193,10 +196,13 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
-            clip_timestamps = merge_segments(
+            merged_segments = merge_segments(
                 request.speech_segments,
                 request.vad_options,
             )
+            clip_timestamps = [
+                {"start": seg["start"] / SAMPLE_RATE, "end": seg["end"] / SAMPLE_RATE} for seg in merged_segments
+            ]
             segments, _transcription_info = whisper_model.transcribe(
                 request.audio.data,
                 task="transcribe",
@@ -205,18 +211,20 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 word_timestamps="word" in request.timestamp_granularities,
                 temperature=request.temperature,
                 vad_filter=False,
-                clip_timestamps=clip_timestamps,  # pyright: ignore[reportArgumentType]
+                clip_timestamps=clip_timestamps,
                 hotwords=request.hotwords,
                 without_timestamps=request.without_timestamps,
             )
 
+            all_text = []
             for segment in segments:
+                all_text.append(segment.text)
                 yield openai.types.audio.TranscriptionTextDeltaEvent(
                     type="transcript.text.delta", delta=segment.text, logprobs=None
                 )
 
             yield openai.types.audio.TranscriptionTextDoneEvent(
-                type="transcript.text.done", text="".join(segment.text for segment in segments), logprobs=None
+                type="transcript.text.done", text="".join(all_text), logprobs=None
             )
         logger.info(
             f"Transcribed {request.audio.duration} seconds of audio in {time.perf_counter() - timelog_start} seconds"
