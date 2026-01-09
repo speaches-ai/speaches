@@ -240,18 +240,18 @@
           kokoro-82m = nix-hug.lib.${system}.fetchModel {
             url = "speaches-ai/Kokoro-82M-v1.0-ONNX";
             rev = "main";
-            repoInfoHash = "sha256-P7rmAJQypOSIUAkslkBGgMfrPsIFuSwAdWLv008Dm3A=";
-            fileTreeHash = "sha256-hXNCSRONwD1gexFw01XrTME07GctuM7DprqZP5HUdZg=";
-            derivationHash = "sha256-N/Up67cGHFjnMspF3ZN1rqaVUFyXIm1r3cBAe/REjLk=";
+            repoInfoHash = "sha256-+eumCsNLTigie1h/syJwzPnF2KR7BAgHvJnmBRQYa20=";
+            fileTreeHash = "sha256-+Aea1c28vvS+pfOs2alshOajGzW6I7ujDVIIAQ5KlgI=";
+            derivationHash = "sha256-v2BsX7lfzzytuLSTEpJccHHAyG09dzvTsF9pXYBSZOs=";
           };
 
           # Silero VAD model (voice activity detection)
           silero-vad = nix-hug.lib.${system}.fetchModel {
             url = "onnx-community/silero-vad";
             rev = "main";
-            repoInfoHash = "sha256-cAlWpNfu5fyFMhoBzSHZNcHBtt6prwl6D2ziIC4Eyqk=";
+            repoInfoHash = "sha256-vZRYToCFvMdtDMn6AgyHGfHHDUVhbwDTQAZMJufZeqE=";
             fileTreeHash = "sha256-f+/9fy13zID9i5mv7FwdwCs0oQskWJlJ7TK3VjOVI4A=";
-            derivationHash = "sha256-fSB/IPRY/kwKuduqNUC+M81V0WSOk8gvBrTcZjajOk8=";
+            derivationHash = "sha256-oQJFaFW/LydVXv17Va7bAmvniXUwjZxMFpSVH1GUSF8=";
           };
 
           # Whisper STT model (base version for lower RAM usage)
@@ -259,9 +259,9 @@
             url = "Systran/faster-whisper-base";
             rev = "main";
 
-            repoInfoHash = "sha256-zhznrww8E53KcCpXhWZyc2SMCEpt1MOSWhSo/64cBwk=";
+            repoInfoHash = "sha256-CmsF5Fe1ubh7+e8KnLEP9//KUb6kDLOXE2VMxVg/YbE=";
             fileTreeHash = "sha256-GYgT6udNwSgjZabqajK/i8kL3pvRPbaTC2PQdUfH0EY=";
-            derivationHash = "sha256-v++FuGYz0fimIn7zp1oadS2FvdpNZINrJb3YAOmrVhs=";
+            derivationHash = "sha256-AOGwF3uWR6Oe54S777ZreMeYM1pK9E2C2gTfrHTu1rA=";
           };
         };
 
@@ -286,7 +286,7 @@
               models.silero-vad
               models.whisper-base
             ];
-            hash = "sha256-DC3pkqznsXUIbZz8pNkldIH3z5O4uMKQ0IbMBU+HzLM=";
+            hash = "sha256-aGj3V5IFj0cvrGOng+3OKhErc3rC9tVOR2tjJrRAjBM=";
           };
         in
           defaultPkgs.testers.nixosTest {
@@ -531,7 +531,7 @@
               models.silero-vad
               models.whisper-base
             ];
-            hash = "sha256-DC3pkqznsXUIbZz8pNkldIH3z5O4uMKQ0IbMBU+HzLM=";
+            hash = "sha256-aGj3V5IFj0cvrGOng+3OKhErc3rC9tVOR2tjJrRAjBM=";
           };
 
           # End-to-end test package with actual models
@@ -549,7 +549,7 @@
                   models.silero-vad
                   models.whisper-base
                 ];
-                hash = "sha256-DC3pkqznsXUIbZz8pNkldIH3z5O4uMKQ0IbMBU+HzLM=";
+                hash = "sha256-aGj3V5IFj0cvrGOng+3OKhErc3rC9tVOR2tjJrRAjBM=";
               }
             }"
             export HF_HUB_CACHE="$MODEL_CACHE/hub"

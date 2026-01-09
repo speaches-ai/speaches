@@ -3,8 +3,7 @@
   pkgs,
   pyPackages,
   system,
-}:
-rec {
+}: rec {
   # Simplified espeakng-loader inline
   espeakng_loader = pyPackages.buildPythonPackage {
     pname = "espeakng_loader";
@@ -16,8 +15,8 @@ rec {
       rev = "main";
       hash = "sha256-nSEQ9rofFl6BTH18L5DzaQ1Ymw5H3d+wSEXUxp4o1DM=";
     };
-    nativeBuildInputs = [ pyPackages.hatchling ];
-    propagatedBuildInputs = [ pkgs.espeak-ng ];
+    nativeBuildInputs = [pyPackages.hatchling];
+    propagatedBuildInputs = [pkgs.espeak-ng];
     postPatch = ''
       substituteInPlace src/espeakng_loader/__init__.py \
         --replace-fail 'libespeak-ng' '${pkgs.espeak-ng}/lib/libespeak-ng' \
@@ -40,8 +39,7 @@ rec {
       hatchling
       hatch-vcs
     ];
-    propagatedBuildInputs =
-      with pyPackages;
+    propagatedBuildInputs = with pyPackages;
       [
         numpy
         huggingface-hub
@@ -81,12 +79,12 @@ rec {
       version = "0.10.0";
       hash = "sha256-2AAZEtf1G9BbTqNVF0eTBjF3f9N4ks87/g5UGnQuaZ8=";
     };
-    nativeBuildInputs = [ pyPackages.cffi ];
+    nativeBuildInputs = [pyPackages.cffi];
     buildInputs = [
       pkgs.srtp
       pkgs.openssl
     ];
-    propagatedBuildInputs = [ pyPackages.cffi ];
+    propagatedBuildInputs = [pyPackages.cffi];
     doCheck = false;
   };
 
@@ -99,8 +97,7 @@ rec {
       version = "1.9.0";
       hash = "sha256-A/qnbXbvDlmJrBA4aJiwKTaXVhAiFyMOL81LApxQswM=";
     };
-    propagatedBuildInputs =
-      with pyPackages;
+    propagatedBuildInputs = with pyPackages;
       [
         pyee
         pyopenssl
@@ -133,8 +130,8 @@ rec {
       version = "2.0.0";
       hash = "sha256-SM/zQmSLahzk5TmM8gOWaQXVRrPyvue7VdfLPsh6hfs=";
     };
-    nativeBuildInputs = [ pyPackages.poetry-core ];
-    propagatedBuildInputs = [ pyPackages.pytest ];
+    nativeBuildInputs = [pyPackages.poetry-core];
+    propagatedBuildInputs = [pyPackages.pytest];
     doCheck = false;
   };
 
@@ -166,7 +163,7 @@ rec {
       version = "0.7.0";
       hash = "sha256-iWRsH4ik2MCdYxmvE9xvLD+FkG0Qg7AnqQsjtNOVMUI=";
     };
-    nativeBuildInputs = with pyPackages; [ pdm-backend ];
+    nativeBuildInputs = with pyPackages; [pdm-backend];
     propagatedBuildInputs = with pyPackages; [
       numpy
       onnxruntime
@@ -195,7 +192,7 @@ rec {
       url = "https://files.pythonhosted.org/packages/84/90/01ef7331c52b1eaf9916f3f7a535155aac2e9e2ddad12a141613d92758c7/kaldi_native_fbank-1.22.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl";
       hash = "sha256-8W50Ny/p4gq7QYP5io4iiNXuTEjQTZS2FgMRFw4AdmE=";
     };
-    propagatedBuildInputs = with pyPackages; [ numpy ];
+    propagatedBuildInputs = with pyPackages; [numpy];
     doCheck = false;
   };
 
@@ -207,7 +204,7 @@ rec {
       url = "https://files.pythonhosted.org/packages/3b/14/4ebec13075d24ba4f2d5ae1c2ad0bd62e56c90c5ef474d5357aa2c79f761/onnx_dl-0.1.0-py3-none-any.whl";
       hash = "sha256-QTYimCMcjT2qpw51FZUJ/bj2nH4CLR2P0y23pJLesf4=";
     };
-    propagatedBuildInputs = with pyPackages; [ onnxruntime ];
+    propagatedBuildInputs = with pyPackages; [onnxruntime];
     doCheck = false;
   };
 
@@ -235,8 +232,7 @@ rec {
       url = "https://files.pythonhosted.org/packages/72/e7/15966d1f468f90c40d6f47966c1aa6661bbeb4a53c4590341935182e7c44/onnx_diarization-0.1.0-py3-none-any.whl";
       hash = "sha256-TmrUIKK8XJylGAIIAAh/30duhNHrmPf5VrS/Gl3XDyo=";
     };
-    propagatedBuildInputs =
-      with pyPackages;
+    propagatedBuildInputs = with pyPackages;
       [
         scipy
         scikit-learn
@@ -255,7 +251,8 @@ rec {
   isLinuxX86 = system == "x86_64-linux";
 
   piper_phonemize =
-    if isLinuxX86 then
+    if isLinuxX86
+    then
       pyPackages.buildPythonPackage {
         pname = "piper_phonemize";
         version = "1.2.0";
@@ -266,11 +263,11 @@ rec {
         };
         doCheck = false;
       }
-    else
-      null;
+    else null;
 
   piper_tts =
-    if pkgs.stdenv.isLinux && isLinuxX86 then
+    if pkgs.stdenv.isLinux && isLinuxX86
+    then
       pyPackages.buildPythonPackage {
         pname = "piper_tts";
         version = "1.3.0";
@@ -279,11 +276,10 @@ rec {
           url = "https://files.pythonhosted.org/packages/2b/73/3d29175cfd93e791baaef3335819778d3f8c8898e2fe16cd0cc8b8163f84/piper_tts-1.3.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl";
           hash = "sha256-I0wlR0ZVsm80GLhFIsgVxD6bG8ih/bE8KyhRQpDBZfA=";
         };
-        propagatedBuildInputs = [ piper_phonemize ];
+        propagatedBuildInputs = [piper_phonemize];
         doCheck = false;
       }
-    else
-      null;
+    else null;
 
   # OpenTelemetry instrumentation packages
   opentelemetry_instrumentation_openai = pyPackages.buildPythonPackage {
@@ -308,7 +304,7 @@ rec {
     ];
     doCheck = false;
     dontCheckRuntimeDeps = true;
-    pythonImportsCheck = [ ];
+    pythonImportsCheck = [];
   };
 
   opentelemetry_instrumentation_openai_v2 = pyPackages.buildPythonPackage {
@@ -333,6 +329,6 @@ rec {
     ];
     doCheck = false;
     dontCheckRuntimeDeps = true;
-    pythonImportsCheck = [ ];
+    pythonImportsCheck = [];
   };
 }
