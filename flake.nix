@@ -1,7 +1,7 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "https://github.com/NixOS/nixpkgs";
+    flake-utils.url = "https://github.com/numtide/flake-utils";
     nix-hug = {
       url = "github:longregen/nix-hug";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -17,6 +17,7 @@
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
+        bundleHash = "sha256-Ml/SEWhJe8RJx0iYSnnLih3TWAY0TKqbyBeQ3o43+Zg=";
         mkOverlay = {
           pythonVersion,
           cudaSupport ? true,
@@ -259,9 +260,9 @@
             url = "Systran/faster-whisper-base";
             rev = "main";
 
-            repoInfoHash = "sha256-CmsF5Fe1ubh7+e8KnLEP9//KUb6kDLOXE2VMxVg/YbE=";
+            repoInfoHash = "sha256-f9L5S/tl5Lu8FdsC1+heMU4urp83lyTLaz68GAsOh5w=";
             fileTreeHash = "sha256-GYgT6udNwSgjZabqajK/i8kL3pvRPbaTC2PQdUfH0EY=";
-            derivationHash = "sha256-AOGwF3uWR6Oe54S777ZreMeYM1pK9E2C2gTfrHTu1rA=";
+            derivationHash = "sha256-C/uexeKEZKdr+s4akI8TzXlGy3p6AilAL+MzKi9Pb8s=";
           };
         };
 
@@ -286,7 +287,7 @@
               models.silero-vad
               models.whisper-base
             ];
-            hash = "sha256-aGj3V5IFj0cvrGOng+3OKhErc3rC9tVOR2tjJrRAjBM=";
+            hash = bundleHash;
           };
         in
           defaultPkgs.testers.nixosTest {
@@ -531,7 +532,7 @@
               models.silero-vad
               models.whisper-base
             ];
-            hash = "sha256-aGj3V5IFj0cvrGOng+3OKhErc3rC9tVOR2tjJrRAjBM=";
+            hash = bundleHash;
           };
 
           # End-to-end test package with actual models
