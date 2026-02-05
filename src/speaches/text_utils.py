@@ -148,7 +148,6 @@ def strip_emojis(text: str) -> str:
         "\U0001fa00-\U0001fa6f"  # Chess Symbols
         "\U0001fa70-\U0001faff"  # Symbols and Pictographs Extended-A
         "\U00002702-\U000027b0"  # Dingbats
-        "\U000024c2-\U0001f251"
         "]+",
         flags=re.UNICODE,
     )
