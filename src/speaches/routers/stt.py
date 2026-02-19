@@ -66,7 +66,7 @@ def translate_file(
     model: Annotated[ModelId, Form()],
     prompt: Annotated[str | None, Form()] = None,
     response_format: Annotated[ResponseFormat, Form()] = DEFAULT_RESPONSE_FORMAT,
-    temperature: Annotated[float, Form()] = 0.0,
+    temperature: Annotated[float | list[float], Form()] = 0.0,
 ) -> Response:
     model_card_data = get_model_card_data_or_raise(model)
     executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.translation)
@@ -79,7 +79,7 @@ def translate_file(
         model=model,
         prompt=prompt,
         response_format=response_format,
-        temperature=temperature,
+        temperature=temperature if temperature != 0.0 else [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
         speech_segments=speech_segments,
         vad_options=DEFAULT_VAD_OPTIONS,
     )
@@ -129,7 +129,7 @@ def transcribe_file(
     language: Annotated[str | None, Form()] = None,
     prompt: Annotated[str | None, Form()] = None,
     response_format: Annotated[ResponseFormat, Form()] = DEFAULT_RESPONSE_FORMAT,
-    temperature: Annotated[float, Form()] = 0.0,
+    temperature: Annotated[float | list[float], Form()] = 0.0,
     timestamp_granularities: Annotated[
         TimestampGranularities,
         # WARN: `alias` doesn't actually work.
@@ -160,7 +160,7 @@ def transcribe_file(
         language=language,
         prompt=prompt,
         response_format=response_format,
-        temperature=temperature,
+        temperature=temperature if temperature != 0.0 else [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
         timestamp_granularities=timestamp_granularities,
         stream=stream,
         hotwords=hotwords,

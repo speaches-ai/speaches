@@ -62,7 +62,7 @@ class TranscriptionRequest(BaseModel):
     language: str | None = None
     prompt: str | None = None
     response_format: openai.types.AudioResponseFormat = "json"
-    temperature: float = 0.0
+    temperature: float | list[float] = 0.0
     hotwords: str | None = None
     timestamp_granularities: TimestampGranularities
     speech_segments: list[SpeechTimestamp]
@@ -103,7 +103,7 @@ class TranslationRequest(BaseModel):
     model: str
     prompt: str | None = None
     response_format: openai.types.AudioResponseFormat = "json"
-    temperature: float = 0.0
+    temperature: float | list[float] = 0.0
     speech_segments: list[SpeechTimestamp]
     vad_options: VadOptions
 
