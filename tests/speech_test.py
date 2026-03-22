@@ -177,6 +177,7 @@ async def test_openai_speech_opus_sample_rate(
 
     # Read opus audio using pydub
     audio_segment = pydub.AudioSegment.from_file(io.BytesIO(audio_data_bytes), format="ogg", codec="libopus")
+    assert isinstance(audio_segment, pydub.AudioSegment)
 
     assert audio_segment.frame_rate in _OPUS_SUPPORTED_SAMPLE_RATES
     assert audio_segment.frame_rate == _OPUS_PREFERRED_SAMPLE_RATE
@@ -200,6 +201,7 @@ async def test_speaches_speech_opus_sample_rate(
     # Read opus audio using pydub
     audio_segment = pydub.AudioSegment.from_file(io.BytesIO(audio_data_bytes), format="ogg", codec="libopus")
 
+    assert isinstance(audio_segment, pydub.AudioSegment)
     assert audio_segment.frame_rate in _OPUS_SUPPORTED_SAMPLE_RATES
     assert audio_segment.frame_rate == _OPUS_PREFERRED_SAMPLE_RATE
 
@@ -260,6 +262,7 @@ def validate_audio_reconstruction(  # noqa: RET503
         return duration, bit_depth
     elif response_format in ("mp3", "wav", "flac"):
         audio_segment = pydub.AudioSegment.from_file(io.BytesIO(audio_bytes))
+        assert isinstance(audio_segment, pydub.AudioSegment)
         assert len(audio_segment) > 0, f"{response_format.upper()} audio is empty"
         assert audio_segment.frame_rate > 0, f"Invalid sample rate: {audio_segment.frame_rate}"
         duration = len(audio_segment) / 1000.0
@@ -267,6 +270,7 @@ def validate_audio_reconstruction(  # noqa: RET503
         return duration, bit_depth
     elif response_format == "opus":
         audio_segment = pydub.AudioSegment.from_file(io.BytesIO(audio_bytes), format="ogg", codec="libopus")
+        assert isinstance(audio_segment, pydub.AudioSegment)
         assert len(audio_segment) > 0, "OPUS audio is empty"
         assert audio_segment.frame_rate in _OPUS_SUPPORTED_SAMPLE_RATES, (
             f"Invalid OPUS sample rate: {audio_segment.frame_rate}"
@@ -276,6 +280,7 @@ def validate_audio_reconstruction(  # noqa: RET503
         return duration, bit_depth
     elif response_format == "aac":
         audio_segment = pydub.AudioSegment.from_file(io.BytesIO(audio_bytes), format="aac")
+        assert isinstance(audio_segment, pydub.AudioSegment)
         assert len(audio_segment) > 0, "AAC audio is empty"
         assert audio_segment.frame_rate > 0, f"Invalid AAC sample rate: {audio_segment.frame_rate}"
         duration = len(audio_segment) / 1000.0

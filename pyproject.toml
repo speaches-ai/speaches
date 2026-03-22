@@ -57,8 +57,8 @@ docs = [
     "mkdocstrings[python]>=0.29.1",
 ]
 lint = [
-    "basedpyright>=1.33.0",
     "pre-commit>=4.2.0",
+    "pyrefly>=0.57.1",
     "ruff>=0.14.4",
 ]
 test = [

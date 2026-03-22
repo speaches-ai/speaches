@@ -1,0 +1,7 @@
+python-version = "3.12.0"
+infer-with-first-use = false
+search-path = [
+  "src",
+  "packages/speaches-cli/src",
+  ".",
+]

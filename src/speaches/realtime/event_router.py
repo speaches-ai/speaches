@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import asyncio
+import inspect
 import logging
 from typing import TYPE_CHECKING
 
@@ -39,7 +39,7 @@ class EventRouter:
 
         handler = self.event_handlers[event.type]
 
-        if asyncio.iscoroutinefunction(handler):
+        if inspect.iscoroutinefunction(handler):
             await handler(ctx, event)
         else:
             handler(ctx, event)

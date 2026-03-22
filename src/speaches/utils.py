@@ -130,7 +130,7 @@ def parse_data_url_to_audio(data_url: str) -> np.typing.NDArray[np.float32]:
             if len(audio_data.shape) > 1:
                 audio_data = audio_data.mean(axis=1)
 
-        return audio_data
+        return audio_data  # pyrefly: ignore[bad-return]
     except Exception as e:
         logger.exception("Failed to parse data URL to audio")
         msg = f"Failed to parse audio data URL: {e}"

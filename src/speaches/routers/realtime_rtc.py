@@ -177,8 +177,8 @@ async def audio_receiver(ctx: SessionContext, track: RemoteStreamTrack) -> None:
         # ensure that the received frames are of expected format
         assert isinstance(frames, AudioFrame)
         assert frames.sample_rate == 48000
-        assert frames.layout.name == "stereo"
-        assert frames.format.name == "s16"
+        assert frames.layout.name == "stereo"  # pyrefly: ignore[missing-attribute]
+        assert frames.format.name == "s16"  # pyrefly: ignore[missing-attribute]
 
         resampler = AudioResampler(format="s16", layout="mono", rate=SAMPLE_RATE)
         frames = resampler.resample(frames)

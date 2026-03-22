@@ -90,7 +90,7 @@ def transform_choice_delta(choice_delta: ChoiceDelta) -> ChoiceDelta:
 
     content = choice_delta.content
     choice_delta.content = None
-    choice_delta.audio = {  # pyright: ignore[reportAttributeAccessIssue]
+    choice_delta.audio = {  # pyrefly: ignore[missing-attribute]
         "transcript": content,
     }
     return choice_delta
@@ -158,8 +158,8 @@ class AudioChatStream:
             if choice.delta.content is not None:
                 self.sentence_chunker.add_token(choice.delta.content)
                 choice.delta = transform_choice_delta(choice.delta)
-                choice.delta.audio["id"] = self.audio_id  # pyright: ignore[reportAttributeAccessIssue]
-                choice.delta.audio["expires_at"] = self.expires_at  # pyright: ignore[reportAttributeAccessIssue]
+                choice.delta.audio["id"] = self.audio_id  # pyrefly: ignore[missing-attribute]
+                choice.delta.audio["expires_at"] = self.expires_at  # pyrefly: ignore[missing-attribute]
             # TODO: consider not sending the chunk if there's a finish_reason
             # if choice.finish_reason is None:
             yield chunk
@@ -189,7 +189,7 @@ class AudioChatStream:
             audio_bytes = res.read()
             audio_data = base64.b64encode(audio_bytes).decode("utf-8")
             delta = ChoiceDelta()
-            delta.audio = {  # pyright: ignore[reportAttributeAccessIssue]
+            delta.audio = {  # pyrefly: ignore[missing-attribute]
                 "id": self.audio_id,
                 "data": audio_data,
                 "expires_at": self.expires_at,

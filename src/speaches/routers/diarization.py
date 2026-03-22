@@ -139,7 +139,7 @@ def diarize_audio(
                     DiarizationSegment(
                         start=segment.start,
                         end=segment.end,
-                        speaker=speaker,  # pyright: ignore[reportArgumentType]
+                        speaker=speaker,  # pyrefly: ignore[bad-argument-type]
                     )
                 )
 

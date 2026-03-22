@@ -112,9 +112,9 @@ def create_app() -> FastAPI:
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
         from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
-        AsyncioInstrumentor().instrument()
-        HTTPXClientInstrumentor().instrument()
-        LoggingInstrumentor().instrument()
+        AsyncioInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
+        HTTPXClientInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
+        LoggingInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
 
     # Create main app WITHOUT global authentication
     app = FastAPI(

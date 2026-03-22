@@ -78,7 +78,7 @@ def conversation_item_to_chat_message(
             if item.status != "completed":
                 logger.warning(f"Item {item} is not completed. Skipping.")
                 return None
-            match content.type:
+            match content.type:  # pyrefly: ignore[non-exhaustive-match]
                 case "text":
                     assert content.text, content
                     return ChatCompletionAssistantMessageParam(role="assistant", content=content.text)

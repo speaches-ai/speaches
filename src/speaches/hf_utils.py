@@ -61,11 +61,11 @@ class HfModelFilter(BaseModel):
         if self.tags is not None and len(self.tags) > 0:
             kwargs["filter"].extend(list(self.tags))
         if self.model_name is not None:
-            kwargs["model_name"] = self.model_name  # pyright: ignore[reportArgumentType]
+            kwargs["model_name"] = self.model_name  # pyrefly: ignore[bad-typed-dict-key]
 
         if len(kwargs["filter"]) == 0:
             kwargs.pop("filter")
-        return kwargs  # pyright: ignore[reportReturnType]
+        return kwargs  # pyrefly: ignore[bad-return]
 
 
 def get_cached_model_repos_info() -> list[huggingface_hub.CachedRepoInfo]:

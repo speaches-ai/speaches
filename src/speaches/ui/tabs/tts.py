@@ -44,8 +44,8 @@ def create_tts_tab(config: Config, api_key_input: gr.Textbox) -> None:
         res = await openai_client.audio.speech.create(
             input=text,
             model=model,
-            voice=voice,  # pyright: ignore[reportArgumentType]
-            response_format=response_format,  # pyright: ignore[reportArgumentType]
+            voice=voice,
+            response_format=response_format,  # pyrefly: ignore[bad-argument-type]
             speed=speed,
             extra_body={"sample_rate": sample_rate},
         )

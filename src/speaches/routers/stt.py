@@ -48,7 +48,7 @@ DEFAULT_RESPONSE_FORMAT: ResponseFormat = "json"
 DEFAULT_VAD_OPTIONS = VadOptions(min_silence_duration_ms=160, max_speech_duration_s=30)
 
 
-def translation_response_to_http_response(res: TranslationResponse) -> Response:  # noqa: RET503
+def translation_response_to_http_response(res: TranslationResponse) -> Response:  # noqa: RET503  # pyrefly: ignore[bad-return]
     if isinstance(res, tuple):
         text, media_type = res
         return Response(content=text, media_type=media_type)
@@ -96,7 +96,7 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
     assert timestamp_granularities in TIMESTAMP_GRANULARITIES_COMBINATIONS, (
         f"{timestamp_granularities} is not a valid value for `timestamp_granularities[]`."
     )
-    return timestamp_granularities  # pyright: ignore[reportReturnType]
+    return timestamp_granularities  # pyrefly: ignore[bad-return]
 
 
 def transcription_response_to_http_response(

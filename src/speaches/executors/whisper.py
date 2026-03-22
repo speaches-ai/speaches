@@ -166,7 +166,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 word_timestamps="word" in request.timestamp_granularities,
                 temperature=request.temperature,
                 vad_filter=False,
-                clip_timestamps=clip_timestamps,  # pyright: ignore[reportArgumentType]
+                clip_timestamps=clip_timestamps,  # pyrefly: ignore[bad-argument-type]
                 hotwords=request.hotwords,
                 without_timestamps=request.without_timestamps,
             )
@@ -205,7 +205,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 word_timestamps="word" in request.timestamp_granularities,
                 temperature=request.temperature,
                 vad_filter=False,
-                clip_timestamps=clip_timestamps,  # pyright: ignore[reportArgumentType]
+                clip_timestamps=clip_timestamps,  # pyrefly: ignore[bad-argument-type]
                 hotwords=request.hotwords,
                 without_timestamps=request.without_timestamps,
             )

@@ -28,7 +28,7 @@ jobs:
       - run: uv sync
       - run: uv run ruff check .
       - run: uv run ruff format --check --diff .
-  basedpyright:
+  python-type-check-pyrefly:
     runs-on: ubuntu-24.04-4core-x86
     steps:
       - uses: actions/checkout@v5
@@ -38,4 +38,4 @@ jobs:
           activate-environment: true
       - run: uv python install
       - run: uv sync
-      - run: uv run basedpyright .
+      - run: uv run pyrefly check
