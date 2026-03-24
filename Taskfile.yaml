@@ -1,12 +1,8 @@
 version: "3"
 tasks:
-  server:
+  speaches-hot-reload:
     cmds:
-      - cmd: lsof -ti :8000 | xargs kill -9
-        ignore_error: true
-      - uvicorn --factory --host 0.0.0.0 speaches.main:create_app {{.CLI_ARGS}}
-    sources:
-      - src/**/*.py
+      - uvicorn --factory --host 0.0.0.0 speaches.main:create_app --reload --reload-dir src/ --timeout-graceful-shutdown 1 {{.CLI_ARGS}}
   test:
     cmds:
       - pytest -o log_cli=true -o log_cli_level=DEBUG {{.CLI_ARGS}}
