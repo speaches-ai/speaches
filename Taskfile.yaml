@@ -12,7 +12,7 @@ tasks:
       - pytest -o log_cli=true -o log_cli_level=DEBUG {{.CLI_ARGS}}
     sources:
       - src/**/*.py
-  create-multi-arch-builder: docker buildx create --name main --driver=docker-container
+  create-multi-arch-builder: docker buildx create --name multi-arch-builder --driver docker-container --bootstrap --use
   ci:
     cmds:
       - act --rm --action-offline-mode --secret-file .secrets {{.CLI_ARGS}}
