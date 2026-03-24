@@ -4,6 +4,7 @@ from fastapi import (
     Response,
 )
 from fastapi.responses import JSONResponse
+from huggingface_hub.errors import GatedRepoError
 from pydantic import BaseModel
 
 from speaches.api_types import (
@@ -87,6 +88,12 @@ def download_remote_model(executor_registry: ExecutorRegistryDependency, model_i
             return Response(status_code=200, content=f"Model '{model_id}' downloaded")
         else:
             return Response(status_code=201, content=f"Model '{model_id}' already exists")
+    # TODO: add a test for this
+    except GatedRepoError as error:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Model '{model_id}' is a gated repository and requires authentication. Set the HF_TOKEN environment variable to a valid Hugging Face token with access to this model.",
+        ) from error
     except ValueError as error:
         raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found") from error
 
