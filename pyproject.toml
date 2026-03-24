@@ -48,6 +48,7 @@ dev = [
   {include-group = "docs"},
   {include-group = "lint"},
   {include-group = "test"},
+  "debugpy>=1.8.20",
 ]
 docs = [
     "mdx-truly-sane-lists>=1.3",
