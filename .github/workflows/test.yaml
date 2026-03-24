@@ -13,6 +13,12 @@ on:
       - "src/**"
       - "tests/**"
       - ".github/workflows/test.yaml"
+env:
+  DO_NOT_TRACK: 1
+  GRADIO_ANALYTICS_ENABLED: "False"
+  DISABLE_TELEMETRY: 1
+  HF_HUB_DISABLE_TELEMETRY: 1
+  PYANNOTE_METRICS_ENABLED: 0
 jobs:
   pytest:
     strategy:

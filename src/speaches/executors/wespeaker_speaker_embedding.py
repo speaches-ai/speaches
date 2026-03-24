@@ -1,17 +1,15 @@
 from collections.abc import Generator
 import logging
 from pathlib import Path
+from typing import Any
 
 import huggingface_hub
-from onnx_diarization.embedding import WeSpeakerEmbeddingModel
-from onnx_diarization.fbank import FbankExtractor
-from onnxruntime import InferenceSession, SessionOptions  # pyright: ignore[reportAttributeAccessIssue]
-from opentelemetry import trace
+import numpy as np
 from pydantic import BaseModel
+import torch
 
 from speaches.api_types import Model
-from speaches.config import OrtOptions
-from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
+from speaches.executors.shared.base_model_manager import BaseModelManager
 from speaches.executors.shared.handler_protocol import SpeakerEmbeddingRequest, SpeakerEmbeddingResponse
 from speaches.hf_utils import (
     HfModelFilter,
@@ -21,28 +19,18 @@ from speaches.hf_utils import (
 from speaches.model_registry import ModelRegistry
 from speaches.tracing import traced
 
-AVAILABLE_MODELS = {"Wespeaker/wespeaker-voxceleb-resnet34-LM"}
-
-# LIBRARY_NAME = "onnx"
+AVAILABLE_MODELS = {"pyannote/wespeaker-voxceleb-resnet34-LM"}
 TASK_NAME_TAG = "speaker-embedding"
-# TAGS = {"pyannote"}
-
-
-class PyannoteModelFiles(BaseModel):
-    model: Path
-    readme: Path
-
 
 hf_model_filter = HfModelFilter(
-    model_name=next(iter(AVAILABLE_MODELS)),
-    # library_name=LIBRARY_NAME,
-    # task=TASK_NAME_TAG,
-    # tags=TAGS,
+    model_name="wespeaker-voxceleb-resnet34-LM",
 )
 
-
 logger = logging.getLogger(__name__)
-tracer = trace.get_tracer(__name__)
+
+
+class WespeakerModelFiles(BaseModel):
+    config: Path
 
 
 class WespeakerSpeakerEmbeddingModelRegistry(ModelRegistry):
@@ -60,10 +48,6 @@ class WespeakerSpeakerEmbeddingModelRegistry(ModelRegistry):
         for cached_repo_info in cached_model_repos_info:
             if cached_repo_info.repo_id not in AVAILABLE_MODELS:
                 continue
-            # model_card_data = get_model_card_data_from_cached_repo_info(cached_repo_info)
-            # if model_card_data is None:
-            #     continue
-            # if self.hf_model_filter.passes_filter(cached_repo_info.repo_id, model_card_data):
             yield Model(
                 id=cached_repo_info.repo_id,
                 created=int(cached_repo_info.last_modified),
@@ -71,50 +55,39 @@ class WespeakerSpeakerEmbeddingModelRegistry(ModelRegistry):
                 task=TASK_NAME_TAG,
             )
 
-    def get_model_files(self, model_id: str) -> PyannoteModelFiles:
+    def get_model_files(self, model_id: str) -> WespeakerModelFiles:
         model_files = list(list_model_files(model_id))
-        model_file_path = next(file_path for file_path in model_files if file_path.name == "voxceleb_resnet34_LM.onnx")
-        readme_file_path = next(file_path for file_path in model_files if file_path.name == "README.md")
-
-        return PyannoteModelFiles(
-            model=model_file_path,
-            readme=readme_file_path,
-        )
+        config_file = next((f for f in model_files if f.name == "config.yaml"), None)
+        if config_file is None:
+            raise FileNotFoundError(f"config.yaml not found in local cache for model '{model_id}'")
+        return WespeakerModelFiles(config=config_file)
 
     def download_model_files(self, model_id: str) -> None:
-        _model_repo_path_str = huggingface_hub.snapshot_download(
-            repo_id=model_id, repo_type="model", allow_patterns=["voxceleb_resnet34_LM.onnx", "README.md"]
-        )
+        huggingface_hub.snapshot_download(repo_id=model_id, repo_type="model")
 
 
 wespeaker_speaker_embedding_model_registry = WespeakerSpeakerEmbeddingModelRegistry(hf_model_filter=hf_model_filter)
 
 
-class WespeakerSpeakerEmbeddingModelManager(BaseModelManager[InferenceSession]):
-    def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
+class WespeakerSpeakerEmbeddingModelManager(BaseModelManager):
+    def __init__(self, ttl: int) -> None:
         super().__init__(ttl)
-        self.ort_opts = ort_opts
 
-    def _load_fn(self, model_id: str) -> InferenceSession:
-        model_files = wespeaker_speaker_embedding_model_registry.get_model_files(model_id)
-        providers = get_ort_providers_with_options(self.ort_opts)
-        sess_options = SessionOptions()
-        # XXX: why did i add the comment below
-        # https://github.com/microsoft/onnxruntime/issues/1319#issuecomment-843945505
-        # sess_options.log_severity_level = 3
-        inf_sess = InferenceSession(model_files.model, providers=providers, sess_options=sess_options)
-        return inf_sess
+    def _load_fn(self, model_id: str) -> Any:  # pyannote.audio.Inference
+        from pyannote.audio import Inference, Model
+
+        logger.info(f"Loading speaker embedding model: {model_id}")
+        model = Model.from_pretrained(model_id)
+        assert model is not None, f"Failed to load speaker embedding model '{model_id}'"
+        if torch.cuda.is_available():
+            model.to(torch.device("cuda"))
+        return Inference(model, window="whole")
 
     @traced()
     def handle_speaker_embedding_request(self, request: SpeakerEmbeddingRequest, **_kwargs) -> SpeakerEmbeddingResponse:
-        fbank_extractor = FbankExtractor()
-        with self.load_model(request.model_id) as ort_session:
-            model = WeSpeakerEmbeddingModel(ort_session, fbank_extractor)
-            fbank_data = model.preprocess(request.audio.data)
-
-            embeddings = model.extract(fbank_data)
-
-            if embeddings.ndim == 2:
-                embeddings = embeddings.squeeze()
-
-            return embeddings
+        with self.load_model(request.model_id) as inference:
+            waveform = torch.from_numpy(request.audio.data).unsqueeze(0).float()
+            embedding = np.asarray(inference({"waveform": waveform, "sample_rate": request.audio.sample_rate}))
+            if embedding.ndim == 2:
+                embedding = embedding.squeeze()
+            return embedding

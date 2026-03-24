@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-EMBEDDING_MODEL_ID = "Wespeaker/wespeaker-voxceleb-resnet34-LM"
+EMBEDDING_MODEL_ID = "pyannote/wespeaker-voxceleb-resnet34-LM"
 
 
 @pytest.mark.parametrize("pull_model_without_cleanup", [EMBEDDING_MODEL_ID], indirect=True)

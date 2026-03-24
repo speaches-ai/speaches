@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from speaches.executors.pyannote_speaker_segmentation import (
-    PyannoteSpeakerSegmentationModelManager,
-    pyannote_speaker_segmentation_model_registry,
+from speaches.executors.kokoro import KokoroModelRegistry
+from speaches.executors.parakeet import NemoConformerTdtModelRegistry
+from speaches.executors.piper import PiperModelRegistry
+from speaches.executors.pyannote_diarization import (
+    PyannoteDiarizationModelManager,
+    PyannoteDiarizationModelRegistry,
+    pyannote_diarization_model_registry,
 )
+from speaches.executors.silero_vad_v5 import SileroVADModelRegistry
+from speaches.executors.wespeaker_speaker_embedding import WespeakerSpeakerEmbeddingModelRegistry
+from speaches.executors.whisper import WhisperModelRegistry
 
 if TYPE_CHECKING:
     from speaches.config import Config
@@ -24,43 +31,47 @@ from speaches.executors.whisper import WhisperModelManager, whisper_model_regist
 
 class ExecutorRegistry:
     def __init__(self, config: Config) -> None:
-        self._whisper_executor = Executor(
+        self._whisper_executor = Executor[WhisperModelManager, WhisperModelRegistry](
             name="whisper",
             model_manager=WhisperModelManager(config.stt_model_ttl, config.whisper),
             model_registry=whisper_model_registry,
             task="automatic-speech-recognition",
         )
-        self._parakeet_executor = Executor(
+        self._parakeet_executor = Executor[ParakeetModelManager, NemoConformerTdtModelRegistry](
             name="parakeet",
             model_manager=ParakeetModelManager(config.stt_model_ttl, config.unstable_ort_opts),
             model_registry=parakeet_model_registry,
             task="automatic-speech-recognition",
         )
-        self._piper_executor = Executor(
+        self._piper_executor = Executor[PiperModelManager, PiperModelRegistry](
             name="piper",
             model_manager=PiperModelManager(config.tts_model_ttl, config.unstable_ort_opts),
             model_registry=piper_model_registry,
             task="text-to-speech",
         )
-        self._kokoro_executor = Executor(
+        self._kokoro_executor = Executor[KokoroModelManager, KokoroModelRegistry](
             name="kokoro",
             model_manager=KokoroModelManager(config.tts_model_ttl, config.unstable_ort_opts),
             model_registry=kokoro_model_registry,
             task="text-to-speech",
         )
-        self._wespeaker_speaker_embedding_executor = Executor(
+        self._wespeaker_speaker_embedding_executor = Executor[
+            WespeakerSpeakerEmbeddingModelManager, WespeakerSpeakerEmbeddingModelRegistry
+        ](
             name="wespeaker-speaker-embedding",
-            model_manager=WespeakerSpeakerEmbeddingModelManager(0, config.unstable_ort_opts),  # HACK: hardcoded ttl
+            model_manager=WespeakerSpeakerEmbeddingModelManager(0),  # HACK: hardcoded ttl
             model_registry=wespeaker_speaker_embedding_model_registry,
             task="speaker-embedding",
         )
-        self._pyannote_speaker_segmentation_executor = Executor(
-            name="pyannote-speaker-segmentation",
-            model_manager=PyannoteSpeakerSegmentationModelManager(0, config.unstable_ort_opts),  # HACK: hardcoded ttl
-            model_registry=pyannote_speaker_segmentation_model_registry,
-            task="voice-activity-detection",
+        self._pyannote_diarization_executor = Executor[
+            PyannoteDiarizationModelManager, PyannoteDiarizationModelRegistry
+        ](
+            name="pyannote-diarization",
+            model_manager=PyannoteDiarizationModelManager(-1),  # HACK: hardcoded ttl
+            model_registry=pyannote_diarization_model_registry,
+            task="speaker-diarization",
         )
-        self._vad_executor = Executor(
+        self._vad_executor = Executor[SileroVADModelManager, SileroVADModelRegistry](
             name="vad",
             model_manager=SileroVADModelManager(config.vad_model_ttl, config.unstable_ort_opts),
             model_registry=silero_vad_model_registry,
@@ -84,8 +95,8 @@ class ExecutorRegistry:
         return (self._wespeaker_speaker_embedding_executor,)
 
     @property
-    def speaker_segmentation(self):  # noqa: ANN201
-        return (self._pyannote_speaker_segmentation_executor,)
+    def diarization(self):  # noqa: ANN201
+        return (self._pyannote_diarization_executor,)
 
     @property
     def vad(self):  # noqa: ANN201
@@ -98,7 +109,7 @@ class ExecutorRegistry:
             self._piper_executor,
             self._kokoro_executor,
             self._wespeaker_speaker_embedding_executor,
-            self._pyannote_speaker_segmentation_executor,
+            self._pyannote_diarization_executor,
             self._vad_executor,
         )
 
