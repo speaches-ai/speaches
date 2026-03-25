@@ -6,8 +6,9 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from speaches.routers.diarization import DIARIZATION_MODEL_ID, DiarizationResponse
+from speaches.routers.diarization import DiarizationResponse
 
+DIARIZATION_MODEL_ID = "pyannote/speaker-diarization-community-1"
 ENDPOINT = "/v1/audio/diarization"
 SAMPLE_RATE = 16000
 
@@ -31,10 +32,13 @@ async def test_diarize_json_response_structure(aclient: AsyncClient, tmp_path: P
     response = await aclient.post(
         ENDPOINT,
         files={"file": ("audio.wav", data, "audio/wav")},
-        data={"response_format": "json"},
+        data={"response_format": "json", "model": DIARIZATION_MODEL_ID},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, (
+        f"Expected status code 200, got {response.status_code}. Response content: {response.text}"
+    )
+
     result = DiarizationResponse.model_validate(response.json())
     assert result.duration == pytest.approx(10.0, abs=0.5)
     for segment in result.segments:
@@ -58,10 +62,13 @@ async def test_diarize_rttm_response_format(aclient: AsyncClient, tmp_path: Path
     response = await aclient.post(
         ENDPOINT,
         files={"file": ("audio.wav", data, "audio/wav")},
-        data={"response_format": "rttm"},
+        data={"response_format": "rttm", "model": DIARIZATION_MODEL_ID},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, (
+        f"Expected status code 200, got {response.status_code}. Response content: {response.text}"
+    )
+
     assert response.headers["content-type"].startswith("text/plain")
     for line in response.text.strip().splitlines():
         parts = line.split()
@@ -81,10 +88,13 @@ async def test_diarize_real_audio(aclient: AsyncClient) -> None:
     response = await aclient.post(
         ENDPOINT,
         files={"file": ("audio.wav", data, "audio/wav")},
-        data={"response_format": "json"},
+        data={"response_format": "json", "model": DIARIZATION_MODEL_ID},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, (
+        f"Expected status code 200, got {response.status_code}. Response content: {response.text}"
+    )
+
     result = DiarizationResponse.model_validate(response.json())
     assert result.duration > 0
     assert len(result.segments) > 0
@@ -103,8 +113,11 @@ async def test_diarize_default_response_format_is_json(aclient: AsyncClient, tmp
     response = await aclient.post(
         ENDPOINT,
         files={"file": ("audio.wav", data, "audio/wav")},
+        data={"model": DIARIZATION_MODEL_ID},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, (
+        f"Expected status code 200, got {response.status_code}. Response content: {response.text}"
+    )
     assert response.headers["content-type"].startswith("application/json")
     DiarizationResponse.model_validate(response.json())

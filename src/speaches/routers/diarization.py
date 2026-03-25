@@ -13,6 +13,7 @@ import torch
 from speaches.audio import Audio
 from speaches.dependencies import AudioFileDependency, ExecutorRegistryDependency
 from speaches.diarization import KnownSpeaker
+from speaches.model_aliases import ModelId
 from speaches.routers.utils import find_executor_for_model_or_raise, get_model_card_data_or_raise
 from speaches.utils import parse_data_url_to_audio
 
@@ -22,8 +23,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-DIARIZATION_MODEL_ID = "pyannote/speaker-diarization-3.1"
 
 
 class DiarizationSegment(BaseModel):
@@ -109,6 +108,7 @@ def _map_to_known_speakers(
 def diarize_audio(
     executor_registry: ExecutorRegistryDependency,
     audio: AudioFileDependency,
+    model: Annotated[ModelId, Form()],
     known_speaker_names: Annotated[list[str] | None, Form(alias="known_speaker_names[]")] = None,
     known_speaker_references: Annotated[list[str] | None, Form(alias="known_speaker_references[]")] = None,
     response_format: Annotated[Literal["json", "rttm"] | None, Form()] = "json",
@@ -123,10 +123,10 @@ def diarize_audio(
             for name, ref in zip(known_speaker_names, known_speaker_references, strict=True)
         ]
 
-    model_card_data = get_model_card_data_or_raise(DIARIZATION_MODEL_ID)
-    executor = find_executor_for_model_or_raise(DIARIZATION_MODEL_ID, model_card_data, executor_registry.diarization)
+    model_card_data = get_model_card_data_or_raise(model)
+    executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.diarization)
 
-    with executor.model_manager.load_model(DIARIZATION_MODEL_ID) as pipeline:
+    with executor.model_manager.load_model(model) as pipeline:
         waveform = torch.from_numpy(audio.data).unsqueeze(0).float()
         diarization = pipeline({"waveform": waveform, "sample_rate": audio.sample_rate})
         assert isinstance(diarization, DiarizeOutput), f"Expected DiarizeOutput, got {type(diarization)}"

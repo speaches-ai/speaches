@@ -18,7 +18,7 @@ from speaches.model_registry import ModelRegistry
 if TYPE_CHECKING:
     from pyannote.audio import Pipeline
 
-AVAILABLE_MODELS = {"pyannote/speaker-diarization-3.1"}
+AVAILABLE_MODELS = {"pyannote/speaker-diarization-community-1"}
 TASK_NAME_TAG = "speaker-diarization"
 
 hf_model_filter = HfModelFilter(
