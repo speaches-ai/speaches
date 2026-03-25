@@ -80,7 +80,13 @@ def get_model_card_data_from_cached_repo_info(
     revisions = list(cached_repo_info.revisions)
     revision = revisions[0] if len(revisions) == 1 else next(rev for rev in revisions if "main" in rev.refs)
     files = list(revision.files)
-    readme_cached_file_info = next((f for f in files if f.file_name == "README.md"), None)
+    # Sort by path depth to prefer the root README.md over subdirectory ones (e.g. embedding/README.md,
+    # plda/README.md). _scan_cached_repo uses only the basename for file_name, so all README.md files
+    # across subdirectories match the same filter and iteration order is not guaranteed.
+    readme_cached_file_info = next(
+        (f for f in sorted(files, key=lambda f: len(f.file_path.parts)) if f.file_name == "README.md"),
+        None,
+    )
     if readme_cached_file_info is None:
         logger.debug(f"Model repo '{cached_repo_info.repo_id}' does not have README.md file in the cache")
         return None
