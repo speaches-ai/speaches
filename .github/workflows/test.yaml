@@ -44,3 +44,5 @@ jobs:
       - run: uv python install
       - run: uv sync
       - run: uv run pytest -m "not requires_openai" tests/
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_W_PYANNOTE_GATED_MODEL_ACCESS }}

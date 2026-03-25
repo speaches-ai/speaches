@@ -85,6 +85,7 @@ filterwarnings = [
 # https://docs.pytest.org/en/stable/how-to/mark.html#registering-marks
 markers = [
     "requires_openai",
+    "requires_gated_hf_model",
 ]
 
 [tool.uv]

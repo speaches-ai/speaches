@@ -19,6 +19,7 @@ def make_sine_wav(path: Path, frequency: float, duration: float, sample_rate: in
     sf.write(path, data, sample_rate)
 
 
+@pytest.mark.requires_gated_hf_model
 @pytest.mark.parametrize("pull_model_without_cleanup", [DIARIZATION_MODEL_ID], indirect=True)
 @pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
@@ -49,6 +50,7 @@ async def test_diarize_json_response_structure(aclient: AsyncClient, tmp_path: P
         assert len(segment.speaker) > 0
 
 
+@pytest.mark.requires_gated_hf_model
 @pytest.mark.parametrize("pull_model_without_cleanup", [DIARIZATION_MODEL_ID], indirect=True)
 @pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
@@ -78,6 +80,7 @@ async def test_diarize_rttm_response_format(aclient: AsyncClient, tmp_path: Path
         assert float(parts[4]) > 0  # duration
 
 
+@pytest.mark.requires_gated_hf_model
 @pytest.mark.parametrize("pull_model_without_cleanup", [DIARIZATION_MODEL_ID], indirect=True)
 @pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
@@ -100,6 +103,7 @@ async def test_diarize_real_audio(aclient: AsyncClient) -> None:
     assert len(result.segments) > 0
 
 
+@pytest.mark.requires_gated_hf_model
 @pytest.mark.parametrize("pull_model_without_cleanup", [DIARIZATION_MODEL_ID], indirect=True)
 @pytest.mark.usefixtures("pull_model_without_cleanup")
 @pytest.mark.asyncio
