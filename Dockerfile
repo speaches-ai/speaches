@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=nvidia/cuda:12.6.3-base-ubuntu24.04
+ARG BASE_IMAGE=nvidia/cuda:13.2.0-base-ubuntu24.04
 # hadolint ignore=DL3006
 FROM ${BASE_IMAGE}
 LABEL org.opencontainers.image.source="https://github.com/speaches-ai/speaches"
