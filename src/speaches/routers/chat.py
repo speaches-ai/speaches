@@ -172,10 +172,7 @@ class AudioChatStream:
         start = time.perf_counter()
         # TODO: parallelize
         async for sentence in self.sentence_chunker:
-            sentence_clean = sentence.strip()
-            sentence_clean = text_utils.strip_markdown_emphasis(sentence_clean)
-            sentence_clean = text_utils.strip_emojis(sentence_clean)
-            sentence_clean = sentence_clean.strip()
+            sentence_clean = text_utils.clean_for_tts(sentence)
             if len(sentence_clean) == 0:
                 logger.warning(f"Skipping empty sentence. ORIGINAL: {sentence}")
                 continue  # skip empty sentences

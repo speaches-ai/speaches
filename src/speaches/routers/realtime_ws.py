@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 
 from fastapi import (
@@ -7,12 +8,11 @@ from fastapi import (
     WebSocketException,
     status,
 )
-from openai import AsyncOpenAI
 
 from speaches.dependencies import (
+    CompletionClientDependency,
     ConfigDependency,
     ExecutorRegistryDependency,
-    TranscriptionClientDependency,
 )
 from speaches.realtime.context import SessionContext
 from speaches.realtime.conversation_event_router import event_router as conversation_event_router
@@ -24,8 +24,8 @@ from speaches.realtime.message_manager import WsServerMessageManager
 from speaches.realtime.response_event_router import event_router as response_event_router
 from speaches.realtime.session import OPENAI_REALTIME_SESSION_DURATION_SECONDS, create_session_object_configuration
 from speaches.realtime.session_event_router import event_router as session_event_router
-from speaches.realtime.utils import task_done_callback, verify_websocket_api_key
-from speaches.types.realtime import SessionCreatedEvent
+from speaches.realtime.utils import verify_websocket_api_key
+from speaches.types.realtime import Event, SessionCreatedEvent
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +38,18 @@ event_router.include_router(response_event_router)
 event_router.include_router(session_event_router)
 
 
+async def _safe_dispatch(ctx: SessionContext, event: Event) -> None:
+    try:
+        await event_router.dispatch(ctx, event)
+    except Exception:
+        logger.exception(f"Failed to handle {event.type} event")
+
+
 async def event_listener(ctx: SessionContext) -> None:
     try:
         async with asyncio.TaskGroup() as tg:
             async for event in ctx.pubsub.poll():
-                # logger.debug(f"Received event: {event.type}")
-
-                task = tg.create_task(event_router.dispatch(ctx, event))
-                task.add_done_callback(task_done_callback)
+                tg.create_task(_safe_dispatch(ctx, event))
     except asyncio.CancelledError:
         logger.info("Event listener task cancelled")
         raise
@@ -58,11 +62,12 @@ async def realtime(
     ws: WebSocket,
     model: str,
     config: ConfigDependency,
-    transcription_client: TranscriptionClientDependency,
+    completion_client: CompletionClientDependency,
     executor_registry: ExecutorRegistryDependency,
     intent: str = "conversation",
     language: str | None = None,
     transcription_model: str | None = None,
+    instructions: str | None = None,
 ) -> None:
     """OpenAI Realtime API compatible WebSocket endpoint.
 
@@ -86,26 +91,42 @@ async def realtime(
     await ws.accept()
     logger.info(f"Accepted websocket connection with intent: {intent}")
 
-    completion_client = AsyncOpenAI(
-        base_url=f"http://{config.host}:{config.port}/v1",
-        api_key=config.api_key.get_secret_value() if config.api_key else "cant-be-empty",
-        max_retries=0,
-    ).chat.completions
+    session = create_session_object_configuration(model, intent, language, transcription_model)
+    if instructions is not None:
+        session.instructions = instructions
     ctx = SessionContext(
-        transcription_client=transcription_client,
+        executor_registry=executor_registry,
         completion_client=completion_client,
         vad_model_manager=executor_registry.vad.model_manager,
-        session=create_session_object_configuration(model, intent, language, transcription_model),
+        vad_model_id=executor_registry.vad_model_id,
+        session=session,
     )
     message_manager = WsServerMessageManager(ctx.pubsub)
-    async with asyncio.TaskGroup() as tg:
-        event_listener_task = tg.create_task(event_listener(ctx), name="event_listener")
-        async with asyncio.timeout(OPENAI_REALTIME_SESSION_DURATION_SECONDS):
-            mm_task = asyncio.create_task(message_manager.run(ws))
-            # HACK: a tiny delay to ensure the message_manager.run() task is started. Otherwise, the `SessionCreatedEvent` will not be sent, as it's published before the `sender` task subscribes to the pubsub.
-            await asyncio.sleep(0.001)
-            ctx.pubsub.publish_nowait(SessionCreatedEvent(session=ctx.session))
-            await mm_task
-        event_listener_task.cancel()
-
-    logger.info(f"Finished handling '{ctx.session.id}' session")
+    mm_task: asyncio.Task[None] | None = None
+    try:
+        async with asyncio.TaskGroup() as tg:
+            event_listener_task = tg.create_task(event_listener(ctx), name="event_listener")
+            async with asyncio.timeout(OPENAI_REALTIME_SESSION_DURATION_SECONDS):
+                mm_task = asyncio.create_task(message_manager.run(ws))
+                await message_manager.ready.wait()
+                ctx.pubsub.publish_nowait(SessionCreatedEvent(session=ctx.session))
+                await mm_task
+            event_listener_task.cancel()
+    finally:
+        if mm_task is not None and not mm_task.done():
+            mm_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await mm_task
+        if ctx.barge_in_task is not None and not ctx.barge_in_task.done():
+            ctx.barge_in_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await ctx.barge_in_task
+        if ctx.partial_transcription_task is not None and not ctx.partial_transcription_task.done():
+            ctx.partial_transcription_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await ctx.partial_transcription_task
+        if ctx.response is not None and ctx.response.task is not None and not ctx.response.task.done():
+            ctx.response.stop()
+            with contextlib.suppress(asyncio.CancelledError):
+                await ctx.response.task
+        logger.info(f"Finished handling '{ctx.session.id}' session")

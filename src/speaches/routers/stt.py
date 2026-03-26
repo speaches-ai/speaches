@@ -19,6 +19,7 @@ from speaches.api_types import (
 )
 from speaches.dependencies import (
     AudioFileDependency,
+    ConfigDependency,
     ExecutorRegistryDependency,
 )
 from speaches.executors.shared.handler_protocol import (
@@ -29,7 +30,7 @@ from speaches.executors.shared.handler_protocol import (
     TranslationResponse,
     VadRequest,
 )
-from speaches.executors.silero_vad_v5 import VadOptions
+from speaches.executors.shared.vad_types import SpeechTimestamp, VadOptions
 from speaches.model_aliases import ModelId
 from speaches.routers.utils import find_executor_for_model_or_raise, get_model_card_data_or_raise
 from speaches.text_utils import format_as_sse
@@ -37,6 +38,21 @@ from speaches.text_utils import format_as_sse
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["automatic-speech-recognition"])
+
+
+def _get_speech_segments(
+    vad_filter: bool | None,
+    config: ConfigDependency,
+    executor_registry: ExecutorRegistryDependency,
+    audio: AudioFileDependency,
+) -> list[SpeechTimestamp]:
+    if vad_filter is None:
+        vad_filter = config._unstable_vad_filter
+    if vad_filter:
+        vad_request = VadRequest(audio=audio, vad_options=DEFAULT_VAD_OPTIONS)
+        return executor_registry.vad.model_manager.handle_vad_request(vad_request)
+    return []
+
 
 type ResponseFormat = Literal["text", "json", "verbose_json", "srt", "vtt"]
 RESPONSE_FORMATS = ("text", "json", "verbose_json", "srt", "vtt")
@@ -62,17 +78,18 @@ def translation_response_to_http_response(res: TranslationResponse) -> Response:
 )
 def translate_file(
     executor_registry: ExecutorRegistryDependency,
+    config: ConfigDependency,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
     prompt: Annotated[str | None, Form()] = None,
     response_format: Annotated[ResponseFormat, Form()] = DEFAULT_RESPONSE_FORMAT,
     temperature: Annotated[float, Form()] = 0.0,
+    vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response:
     model_card_data = get_model_card_data_or_raise(model)
     executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.translation)
 
-    vad_request = VadRequest(audio=audio, vad_options=DEFAULT_VAD_OPTIONS)
-    speech_segments = executor_registry.vad.model_manager.handle_vad_request(vad_request)
+    speech_segments = _get_speech_segments(vad_filter, config, executor_registry, audio)
 
     translation_request = TranslationRequest(
         audio=audio,
@@ -102,7 +119,6 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
 def transcription_response_to_http_response(
     res: NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent],
 ) -> Response | StreamingResponse:
-    logger.error(f"Unexpected streaming transcription response type: {type(res)}")
     if isinstance(res, tuple):
         text, media_type = res
         return Response(content=text, media_type=media_type)
@@ -123,6 +139,7 @@ def transcription_response_to_http_response(
 )
 def transcribe_file(
     executor_registry: ExecutorRegistryDependency,
+    config: ConfigDependency,
     request: Request,
     audio: AudioFileDependency,
     model: Annotated[ModelId, Form()],
@@ -139,6 +156,7 @@ def transcribe_file(
     # non standard parameters
     hotwords: Annotated[str | None, Form()] = None,
     without_timestamps: Annotated[bool, Form()] = True,
+    vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
     timestamp_granularities = asyncio.run(get_timestamp_granularities(request))
     if timestamp_granularities != DEFAULT_TIMESTAMP_GRANULARITIES and response_format != "verbose_json":
@@ -151,8 +169,7 @@ def transcribe_file(
         model, transcription_model_card_data, executor_registry.transcription
     )
 
-    vad_request = VadRequest(audio=audio, vad_options=DEFAULT_VAD_OPTIONS)
-    speech_segments = executor_registry.vad.model_manager.handle_vad_request(vad_request)
+    speech_segments = _get_speech_segments(vad_filter, config, executor_registry, audio)
 
     transcription_request = TranscriptionRequest(
         audio=audio,

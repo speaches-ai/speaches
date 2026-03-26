@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import asyncio
-from io import BytesIO
 import logging
 import time
 from typing import TYPE_CHECKING
 
 import numpy as np
-from openai import omit
+import openai.types.audio
 from openai.types.beta.realtime.conversation_item_input_audio_transcription_completed_event import (
     UsageTranscriptTextUsageDuration,
 )
 from pydantic import BaseModel
-import soundfile as sf
 
+from speaches.audio import Audio
+from speaches.executors.shared.handler_protocol import TranscriptionHandler, TranscriptionRequest
+from speaches.executors.shared.vad_types import VadOptions
 from speaches.realtime.utils import generate_item_id, task_done_callback
 from speaches.types.realtime import (
     ConversationItemContentInputAudio,
@@ -25,7 +26,6 @@ from speaches.types.realtime import (
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-    from openai.resources.audio import AsyncTranscriptions
 
     from speaches.realtime.conversation_event_router import Conversation
     from speaches.realtime.pubsub import EventPubSub
@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 SAMPLE_RATE = 16000
 MS_SAMPLE_RATE = 16
 MAX_VAD_WINDOW_SIZE_SAMPLES = 3000 * MS_SAMPLE_RATE
+MAX_BUFFER_SIZE_SAMPLES = 30 * 60 * SAMPLE_RATE  # 30 minutes
+_INITIAL_CAPACITY = 3200  # 200ms at 16kHz, ~12.5 KiB
 
 logger = logging.getLogger(__name__)
 
@@ -48,32 +50,83 @@ class VadState(BaseModel):
 class InputAudioBuffer:
     def __init__(self, pubsub: EventPubSub) -> None:
         self.id = generate_item_id()
-        self.data: NDArray[np.float32] = np.array([], dtype=np.float32)
+        self._buffer: NDArray[np.float32] = np.empty(_INITIAL_CAPACITY, dtype=np.float32)
+        self._size: int = 0
         self.vad_state = VadState()
         self.pubsub = pubsub
+        self._vad_ring: NDArray[np.float32] = np.zeros(2 * MAX_VAD_WINDOW_SIZE_SAMPLES, dtype=np.float32)
+        self._vad_ring_pos: int = 0
+        self._vad_ring_filled: int = 0
+
+    @property
+    def data(self) -> NDArray[np.float32]:
+        return self._buffer[: self._size]
+
+    @property
+    def vad_data(self) -> NDArray[np.float32]:
+        if self._vad_ring_filled < MAX_VAD_WINDOW_SIZE_SAMPLES:
+            return self._vad_ring[: self._vad_ring_filled]
+        start = self._vad_ring_pos
+        return self._vad_ring[start : start + MAX_VAD_WINDOW_SIZE_SAMPLES]
 
     @property
     def size(self) -> int:
-        """Number of samples in the buffer."""
-        return len(self.data)
+        return self._size
 
     @property
     def duration(self) -> float:
-        """Duration of the audio in seconds."""
-        return len(self.data) / SAMPLE_RATE
+        return self._size / SAMPLE_RATE
 
     @property
     def duration_ms(self) -> int:
-        """Duration of the audio in milliseconds."""
-        return len(self.data) // MS_SAMPLE_RATE
+        return self._size // MS_SAMPLE_RATE
 
     def append(self, audio_chunk: NDArray[np.float32]) -> None:
-        """Append an audio chunk to the buffer."""
-        self.data = np.append(self.data, audio_chunk)
+        chunk_len = len(audio_chunk)
+        if self._size + chunk_len > MAX_BUFFER_SIZE_SAMPLES:
+            logger.warning(
+                f"Audio buffer size limit reached ({MAX_BUFFER_SIZE_SAMPLES} samples), dropping {chunk_len} new samples"
+            )
+            return
+        required = self._size + chunk_len
+        if required > len(self._buffer):
+            new_capacity = max(required, len(self._buffer) * 2)
+            new_buffer: NDArray[np.float32] = np.empty(new_capacity, dtype=np.float32)
+            new_buffer[: self._size] = self._buffer[: self._size]
+            self._buffer = new_buffer
+        self._buffer[self._size : required] = audio_chunk
+        self._size = required
+        self._vad_ring_append(audio_chunk)
 
-    # def commit(self) -> None:
-    #     """Publish an event to indicate that the buffer is ready for processing."""
-    #     self.pubsub.publish
+    def _vad_ring_append(self, audio_chunk: NDArray[np.float32]) -> None:
+        n = len(audio_chunk)
+        cap = MAX_VAD_WINDOW_SIZE_SAMPLES
+        if n >= cap:
+            tail = audio_chunk[-cap:]
+            self._vad_ring[:cap] = tail
+            self._vad_ring[cap : 2 * cap] = tail
+            self._vad_ring_pos = 0
+            self._vad_ring_filled = cap
+            return
+        pos = self._vad_ring_pos
+        end = pos + n
+        if end <= cap:
+            self._vad_ring[pos:end] = audio_chunk
+            self._vad_ring[pos + cap : end + cap] = audio_chunk
+            new_pos = end % cap
+        else:
+            first = cap - pos
+            self._vad_ring[pos:cap] = audio_chunk[:first]
+            self._vad_ring[pos + cap : 2 * cap] = audio_chunk[:first]
+            wrap = n - first
+            self._vad_ring[:wrap] = audio_chunk[first:]
+            self._vad_ring[cap : cap + wrap] = audio_chunk[first:]
+            new_pos = wrap
+        self._vad_ring_pos = new_pos
+        self._vad_ring_filled = min(self._vad_ring_filled + n, cap)
+
+    def consolidate(self) -> None:
+        pass
 
     # TODO: come up with a better name
     @property
@@ -92,13 +145,13 @@ class InputAudioBufferTranscriber:
         self,
         *,
         pubsub: EventPubSub,
-        transcription_client: AsyncTranscriptions,
+        stt_model_manager: TranscriptionHandler,
         input_audio_buffer: InputAudioBuffer,
         session: Session,
         conversation: Conversation,
     ) -> None:
         self.pubsub = pubsub
-        self.transcription_client = transcription_client
+        self.stt_model_manager = stt_model_manager
         self.input_audio_buffer = input_audio_buffer
         self.session = session
         self.conversation = conversation
@@ -107,33 +160,76 @@ class InputAudioBufferTranscriber:
         self.events = asyncio.Queue[ServerEvent]()
 
     async def _handler(self) -> None:
-        content_item = ConversationItemContentInputAudio(transcript=None, type="input_audio")
+        audio = Audio(self.input_audio_buffer.data_w_vad_applied, sample_rate=SAMPLE_RATE)
+        request = TranscriptionRequest(
+            audio=audio,
+            model=self.session.input_audio_transcription.model,
+            language=self.session.input_audio_transcription.language,
+            response_format="verbose_json",
+            speech_segments=[],
+            vad_options=VadOptions(min_silence_duration_ms=160, max_speech_duration_s=30),
+            timestamp_granularities=["segment"],
+        )
+        start = time.perf_counter()
+        result = await asyncio.to_thread(self.stt_model_manager.handle_non_streaming_transcription_request, request)
+        elapsed = time.perf_counter() - start
+
+        # Extract transcript and check noise gate
+        if isinstance(result, openai.types.audio.TranscriptionVerbose):
+            transcript = result.text
+            threshold = self.session.no_speech_prob_threshold
+            if threshold is not None and result.segments:
+                avg_no_speech = sum(s.no_speech_prob for s in result.segments) / len(result.segments)
+                if avg_no_speech > threshold:
+                    logger.info(
+                        f"Noise gate: discarding audio (avg_no_speech_prob={avg_no_speech:.3f} > {threshold}, "
+                        f"transcript={transcript!r}, elapsed={elapsed:.2f}s)"
+                    )
+                    self.pubsub.publish_nowait(
+                        ConversationItemInputAudioTranscriptionCompletedEvent(
+                            item_id=self.input_audio_buffer.id,
+                            transcript="",
+                            usage=UsageTranscriptTextUsageDuration(
+                                seconds=self.input_audio_buffer.duration,
+                                type="duration",
+                            ),
+                        )
+                    )
+                    return
+        elif isinstance(result, tuple):
+            transcript = result[0]
+        else:
+            transcript = result.text
+
+        logger.debug(f"Transcription completed in {elapsed:.2f}s: {transcript!r}")
+
+        if not transcript.strip():
+            logger.info(f"Empty transcript: discarding audio (duration={self.input_audio_buffer.duration:.2f}s)")
+            self.pubsub.publish_nowait(
+                ConversationItemInputAudioTranscriptionCompletedEvent(
+                    item_id=self.input_audio_buffer.id,
+                    transcript="",
+                    usage=UsageTranscriptTextUsageDuration(
+                        seconds=self.input_audio_buffer.duration,
+                        type="duration",
+                    ),
+                )
+            )
+            return
+
+        content_item = ConversationItemContentInputAudio(transcript=transcript, type="input_audio")
         item = ConversationItemMessage(
             id=self.input_audio_buffer.id,
             role="user",
             content=[content_item],
-            status="completed",  # `status == "completed"` as that's what OpenAI sends
+            status="completed",
         )
         self.conversation.create_item(item)
-
-        file = BytesIO()
-        sf.write(
-            file,
-            self.input_audio_buffer.data_w_vad_applied,
-            samplerate=16000,
-            subtype="PCM_16",
-            endian="LITTLE",
-            format="wav",
-        )
-        start = time.perf_counter()
-        transcript = await self.transcription_client.create(
-            file=file,
-            model=self.session.input_audio_transcription.model,
-            response_format="text",
-            language=self.session.input_audio_transcription.language or omit,
-        )
-        logger.info(f"Transcription generation took {time.perf_counter() - start:.2f} seconds")
-        content_item.transcript = transcript
+        if item.id not in self.conversation.items:
+            logger.warning(
+                f"Item '{item.id}' was not added to conversation (likely duplicate), skipping transcription event"
+            )
+            return
         self.pubsub.publish_nowait(
             ConversationItemInputAudioTranscriptionCompletedEvent(
                 item_id=item.id,

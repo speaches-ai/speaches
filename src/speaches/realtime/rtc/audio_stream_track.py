@@ -30,6 +30,7 @@ class AudioStreamTrack(MediaStreamTrack):
         self._frame_duration = 0.01  # in seconds
         self._samples_per_frame = int(self._sample_rate * self._frame_duration)
         self._running = True
+        self.samples_delivered: int = 0
 
         # Start the frame processing task
         self._process_task = asyncio.create_task(self._audio_frame_generator())
@@ -41,6 +42,7 @@ class AudioStreamTrack(MediaStreamTrack):
 
         try:
             frame = await self.frame_queue.get()
+            self.samples_delivered += self._samples_per_frame
             await asyncio.sleep(FRAME_DELAY)
         except asyncio.CancelledError as e:
             raise MediaStreamError("Track has ended") from e
@@ -127,6 +129,18 @@ class AudioStreamTrack(MediaStreamTrack):
         self._timestamp += self._samples_per_frame
 
         return frame
+
+    async def flush(self) -> int:
+        flushed = 0
+        while not self.frame_queue.empty():
+            try:
+                self.frame_queue.get_nowait()
+                flushed += 1
+            except asyncio.QueueEmpty:
+                break
+        delivered_ms = (self.samples_delivered * 1000) // self._sample_rate
+        logger.info(f"Flushed {flushed} frames, delivered {delivered_ms}ms of audio so far")
+        return delivered_ms
 
     def stop(self) -> None:
         """Stop the audio track and cleanup."""

@@ -1,3 +1,4 @@
+import enum
 import logging
 from typing import Annotated, Any, Literal
 
@@ -63,12 +64,19 @@ from openai.types.beta.realtime import (
     ResponseTextDoneEvent as OpenAIResponseTextDoneEvent,
 )
 from openai.types.beta.realtime.error_event import Error
-from pydantic import BaseModel, Discriminator, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, field_validator, model_validator
 from pydantic.type_adapter import TypeAdapter
 
 from speaches.realtime.utils import generate_event_id, generate_item_id
 
 logger = logging.getLogger(__name__)
+
+
+class ConversationState(enum.Enum):
+    IDLE = "idle"
+    LISTENING = "listening"
+    PROCESSING = "processing"
+    GENERATING = "generating"
 
 
 class NotGiven(BaseModel):
@@ -175,6 +183,8 @@ type ConversationItem = ConversationItemMessage | ConversationItemFunctionCall |
 
 
 class ConversationItemCreateEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["conversation.item.create"] = "conversation.item.create"
     event_id: str = Field(default_factory=generate_event_id)
     previous_item_id: str | None = None
@@ -182,6 +192,8 @@ class ConversationItemCreateEvent(BaseModel):
 
 
 class ConversationItemCreatedEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["conversation.item.created"] = "conversation.item.created"
     event_id: str = Field(default_factory=generate_event_id)
     item: ConversationItem
@@ -189,6 +201,8 @@ class ConversationItemCreatedEvent(BaseModel):
 
 
 class ResponseOutputItemAddedEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.output_item.added"] = "response.output_item.added"
     event_id: str = Field(default_factory=generate_event_id)
     output_index: int = 0
@@ -197,6 +211,8 @@ class ResponseOutputItemAddedEvent(BaseModel):
 
 
 class ResponseOutputItemDoneEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.output_item.done"] = "response.output_item.done"
     event_id: str = Field(default_factory=generate_event_id)
     output_index: int = 0
@@ -214,12 +230,16 @@ class RealtimeResponse(BaseModel):
 
 
 class ResponseCreatedEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.created"] = "response.created"
     event_id: str = Field(default_factory=generate_event_id)
     response: RealtimeResponse
 
 
 class ResponseDoneEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.done"] = "response.done"
     event_id: str = Field(default_factory=generate_event_id)
     response: RealtimeResponse
@@ -232,6 +252,16 @@ class TurnDetection(BaseModel):
     silence_duration_ms: int
     threshold: float = Field(..., ge=0.0, le=1.0)
     type: Literal["server_vad"] = "server_vad"
+    barge_in_delay_ms: int = Field(400, ge=0)
+
+
+class PartialTurnDetection(BaseModel):
+    create_response: bool | NotGiven = NOT_GIVEN
+    prefix_padding_ms: int | NotGiven = NOT_GIVEN
+    silence_duration_ms: int | NotGiven = NOT_GIVEN
+    threshold: Annotated[float, Field(ge=0.0, le=1.0)] | NotGiven = NOT_GIVEN
+    type: Literal["server_vad"] | NotGiven = NOT_GIVEN
+    barge_in_delay_ms: int | NotGiven = NOT_GIVEN
 
 
 class InputAudioTranscription(BaseModel):
@@ -249,6 +279,7 @@ class Tool(BaseModel):
     description: str | None = None
     parameters: dict
     type: Literal["function"] = "function"
+    execution: Literal["client", "server"] = "client"
 
 
 # ChatCompletionToolChoiceOptionParam: TypeAlias = Union[
@@ -290,6 +321,10 @@ class Session(BaseModel):
     max_response_output_tokens: int | Literal["inf"]
     modalities: list[Modality]
     model: str
+    # Server-side extension, not part of OpenAI Realtime API
+    no_response_token: str | None = "*"  # noqa: S105
+    # Server-side extension, not part of OpenAI Realtime API
+    no_speech_prob_threshold: float | None = Field(default=0.6, ge=0.0, le=1.0)
     output_audio_format: AudioFormat
     temperature: float  # TODO: should there be lower and upper bounds?
     tool_choice: ToolChoice
@@ -297,6 +332,18 @@ class Session(BaseModel):
     turn_detection: TurnDetection | None
     speech_model: str
     voice: str
+
+    @field_validator("no_response_token")
+    @classmethod
+    def validate_no_response_token(cls, v: str | None) -> str | None:
+        if v is not None:
+            if len(v) > 64:
+                msg = "no_response_token must be at most 64 characters"
+                raise ValueError(msg)
+            if not v.isprintable():
+                msg = "no_response_token must contain only printable characters"
+                raise ValueError(msg)
+        return v
 
 
 class PartialSession(BaseModel):
@@ -306,34 +353,60 @@ class PartialSession(BaseModel):
     max_response_output_tokens: int | Literal["inf"] | NotGiven = NOT_GIVEN
     modalities: list[Modality] | NotGiven = NOT_GIVEN
     model: str | NotGiven = NOT_GIVEN
+    # Server-side extension, not part of OpenAI Realtime API
+    no_response_token: str | None | NotGiven = NOT_GIVEN
+    # Server-side extension, not part of OpenAI Realtime API
+    no_speech_prob_threshold: Annotated[float, Field(ge=0.0, le=1.0)] | None | NotGiven = NOT_GIVEN
     output_audio_format: AudioFormat | NotGiven = NOT_GIVEN
     temperature: float | NotGiven = NOT_GIVEN
     tool_choice: ToolChoice | NotGiven = NOT_GIVEN
     tools: list[Tool] | NotGiven = NOT_GIVEN
-    turn_detection: TurnDetection | NotGiven = NOT_GIVEN
+    turn_detection: PartialTurnDetection | None | NotGiven = NOT_GIVEN
     speech_model: str | NotGiven = NOT_GIVEN
     voice: str | NotGiven = NOT_GIVEN
 
+    @field_validator("no_response_token")
+    @classmethod
+    def validate_no_response_token(cls, v: str | None | NotGiven) -> str | None | NotGiven:
+        if isinstance(v, NotGiven):
+            return v
+        if v is not None:
+            if len(v) > 64:
+                msg = "no_response_token must be at most 64 characters"
+                raise ValueError(msg)
+            if not v.isprintable():
+                msg = "no_response_token must contain only printable characters"
+                raise ValueError(msg)
+        return v
+
 
 class SessionUpdateEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["session.update"] = "session.update"
     event_id: str | None = None
     session: PartialSession
 
 
 class SessionCreatedEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["session.created"] = "session.created"
     event_id: str = Field(default_factory=generate_event_id)
     session: Session
 
 
 class SessionUpdatedEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["session.updated"] = "session.updated"
     event_id: str = Field(default_factory=generate_event_id)
     session: Session
 
 
 class InputAudioBufferCommittedEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["input_audio_buffer.committed"] = "input_audio_buffer.committed"
     event_id: str = Field(default_factory=generate_event_id)
     item_id: str
@@ -344,21 +417,29 @@ class InputAudioBufferCommittedEvent(BaseModel):
 
 
 class InputAudioBufferSpeechStartedEvent(OpenAIInputAudioBufferSpeechStartedEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["input_audio_buffer.speech_started"] = "input_audio_buffer.speech_started"
     event_id: str = Field(default_factory=generate_event_id)
 
 
 class InputAudioBufferSpeechStoppedEvent(OpenAIInputAudioBufferSpeechStoppedEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["input_audio_buffer.speech_stopped"] = "input_audio_buffer.speech_stopped"
     event_id: str = Field(default_factory=generate_event_id)
 
 
 class ConversationCreatedEvent(OpenAIConversationCreatedEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["conversation.created"] = "conversation.created"
     event_id: str = Field(default_factory=generate_event_id)
 
 
 class ConversationItemDeletedEvent(OpenAIConversationItemDeletedEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["conversation.item.deleted"] = "conversation.item.deleted"
     event_id: str = Field(default_factory=generate_event_id)
 
@@ -366,6 +447,8 @@ class ConversationItemDeletedEvent(OpenAIConversationItemDeletedEvent):
 class ConversationItemInputAudioTranscriptionCompletedEvent(
     OpenAIConversationItemInputAudioTranscriptionCompletedEvent
 ):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["conversation.item.input_audio_transcription.completed"] = (
         "conversation.item.input_audio_transcription.completed"
     )
@@ -374,6 +457,8 @@ class ConversationItemInputAudioTranscriptionCompletedEvent(
 
 
 class ConversationItemInputAudioTranscriptionFailedEvent(OpenAIConversationItemInputAudioTranscriptionFailedEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["conversation.item.input_audio_transcription.failed"] = (
         "conversation.item.input_audio_transcription.failed"
     )
@@ -381,16 +466,22 @@ class ConversationItemInputAudioTranscriptionFailedEvent(OpenAIConversationItemI
 
 
 class InputAudioBufferClearedEvent(OpenAIInputAudioBufferClearedEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["input_audio_buffer.cleared"] = "input_audio_buffer.cleared"
     event_id: str = Field(default_factory=generate_event_id)
 
 
 class ConversationItemTruncatedEvent(OpenAIConversationItemTruncatedEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["conversation.item.truncated"] = "conversation.item.truncated"
     event_id: str = Field(default_factory=generate_event_id)
 
 
 class ErrorEvent(OpenAIErrorEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["error"] = "error"
     event_id: str = Field(default_factory=generate_event_id)
 
@@ -424,6 +515,8 @@ def create_server_error(
 
 
 class ResponseContentPartAddedEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.content_part.added"] = "response.content_part.added"
     event_id: str = Field(default_factory=generate_event_id)
     response_id: str
@@ -434,6 +527,8 @@ class ResponseContentPartAddedEvent(BaseModel):
 
 
 class ResponseContentPartDoneEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.content_part.done"] = "response.content_part.done"
     event_id: str = Field(default_factory=generate_event_id)
     response_id: str
@@ -444,6 +539,8 @@ class ResponseContentPartDoneEvent(BaseModel):
 
 
 class ResponseTextDeltaEvent(OpenAIResponseTextDeltaEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.text.delta"] = "response.text.delta"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
@@ -451,6 +548,8 @@ class ResponseTextDeltaEvent(OpenAIResponseTextDeltaEvent):
 
 
 class ResponseTextDoneEvent(OpenAIResponseTextDoneEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.text.done"] = "response.text.done"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
@@ -458,6 +557,8 @@ class ResponseTextDoneEvent(OpenAIResponseTextDoneEvent):
 
 
 class ResponseAudioTranscriptDeltaEvent(OpenAIResponseAudioTranscriptDeltaEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.audio_transcript.delta"] = "response.audio_transcript.delta"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
@@ -465,6 +566,8 @@ class ResponseAudioTranscriptDeltaEvent(OpenAIResponseAudioTranscriptDeltaEvent)
 
 
 class ResponseAudioDeltaEvent(OpenAIResponseAudioDeltaEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.audio.delta"] = "response.audio.delta"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
@@ -472,6 +575,8 @@ class ResponseAudioDeltaEvent(OpenAIResponseAudioDeltaEvent):
 
 
 class ResponseAudioDoneEvent(OpenAIResponseAudioDoneEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.audio.done"] = "response.audio.done"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
@@ -479,6 +584,8 @@ class ResponseAudioDoneEvent(OpenAIResponseAudioDoneEvent):
 
 
 class ResponseAudioTranscriptDoneEvent(OpenAIResponseAudioTranscriptDoneEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.audio_transcript.done"] = "response.audio_transcript.done"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
@@ -486,12 +593,16 @@ class ResponseAudioTranscriptDoneEvent(OpenAIResponseAudioTranscriptDoneEvent):
 
 
 class ResponseFunctionCallArgumentsDeltaEvent(OpenAIResponseFunctionCallArgumentsDeltaEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.function_call_arguments.delta"] = "response.function_call_arguments.delta"
     event_id: str = Field(default_factory=generate_event_id)
     output_index: int = 0
 
 
 class ResponseFunctionCallArgumentsDoneEvent(OpenAIResponseFunctionCallArgumentsDoneEvent):
+    model_config = ConfigDict(frozen=True)
+
     type: Literal["response.function_call_arguments.done"] = "response.function_call_arguments.done"
     event_id: str = Field(default_factory=generate_event_id)
     output_index: int = 0
@@ -510,6 +621,7 @@ type InputAudioBufferServerEvent = (
     | InputAudioBufferClearedEvent
     | InputAudioBufferSpeechStartedEvent
     | InputAudioBufferSpeechStoppedEvent
+    | InputAudioBufferPartialTranscriptionEvent
 )
 
 type ConversationClientEvent = ConversationItemCreateEvent | ConversationItemTruncateEvent | ConversationItemDeleteEvent
@@ -578,6 +690,7 @@ SERVER_EVENT_TYPES = {
     "input_audio_buffer.cleared",
     "input_audio_buffer.speech_started",
     "input_audio_buffer.speech_stopped",
+    "input_audio_buffer.partial_transcription",
     "conversation.item.created",
     "conversation.item.input_audio_transcription.completed",
     "conversation.item.input_audio_transcription.failed",
@@ -636,5 +749,15 @@ class PartialMessageEvent(BaseModel):
 
 
 type MessageFragment = FullMessageEvent | PartialMessageEvent
+
+
+class InputAudioBufferPartialTranscriptionEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["input_audio_buffer.partial_transcription"] = "input_audio_buffer.partial_transcription"
+    event_id: str = Field(default_factory=generate_event_id)
+    item_id: str
+    transcript: str
+
 
 Event = ClientEvent | ServerEvent

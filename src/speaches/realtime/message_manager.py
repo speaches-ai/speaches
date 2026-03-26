@@ -1,8 +1,6 @@
 import abc
 import asyncio
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 import fastapi
@@ -57,12 +55,6 @@ class BaseMessageManager(abc.ABC):
             await receiver_task
             sender_task.cancel()
 
-    # HACK: for debugging purposes
-    def dump_to_file(self, session_id: str) -> None:
-        with Path(f"sessions/{session_id}.json").open("w") as f:
-            print("Dumping events to file", session_id)
-            f.write(json.dumps([m.model_dump() for m in self.event_pubsub.events], indent=2))
-
 
 class WsClientMessageManager(BaseMessageManager):
     def __init__(self, receive_timeout: int | None = 5) -> None:
@@ -91,10 +83,9 @@ class WsClientMessageManager(BaseMessageManager):
                 event = await q.get()
                 if event.type not in CLIENT_EVENT_TYPES:
                     continue
-                client_event = client_event_type_adapter.validate_python(event)
                 try:
                     logger.debug(f"Sending {event.type} event")
-                    await ws.send_text(client_event.model_dump_json())
+                    await ws.send_text(event.model_dump_json())
                     logger.info(f"Sent {event.type} event")
                 except fastapi.WebSocketDisconnect:
                     logger.info("Failed to send message due to disconnect")
@@ -104,6 +95,10 @@ class WsClientMessageManager(BaseMessageManager):
 
 
 class WsServerMessageManager(BaseMessageManager):
+    def __init__(self, event_pubsub: EventPubSub | None = None) -> None:
+        super().__init__(event_pubsub)
+        self.ready = asyncio.Event()
+
     async def receiver(self, ws: fastapi.WebSocket) -> None:
         logger.info("Receiver task started")
         while True:
@@ -118,7 +113,12 @@ class WsServerMessageManager(BaseMessageManager):
             except ValidationError as e:
                 logger.exception("Received an invalid client event")
                 await ws.send_text(
-                    ErrorEvent(error=Error(type="invalid_request_error", message=str(e))).model_dump_json()
+                    ErrorEvent(
+                        error=Error(
+                            type="invalid_request_error",
+                            message=f"Invalid client event: {e.error_count()} validation error(s)",
+                        )
+                    ).model_dump_json()
                 )
                 continue
 
@@ -128,16 +128,16 @@ class WsServerMessageManager(BaseMessageManager):
     async def sender(self, ws: fastapi.WebSocket) -> None:
         logger.info("Sender task started")
         q = self.event_pubsub.subscribe()
+        self.ready.set()
         try:
             while True:
                 # logger.debug("Waiting for event")
                 event = await q.get()
                 if event.type not in SERVER_EVENT_TYPES:
                     continue
-                server_event = server_event_type_adapter.validate_python(event)
                 try:
                     logger.debug(f"Sending {event.type} event")
-                    await ws.send_text(server_event.model_dump_json())
+                    await ws.send_text(event.model_dump_json())
                     logger.info(f"Sent {event.type} event")
                 except fastapi.WebSocketDisconnect:
                     logger.info("Failed to send message due to disconnect")

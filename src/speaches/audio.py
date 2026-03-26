@@ -1,5 +1,6 @@
 import base64
 from collections.abc import Generator
+from functools import lru_cache
 import io
 import logging
 import queue as queue_module
@@ -13,13 +14,24 @@ import soundfile as sf
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=16)
+def _resample_coords(
+    input_length: int, sample_rate: int, target_sample_rate: int
+) -> tuple[np.typing.NDArray[np.float64], np.typing.NDArray[np.float64]]:
+    ratio = target_sample_rate / sample_rate
+    target_length = int(input_length * ratio)
+    xp = np.arange(input_length, dtype=np.float64)
+    x = np.linspace(0, input_length, target_length, dtype=np.float64)
+    return x, xp
+
+
 # NOTE: `signal.resample_poly` **might** be a better option for resampling audio data
 def resample_audio_data(
     data: np.typing.NDArray[np.float32], sample_rate: int, target_sample_rate: int
 ) -> np.typing.NDArray[np.float32]:
-    ratio = target_sample_rate / sample_rate
-    target_length = int(len(data) * ratio)
-    return np.interp(np.linspace(0, len(data), target_length), np.arange(len(data)), data).astype(np.float32)
+    x, xp = _resample_coords(len(data), sample_rate, target_sample_rate)
+    result = np.interp(x, xp, data)
+    return result.astype(np.float32, copy=False) if result.dtype != np.float32 else result
 
 
 # aip 'Write a function `resample_audio` which would take in RAW PCM 16-bit signed, little-endian audio data represented as bytes (`audio_bytes`) and resample it (either downsample or upsample) from `sample_rate` to `target_sample_rate` using numpy'
@@ -110,18 +122,14 @@ class Audio:
         self.data = np.append(self.data, data)
 
     def as_bytes(self) -> bytes:
-        # NOTE: a more correct approach would be to normalize the audio data first but I'd rather avoid doing that to not introduce any performance overhead given that I expect the data to already be in the [-1.0, 1.0] range
-        # Clip to [-1.0, 1.0] to avoid overflow
-        # audio = np.clip(self.data, -1.0, 1.0)
-
-        # Scale to int16 range and convert
-        audio = (self.data * 32767).astype(np.int16)
-
-        return audio.tobytes()
+        out = np.empty(len(self.data), dtype=np.int16)
+        np.multiply(self.data, 32767, out=out, casting="unsafe")
+        return out.tobytes()
 
     def to_base64(self) -> str:
-        audio_bytes = self.as_bytes()
-        return base64.b64encode(audio_bytes).decode("utf-8")
+        out = np.empty(len(self.data), dtype=np.int16)
+        np.multiply(self.data, 32767, out=out, casting="unsafe")
+        return base64.b64encode(out).decode("utf-8")
 
     def resample(self, target_sample_rate: int) -> Self:
         if self.sample_rate == target_sample_rate:

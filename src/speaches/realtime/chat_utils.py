@@ -2,7 +2,6 @@ import logging
 
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
-    ChatCompletionAudioParam,
     ChatCompletionMessageParam,
     ChatCompletionMessageToolCallParam,
     ChatCompletionStreamOptionsParam,
@@ -25,8 +24,6 @@ logger = logging.getLogger(__name__)
 def create_completion_params(
     model_id: str, messages: list[ChatCompletionMessageParam], response: Response
 ) -> CompletionCreateParamsStreaming:
-    assert response.output_audio_format == "pcm16"  # HACK
-
     max_tokens = None if response.max_response_output_tokens == "inf" else response.max_response_output_tokens
     kwargs = {}
     if len(response.tools) > 0:
@@ -45,26 +42,22 @@ def create_completion_params(
         ]
         kwargs["tool_choice"] = response.tool_choice
 
-    return CompletionCreateParamsStreaming(
+    system_messages: list[ChatCompletionMessageParam] = (
+        [ChatCompletionSystemMessageParam(role="system", content=response.instructions)]
+        if response.instructions
+        else []
+    )
+    params = CompletionCreateParamsStreaming(
         model=model_id,
-        messages=[
-            ChatCompletionSystemMessageParam(
-                role="system",
-                content=response.instructions,
-            ),
-            *messages,
-        ],
+        messages=[*system_messages, *messages],
         stream=True,
-        modalities=response.modalities,
-        audio=ChatCompletionAudioParam(
-            voice=response.voice,  # pyright: ignore[reportArgumentType]
-            format=response.output_audio_format,
-        ),
         temperature=response.temperature,
         max_tokens=max_tokens,
         stream_options=ChatCompletionStreamOptionsParam(include_usage=True),
         **kwargs,
     )
+    params["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}  # pyright: ignore[reportTypedDictUnknownKey]
+    return params
 
 
 def conversation_item_to_chat_message(

@@ -15,10 +15,7 @@ class TextChunker(Protocol):
         """Close the chunker, preventing further token additions."""
         ...
 
-    async def __aiter__(self) -> AsyncGenerator[str]:
-        """Iterate through chunks of text.
-        Different implementations may chunk text differently.
-        """
+    async def __aiter__(self) -> AsyncGenerator[str, None]:
         yield ""
 
 
@@ -91,7 +88,7 @@ class SentenceChunker:
         self._is_closed = True
         self._new_token_event.set()
 
-    async def __aiter__(self) -> AsyncGenerator[str]:
+    async def __aiter__(self) -> AsyncGenerator[str, None]:
         while True:
             # Find the next sentence ending after the last processed index
             next_end = -1
@@ -134,47 +131,138 @@ class SentenceChunker:
                 await self._new_token_event.wait()
 
 
-def strip_emojis(text: str) -> str:
-    # Get all emoji unicode characters
-    emoji_pattern = re.compile(
-        "["
-        "\U0001f600-\U0001f64f"  # emoticons
-        "\U0001f300-\U0001f5ff"  # symbols & pictographs
-        "\U0001f680-\U0001f6ff"  # transport & map symbols
-        "\U0001f700-\U0001f77f"  # alchemical symbols
-        "\U0001f780-\U0001f7ff"  # Geometric Shapes
-        "\U0001f800-\U0001f8ff"  # Supplemental Arrows-C
-        "\U0001f900-\U0001f9ff"  # Supplemental Symbols and Pictographs
-        "\U0001fa00-\U0001fa6f"  # Chess Symbols
-        "\U0001fa70-\U0001faff"  # Symbols and Pictographs Extended-A
-        "\U00002702-\U000027b0"  # Dingbats
-        "]+",
-        flags=re.UNICODE,
-    )
+_EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001f600-\U0001f64f"  # emoticons
+    "\U0001f300-\U0001f5ff"  # symbols & pictographs
+    "\U0001f680-\U0001f6ff"  # transport & map symbols
+    "\U0001f700-\U0001f77f"  # alchemical symbols
+    "\U0001f780-\U0001f7ff"  # Geometric Shapes
+    "\U0001f800-\U0001f8ff"  # Supplemental Arrows-C
+    "\U0001f900-\U0001f9ff"  # Supplemental Symbols and Pictographs
+    "\U0001fa00-\U0001fa6f"  # Chess Symbols
+    "\U0001fa70-\U0001faff"  # Symbols and Pictographs Extended-A
+    "\U00002702-\U000027b0"  # Dingbats
+    "]+",
+    flags=re.UNICODE,
+)
 
-    return emoji_pattern.sub(r"", text)
+
+def strip_emojis(text: str) -> str:
+    return _EMOJI_PATTERN.sub(r"", text)
+
+
+_BOLD_PATTERN = re.compile(r"\*\*(.*?)\*\*")
+_ITALIC_STAR_PATTERN = re.compile(r"\*(.*?)\*")
+_UNDERLINE_PATTERN = re.compile(r"__(.*?)__")
+_ITALIC_UNDERSCORE_PATTERN = re.compile(r"_(.*?)_")
 
 
 def strip_markdown_emphasis(text: str) -> str:
-    """Remove markdown emphasis markers from text.
-
-    Examples:
-        - "Hello my name is **Jon**" -> "Hello my name is Jon"
-        - "I *really* like this" -> "I really like this"
-        - "This is __underlined__" -> "This is underlined"
-        - "This is _italic_" -> "This is italic"
-
-    """
     # Remove bold (**text**)
-    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+    text = _BOLD_PATTERN.sub(r"\1", text)
     # Remove italic (*text*)
-    text = re.sub(r"\*(.*?)\*", r"\1", text)
+    text = _ITALIC_STAR_PATTERN.sub(r"\1", text)
     # Remove underlined (__text__)
-    text = re.sub(r"__(.*?)__", r"\1", text)
+    text = _UNDERLINE_PATTERN.sub(r"\1", text)
     # Remove italic with underscore (_text_)
-    text = re.sub(r"_(.*?)_", r"\1", text)
+    text = _ITALIC_UNDERSCORE_PATTERN.sub(r"\1", text)
 
     return text
+
+
+def clean_for_tts(text: str) -> str:
+    text = text.strip()
+    text = strip_markdown_emphasis(text)
+    text = strip_emojis(text)
+    text = text.strip()
+    # Skip text with no word characters (e.g. "*", "---", "...")
+    if text and not re.search(r"\w", text):
+        return ""
+    return text
+
+
+MIN_PHRASE_LENGTH = 15
+MAX_PHRASE_LENGTH = 200
+PHRASE_TIMEOUT_SECONDS = 0.2
+
+
+class PhraseChunker:
+    """A text chunker that yields text at clause/phrase boundaries for low-latency TTS.
+
+    Yields at commas, semicolons, colons, dashes, sentence endings, or after a
+    timeout. The first chunk can be as small as a few words to minimize
+    time-to-first-voice.
+
+    Implements the TextChunker protocol.
+    """
+
+    def __init__(
+        self,
+        min_phrase_length: int = MIN_PHRASE_LENGTH,
+        max_phrase_length: int = MAX_PHRASE_LENGTH,
+        timeout: float = PHRASE_TIMEOUT_SECONDS,
+    ) -> None:
+        self._content = ""
+        self._is_closed = False
+        self._new_token_event = asyncio.Event()
+        self._boundary_pattern = re.compile(r"[.!?,;:\u2014-]")
+        self._processed_index = 0
+        self._min_phrase_length = min_phrase_length
+        self._max_phrase_length = max_phrase_length
+        self._timeout = timeout
+        self._is_first_chunk = True
+
+    def add_token(self, token: str) -> None:
+        if self._is_closed:
+            raise RuntimeError("Cannot add tokens to a closed PhraseChunker")
+        self._content += token
+        self._new_token_event.set()
+
+    def close(self) -> None:
+        self._is_closed = True
+        self._new_token_event.set()
+
+    def _find_next_boundary(self) -> int | None:
+        m = self._boundary_pattern.search(self._content, self._processed_index)
+        if m is None:
+            return None
+        return m.end()
+
+    async def __aiter__(self) -> AsyncGenerator[str, None]:
+        while True:
+            boundary = self._find_next_boundary()
+            if boundary is not None:
+                chunk = self._content[self._processed_index : boundary]
+                min_len = 4 if self._is_first_chunk else self._min_phrase_length
+                if len(chunk.strip()) >= min_len:
+                    self._processed_index = boundary
+                    self._is_first_chunk = False
+                    yield chunk
+                    continue
+
+            unprocessed = self._content[self._processed_index :]
+
+            if len(unprocessed.strip()) >= self._max_phrase_length:
+                self._processed_index = len(self._content)
+                self._is_first_chunk = False
+                yield unprocessed
+                continue
+
+            if self._is_closed:
+                if unprocessed.strip():
+                    yield unprocessed
+                return
+
+            self._new_token_event.clear()
+            try:
+                await asyncio.wait_for(self._new_token_event.wait(), timeout=self._timeout)
+            except TimeoutError:
+                unprocessed = self._content[self._processed_index :]
+                if len(unprocessed.strip()) >= 4:
+                    self._processed_index = len(self._content)
+                    self._is_first_chunk = False
+                    yield unprocessed
 
 
 class EOFTextChunker:
@@ -201,7 +289,7 @@ class EOFTextChunker:
         self._is_closed = True
         self._new_token_event.set()
 
-    async def __aiter__(self) -> AsyncGenerator[str]:
+    async def __aiter__(self) -> AsyncGenerator[str, None]:
         while True:
             if self._is_closed:
                 # Yield all content once at the end

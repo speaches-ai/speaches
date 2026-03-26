@@ -4,11 +4,15 @@ import logging
 from typing import TYPE_CHECKING
 
 from openai.types.beta.realtime.error_event import Error
+from pydantic import BaseModel
 
 from speaches.realtime.event_router import EventRouter
 from speaches.types.realtime import (
     NOT_GIVEN,
     ErrorEvent,
+    NotGiven,
+    PartialSession,
+    PartialTurnDetection,
     Session,
     SessionUpdatedEvent,
     SessionUpdateEvent,
@@ -22,14 +26,31 @@ logger = logging.getLogger(__name__)
 
 event_router = EventRouter()
 
+_SESSION_EXCLUDE_FIELDS = frozenset({"input_audio_format", "output_audio_format"})
 
-def update_dict(original: dict, updates: dict) -> dict:
-    for key, value in updates.items():
-        if isinstance(value, dict):
-            original[key] = update_dict(original.get(key, {}), value)
-        else:
-            original[key] = value
-    return original
+
+def _build_session_update(session: Session, partial: PartialSession) -> dict:
+    update: dict = {}
+    for field_name in PartialSession.model_fields:
+        if field_name in _SESSION_EXCLUDE_FIELDS:
+            continue
+        value = getattr(partial, field_name)
+        if isinstance(value, NotGiven):
+            continue
+        if field_name == "turn_detection" and isinstance(value, PartialTurnDetection):
+            existing = session.turn_detection
+            if isinstance(existing, TurnDetection):
+                value = existing.model_copy(
+                    update={
+                        k: v for k, v in value.model_dump(exclude_defaults=True).items() if k != "prefix_padding_ms"
+                    }
+                )
+        elif isinstance(value, BaseModel):
+            existing = getattr(session, field_name, None)
+            if isinstance(existing, BaseModel):
+                value = existing.model_copy(update=value.model_dump(exclude_defaults=True))
+        update[field_name] = value
+    return update
 
 
 def unsupported_field_error(field: str) -> ErrorEvent:
@@ -49,22 +70,18 @@ def handle_session_update_event(ctx: SessionContext, event: SessionUpdateEvent) 
         ctx.pubsub.publish_nowait(unsupported_field_error("session.output_audio_format"))
     if (
         event.session.turn_detection is not None
-        and isinstance(event.session.turn_detection, TurnDetection)
+        and isinstance(event.session.turn_detection, PartialTurnDetection)
         and event.session.turn_detection.prefix_padding_ms != NOT_GIVEN
     ):
         ctx.pubsub.publish_nowait(unsupported_field_error("session.turn_detection.prefix_padding_ms"))
 
-    session_dict = ctx.session.model_dump()
-    session_update_dict = event.session.model_dump(
-        exclude_defaults=True,
-        # https://docs.pydantic.dev/latest/concepts/serialization/#advanced-include-and-exclude
-        exclude={"input_audio_format": True, "output_audio_format": True, "turn_detection": {"prefix_padding_ms"}},
-    )
+    session_update = _build_session_update(ctx.session, event.session)
 
-    logger.debug(f"Applying session configuration update: {session_update_dict}")
-    logger.debug(f"Session configuration before update: {session_dict}")
-    updated_session = update_dict(session_dict, session_update_dict)
-    logger.debug(f"Session configuration after update: {updated_session}")
-    ctx.session = Session(**updated_session)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"Applying session configuration update: {session_update}")
+        logger.debug(f"Session configuration before update: {ctx.session}")
+    ctx.session = ctx.session.model_copy(update=session_update)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"Session configuration after update: {ctx.session}")
 
     ctx.pubsub.publish_nowait(SessionUpdatedEvent(session=ctx.session))

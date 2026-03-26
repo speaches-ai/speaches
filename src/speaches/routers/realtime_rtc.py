@@ -22,14 +22,12 @@ from fastapi import (
     Response,
 )
 import numpy as np
-from openai import AsyncOpenAI
 from openai.types.beta.realtime.error_event import Error
 from pydantic import ValidationError
 
 from speaches.dependencies import (
-    ConfigDependency,
+    CompletionClientDependency,
     ExecutorRegistryDependency,
-    TranscriptionClientDependency,
 )
 from speaches.realtime.context import SessionContext
 from speaches.realtime.conversation_event_router import event_router as conversation_event_router
@@ -169,8 +167,9 @@ def message_handler(ctx: SessionContext, message: str) -> None:
 
 
 async def audio_receiver(ctx: SessionContext, track: RemoteStreamTrack) -> None:
-    # Initialize buffer to store audio data
-    buffer = np.array([], dtype=np.int16)
+    # Accumulate chunks in a list and concatenate once at drain time to avoid O(n^2) np.append copies
+    chunks: list[np.ndarray] = []
+    buffered_samples = 0
 
     while True:
         frames = await track.recv()
@@ -185,11 +184,13 @@ async def audio_receiver(ctx: SessionContext, track: RemoteStreamTrack) -> None:
 
         # Accumulate audio data
         for frame in frames:
-            arr = frame.to_ndarray()
-            buffer = np.append(buffer, arr.flatten())  # Flatten and append to buffer
+            arr = frame.to_ndarray().flatten()
+            chunks.append(arr)
+            buffered_samples += len(arr)
 
             # When buffer reaches or exceeds target size, emit event
-            if len(buffer) >= MIN_BUFFER_SIZE:
+            if buffered_samples >= MIN_BUFFER_SIZE:
+                buffer = np.concatenate(chunks)
                 # Convert to bytes and emit event
                 audio_bytes = buffer.tobytes()
                 assert len(audio_bytes) == len(buffer) * 2, "Audio sample width is not 2 bytes"
@@ -200,7 +201,8 @@ async def audio_receiver(ctx: SessionContext, track: RemoteStreamTrack) -> None:
                     )
                 )
 
-                buffer = np.array([], dtype=np.int16)
+                chunks.clear()
+                buffered_samples = 0
 
 
 def datachannel_handler(ctx: SessionContext, channel: RTCDataChannel) -> None:
@@ -260,19 +262,14 @@ def track_handler(ctx: SessionContext, track: RemoteStreamTrack) -> None:
 async def realtime_webrtc(
     request: Request,
     model: Annotated[str, Query(...)],
-    config: ConfigDependency,
-    transcription_client: TranscriptionClientDependency,
+    completion_client: CompletionClientDependency,
     executor_registry: ExecutorRegistryDependency,
 ) -> Response:
-    completion_client = AsyncOpenAI(
-        base_url=f"http://{config.host}:{config.port}/v1",
-        api_key=config.api_key.get_secret_value() if config.api_key else "cant-be-empty",
-        max_retries=0,
-    ).chat.completions
     ctx = SessionContext(
-        transcription_client=transcription_client,
+        executor_registry=executor_registry,
         completion_client=completion_client,
         vad_model_manager=executor_registry.vad.model_manager,
+        vad_model_id=executor_registry.vad_model_id,
         session=create_session_object_configuration(model, "conversation", None, None),
     )
     rtc_session_tasks[ctx.session.id] = set()

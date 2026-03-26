@@ -61,9 +61,9 @@ def create_session_object_configuration(
         ),
         turn_detection=TurnDetection(
             type="server_vad",
-            threshold=0.9,
-            prefix_padding_ms=0,
-            silence_duration_ms=550,
+            threshold=0.6,
+            prefix_padding_ms=300,
+            silence_duration_ms=350,
             create_response=intent != "transcription",
         ),
         temperature=0.8,
