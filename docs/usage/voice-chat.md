@@ -2,6 +2,7 @@
 
     Before proceeding, you should be familiar with [OpenAI Audio Generation Guide](https://platform.openai.com/docs/guides/audio). The guide explains how the API works and provides examples on how to use. Unless stated otherwise in [limitations](#limitations) if a feature is supported by OpenAI, it should be supported by this project as well.
 
+<!-- Verified by: src/speaches/config.py::Config.chat_completion_base_url (config field) -->
 ## Prerequisites
 
 Start `speaches` with the following environmental variables:
@@ -26,6 +27,7 @@ Download a TTS model and a STT model. See [Text-to-Speech](./text-to-speech.md) 
 
 ## How does it work?
 
+<!-- Verified by: tests/api_chat_test.py::test_audio_chat_text, test_audio_chat_text_audio -->
 `speaches` acts as a proxy between the client and the OpenAI compatible API. It receives the user's input audio message, transcribes it, and replaces the input audio with a transcription that a regular LLM can understand. The request is then proxied to the provided endpoint, the response is transcribed back to audio, and returned to the client. Below is the flow of the process for non-streaming text + audio in → text + audio out:
 
 - Receive the `messages` containing audio inputs
@@ -111,11 +113,13 @@ Download a TTS model and a STT model. See [Text-to-Speech](./text-to-speech.md) 
 
 ## Customization
 
+<!-- Verified by: tests/api_chat_test.py::test_audio_chat_text_stream, test_audio_chat_text_audio_stream -->
 The chat completion endpoint exposes additional parameters for customization. The following parameters are available:
 
 - `transcription_model`: The model to use for transcribing the audio.
 - `speech_model`: The model to use for generating the audio.
 
+<!-- Verified by: tests/test_doc_claims.py::test_chat_completion_params_include_transcription_and_speech_model, tests/api_chat_test.py::test_audio_chat_text -->
 When using OpenAI's Python SDK the parameters can be set using `extra_body` parameter. For example:
 
 ```python
@@ -133,7 +137,7 @@ openai_client.chat.completions.create(
                 ],
             },
         ],
-        extra_body={"transcription_model": "Systran/faster-whisper-tiny.en", "speech_model": "hexgrad/Kokoro-82M"}
+        extra_body={"transcription_model": "Systran/faster-whisper-tiny.en", "speech_model": "speaches-ai/Kokoro-82M-v1.0-ONNX"}
     )
 ```
 

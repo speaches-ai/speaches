@@ -44,14 +44,19 @@ nav:
   - Installation: installation.md
   - Usage / Capabilities:
       - Model Discovery: usage/model-discovery.md
+      - Dynamic Model Loading: usage/dynamic-loading.md
       - Speech-to-Text: usage/speech-to-text.md
       - Text-to-Speech: usage/text-to-speech.md
+      - Speech Embeddings: usage/speech-embedding.md
       - Voice Chat: usage/voice-chat.md
       - Realtime API: usage/realtime-api.md
       - VAD: usage/vad.md
       - Open WebUI Integration: usage/open-webui-integration.md
   - Configuration: configuration.md
+  - Troubleshooting: troubleshooting.md
   - API: api.md
+  - For Developers:
+      - Running Tests: development/running-tests.md
 markdown_extensions:
   - admonition
   - pymdownx.details

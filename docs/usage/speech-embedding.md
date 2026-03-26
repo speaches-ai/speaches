@@ -4,6 +4,7 @@ Speech embedding extraction allows you to extract high-dimensional vector repres
 
 !!! note
 
+<!-- Verified by: tests/speech_embedding_test.py::test_create_speech_embedding_with_real_audio -->
     This feature uses ONNX models from the PyAnnote ecosystem for speaker embedding extraction. The embeddings are 512-dimensional vectors that capture speaker-specific characteristics.
 
 ## Download a Speech Embedding Model
@@ -25,6 +26,7 @@ uvx speaches-cli model ls --task speaker-embedding | jq '.data | map(select(.id 
 
 ### Curl
 
+<!-- Verified by: tests/speech_embedding_test.py::test_create_speech_embedding -->
 ```bash
 export SPEACHES_BASE_URL="http://localhost:8000"
 export EMBEDDING_MODEL_ID="pyannote/wespeaker-voxceleb-resnet34-LM"
@@ -74,6 +76,7 @@ curl -s "$SPEACHES_BASE_URL/v1/audio/speech/embedding" \
     print(f"Embedding dimension: {len(embedding)}")
     ```
 
+<!-- Verified by: tests/speech_embedding_test.py::test_embedding_similarity -->
 ## Comparing Speech Embeddings
 
 Speech embeddings can be compared using cosine similarity to measure how similar two voice samples are. This is useful for speaker verification tasks.
@@ -162,6 +165,7 @@ is_same, score = verifier.verify('enrollment.wav', 'test.wav')
 print(f"Same speaker: {is_same}, Similarity score: {score:.4f}")
 ```
 
+<!-- Verified by: tests/speech_embedding_test.py::test_create_speech_embedding (response structure validated) -->
 ## Response Format
 
 The response follows a structure similar to OpenAI's text embedding endpoint:

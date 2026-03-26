@@ -21,6 +21,9 @@ uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == 
 
 ### Curl
 
+<!-- Verified by: tests/speech_test.py::test_create_speech_good_model_voice_pair -->
+<!-- Verified by: tests/speech_test.py::test_create_speech_formats -->
+<!-- Verified by: tests/speech_test.py::test_create_speech_with_varying_speed -->
 ```bash
 export SPEACHES_BASE_URL="http://localhost:8000"
 export SPEECH_MODEL_ID="speaches-ai/Kokoro-82M-v1.0-ONNX"
@@ -122,7 +125,3 @@ EOF
 === "Other"
 
     See [OpenAI libraries](https://platform.openai.com/docs/libraries)
-
-## Limitations
-
-- `response_format`: `opus` and `aac` are not supported

@@ -125,3 +125,62 @@ source .venv/bin/activate
 uv sync
 uvicorn --factory --host 0.0.0.0 speaches.main:create_app
 ```
+
+## Nix
+
+The project provides a Nix flake with full packaging support.
+
+### Run directly
+
+```bash
+nix run github:speaches-ai/speaches
+```
+
+### Development shell
+
+```bash
+git clone https://github.com/speaches-ai/speaches.git
+cd speaches
+nix develop
+```
+
+### NixOS module
+
+The flake exports a NixOS module for declarative deployment:
+
+```nix
+{
+  inputs.speaches.url = "github:speaches-ai/speaches";
+
+  outputs = { self, nixpkgs, speaches, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        speaches.nixosModules.default
+        {
+          services.speaches = {
+            enable = true;
+            host = "0.0.0.0";
+            port = 8000;
+            environment = {
+              SPEACHES_WHISPER_MODEL = "Systran/faster-whisper-base";
+            };
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+### Available packages
+
+```bash
+# Default (CUDA on Linux)
+nix build github:speaches-ai/speaches
+
+# CPU-only
+nix build github:speaches-ai/speaches#speaches-cpu
+
+# Specific Python version
+nix build github:speaches-ai/speaches#speaches-python313
+```

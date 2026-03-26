@@ -1,3 +1,4 @@
+<!-- Verified by: tests/test_doc_claims.py::test_registry_endpoint_returns_valid_response -->
 Before you can do anything useful with `speaches`, you'll need to want to download a machine learning model for your specific task. You can see all the supported models by querying the `/v1/registry` endpoint. This will return a list of all available models, including their IDs, types, and other metadata.
 
 !!! note
@@ -62,6 +63,7 @@ The downloaded model will now be included in the list of available models when y
 
 ## Model Aliasing
 
+<!-- Verified by: tests/test_doc_claims.py::test_model_alias_resolution, test_model_alias_passthrough -->
 `speaches` supports model aliasing, which allows you to use friendly names for models instead of their full repository paths. This is particularly useful for maintaining compatibility with OpenAI's API naming conventions.
 
 Model aliases are defined in the `model_aliases.json` file in the root directory of your `speaches` installation. The file contains a JSON object mapping alias names to actual model IDs:
@@ -139,6 +141,7 @@ services:
 
 ## FAQ
 
+<!-- Verified by: tests/test_doc_claims.py::test_hf_cache_default_directory -->
 ???+ question "Where do the models go?"
 
     The models are downloaded into `~/.cache/huggingface/hub` by default. This is the default cache directory for Hugging Face models. You can change this by setting the `HF_HUB_CACHE` environment variable to a different directory. If you are using Docker, you can mount a volume to this directory to persist the models across container restarts (the provided Docker Compose files do this).

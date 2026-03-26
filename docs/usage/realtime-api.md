@@ -30,9 +30,13 @@ Speaches implements the OpenAI Realtime API specification with some extensions f
 
 | Feature | OpenAI Realtime API | Speaches Implementation |
 |---------|-------------------|------------------------|
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeWebSocketAuthentication::test_websocket_auth_with_bearer_token, test_websocket_auth_with_x_api_key, test_websocket_auth_with_query_param -->
 | **Authentication** | ✅ Standard HTTP: `Authorization: Bearer your-key` | ✅ Compatible: `Authorization: Bearer your-key`, `X-API-Key: your-key`, or `api_key` query param |
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeSessionConfiguration::test_transcription_only_mode -->
 | **Transcription-only mode** | ✅ Supported: `intent=transcription` parameter | ✅ Fully compatible |
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeAPICompatibility::test_speaches_extension_behavior -->
 | **Model parameter behavior** | Always conversation model | **Extension**: In transcription mode, `model` = transcription model |
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeSessionConfiguration::test_transcription_mode_with_language, test_transcription_mode_with_explicit_models -->
 | **Additional parameters** | Standard OpenAI params only | **Extension**: `language`, `transcription_model` parameters |
 | **Additional headers** | Requires `OpenAI-Beta: realtime=v1` header | No additional headers required |
 | **Dynamic transcription model** | Full support via `session.update` | ⚠️ **Limitation**: Changes apply only to new audio buffers |
@@ -42,6 +46,7 @@ Speaches implements the OpenAI Realtime API specification with some extensions f
 
 Speaches supports two primary operating modes, both compatible with OpenAI Realtime API:
 
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeSessionConfiguration::test_conversation_mode_default -->
 ### 1. Conversation Mode (Default)
 
 **Full interactive AI conversation with both speech input and output**
@@ -57,6 +62,7 @@ Speaches supports two primary operating modes, both compatible with OpenAI Realt
 
 **Use Cases:** Interactive voice assistants, conversational AI, voice chat applications
 
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeSessionConfiguration::test_transcription_only_mode -->
 ### 2. Transcription-Only Mode
 
 **Speech-to-text conversion without AI responses**
@@ -70,15 +76,18 @@ Speaches supports two primary operating modes, both compatible with OpenAI Realt
 
 **Use Cases:** Live subtitles, meeting transcription, voice notes, accessibility applications
 
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeAPICompatibility::test_openai_standard_behavior -->
 ### Standard OpenAI Behavior
 
 When using `intent=conversation` (default), Speaches follows the OpenAI Realtime API specification exactly:
 
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeAPICompatibility::test_session_structure_compatibility -->
 #### Model Parameters
 
 - **URL `model` parameter**: Specifies the conversation model (e.g., `gpt-4o-realtime-preview`)
 - **`input_audio_transcription.model`**: Specifies the transcription model (e.g., `whisper-1`)
 
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeWebSocketEndpoint::test_websocket_endpoint_exists -->
 ```javascript
 // Standard OpenAI-compatible usage
 const ws = new WebSocket("wss://your-speaches-server/v1/realtime?model=gpt-4o-realtime-preview", {
@@ -107,6 +116,7 @@ ws.send(JSON.stringify({
 2. Transcription completion automatically triggers response generation via conversation `model`
 3. Response includes both text and audio output
 
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeAPICompatibility::test_default_models_configuration -->
 ### Default Models
 
 When models are not explicitly specified, Speaches uses these defaults:
@@ -119,6 +129,7 @@ When models are not explicitly specified, Speaches uses these defaults:
 
 ### Speaches Extensions
 
+<!-- Verified by: tests/realtime_api_test.py::TestRealtimeAPICompatibility::test_speaches_extension_behavior -->
 #### Transcription-Only Mode
 
 For transcription-only scenarios (common with .NET OpenAI SDK and simple clients), Speaches provides an extension:
@@ -204,12 +215,14 @@ ws.onmessage = (event) => {
 ## Limitations
 
 - You'll want to be using a dedicated microphone to ensure speech produced by the TTS model is not picked up. Otherwise, the VAD and STT model will pick up the TTS audio and transcribe it, resulting in a feedback loop.
-- ["response.cancel"](https://platform.openai.com/docs/api-reference/realtime-client-events/response/cancel) and ["conversation.item.truncate"](https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/truncate) client events are not supported. Interruption handling needs to be flushed out.
+<!-- Verified by: tests/test_interruption.py::test_speech_started_generating_barge_in_immediate, test_response_cancel_with_active_response -->
+<!-- Verified by: tests/test_interruption.py::test_truncate_nonexistent_item, test_truncate_assistant_audio_message -->
+- Interruption handling is basic: when the user starts speaking while the assistant is generating a response, the response is cancelled via ["response.cancel"](https://platform.openai.com/docs/api-reference/realtime-client-events/response/cancel). However, truncation of audio that has already been played back is not yet supported — ["conversation.item.truncate"](https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/truncate) is not implemented.
+<!-- Verified by: tests/test_doc_claims.py::test_conversation_item_input_audio_has_no_audio_data_field -->
 - ["conversation.item.create"](https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/create) with `content` field containing `input_audio` message is not supported
 
 ## Next Steps
 
-- Address the aforementioned limitations
 - Image support
 - Speech-to-speech model support
 - Performance tuning / optimizations
