@@ -14,6 +14,15 @@ import soundfile as sf
 logger = logging.getLogger(__name__)
 
 
+class CudaOutOfMemoryError(Exception):
+    def __init__(self, audio_duration: float | None = None) -> None:
+        self.audio_duration = audio_duration
+        super().__init__(
+            "GPU ran out of memory while processing audio"
+            + (f" ({audio_duration:.1f}s)" if audio_duration is not None else "")
+        )
+
+
 class APIProxyError(Exception):
     """Exception for structured, actionable API or proxy errors.
 

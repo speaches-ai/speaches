@@ -15,7 +15,11 @@ from pydantic import BaseModel, computed_field
 from speaches.api_types import Model
 from speaches.audio import Audio
 from speaches.config import OrtOptions
-from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
+from speaches.executors.shared.base_model_manager import (
+    BaseModelManager,
+    build_session_options,
+    get_ort_providers_with_options,
+)
 from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse
 from speaches.hf_utils import (
     HfModelFilter,
@@ -179,7 +183,8 @@ class PiperModelManager(BaseModelManager["PiperVoice"]):
     def _load_fn(self, model_id: str) -> PiperVoice:
         model_files = piper_model_registry.get_model_files(model_id)
         providers = get_ort_providers_with_options(self.ort_opts)
-        inf_sess = InferenceSession(model_files.model, providers=providers)
+        sess_options = build_session_options(self.ort_opts)
+        inf_sess = InferenceSession(model_files.model, providers=providers, sess_options=sess_options)
         conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
         return PiperVoice(session=inf_sess, config=conf)
 

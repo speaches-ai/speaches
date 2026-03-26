@@ -11,8 +11,12 @@ from opentelemetry import trace
 from pydantic import BaseModel
 
 from speaches.api_types import Model
-from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
-from speaches.hf_utils import HfModelFilter
+from speaches.executors.shared.base_model_manager import (
+    BaseModelManager,
+    build_session_options,
+    get_ort_providers_with_options,
+)
+from speaches.executors.shared.vad_types import SpeechTimestamp, VadModel, VadOptions
 from speaches.model_registry import ModelRegistry
 from speaches.tracing import traced
 
@@ -23,51 +27,15 @@ if TYPE_CHECKING:
 
     from speaches.config import OrtOptions
     from speaches.executors.shared.handler_protocol import VadRequest
-
+    from speaches.hf_utils import HfModelFilter
 
 SAMPLE_RATE = 16000
 MODEL_ID = "silero_vad_v5"
+MODEL_ID_V6 = "silero_vad_v6"
 SAMPLE_RATE_MS = SAMPLE_RATE // 1000
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
-
-
-# The code below is adapted from https://github.com/snakers4/silero-vad.
-class VadOptions(BaseModel):
-    """VAD options.
-
-    Attributes:
-      threshold: Speech threshold. Silero VAD outputs speech probabilities for each audio chunk,
-        probabilities ABOVE this value are considered as SPEECH. It is better to tune this
-        parameter for each dataset separately, but "lazy" 0.5 is pretty good for most datasets.
-      neg_threshold: Silence threshold for determining the end of speech. If a probability is lower
-        than neg_threshold, it is always considered silence. Values higher than neg_threshold
-        are only considered speech if the previous sample was classified as speech; otherwise,
-        they are treated as silence. This parameter helps refine the detection of speech
-         transitions, ensuring smoother segment boundaries.
-      min_speech_duration_ms: Final speech chunks shorter min_speech_duration_ms are thrown out.
-      max_speech_duration_s: Maximum duration of speech chunks in seconds. Chunks longer
-        than max_speech_duration_s will be split at the timestamp of the last silence that
-        lasts more than 100ms (if any), to prevent aggressive cutting. Otherwise, they will be
-        split aggressively just before max_speech_duration_s.
-      min_silence_duration_ms: In the end of each speech chunk wait for min_silence_duration_ms
-        before separating it
-      speech_pad_ms: Final speech chunks are padded by speech_pad_ms each side
-
-    """
-
-    threshold: float = 0.5
-    neg_threshold: float | None = None
-    min_speech_duration_ms: int = 0
-    max_speech_duration_s: float = float("inf")
-    min_silence_duration_ms: int = 2000
-    speech_pad_ms: int = 400
-
-
-class SpeechTimestamp(BaseModel):
-    start: int
-    end: int
 
 
 class SileroVADModelFiles(BaseModel):
@@ -75,26 +43,35 @@ class SileroVADModelFiles(BaseModel):
     decoder: Path
 
 
+class SileroVADModelFilesV6(BaseModel):
+    model: Path
+
+
 class SileroVADModel:
-    def __init__(self, encoder_path: Path, decoder_path: Path, providers: list[tuple[str, dict]]) -> None:
+    def __init__(
+        self,
+        encoder_path: Path,
+        decoder_path: Path,
+        providers: list[tuple[str, dict]],
+        sess_options: object | None = None,
+    ) -> None:
         import onnxruntime
 
-        opts = onnxruntime.SessionOptions()
-        # opts.inter_op_num_threads = 1
-        # opts.intra_op_num_threads = 1
-        # opts.enable_cpu_mem_arena = False
-        # opts.log_severity_level = 4
+        if sess_options is None:
+            sess_options = onnxruntime.SessionOptions()
 
         self.encoder_session = onnxruntime.InferenceSession(
             encoder_path,
             providers=providers,
-            sess_options=opts,
+            sess_options=sess_options,
         )
         self.decoder_session = onnxruntime.InferenceSession(
             decoder_path,
             providers=providers,
-            sess_options=opts,
+            sess_options=sess_options,
         )
+        self._state = np.zeros((2, 1, 128), dtype=np.float32)
+        self._state_batch_size = 1
 
     def __call__(
         self, audio: np.ndarray, num_samples: int = 512, context_size_samples: int = 64
@@ -105,11 +82,11 @@ class SileroVADModel:
 
         batch_size = audio.shape[0]
 
-        state = np.zeros((2, batch_size, 128), dtype=np.float32)
-        context = np.zeros(
-            (batch_size, context_size_samples),
-            dtype=np.float32,
-        )
+        if batch_size == self._state_batch_size:
+            self._state.fill(0)
+            state = self._state
+        else:
+            state = np.zeros((2, batch_size, 128), dtype=np.float32)
 
         batched_audio = audio.reshape(batch_size, -1, num_samples)
         context = batched_audio[..., -context_size_samples:]
@@ -140,41 +117,60 @@ class SileroVADModel:
 
 
 class SileroVADModelRegistry(ModelRegistry):
+    def __init__(self, hf_model_filter: HfModelFilter, active_model_id: str = MODEL_ID) -> None:
+        super().__init__(hf_model_filter)
+        self.active_model_id = active_model_id
+
     def list_remote_models(self) -> Generator[Model]:
         return
         yield  # pyright: ignore[reportUnreachable]
 
     def list_local_models(self) -> Generator[Model]:
-        encoder_path = Path(get_assets_path()) / "silero_encoder_v5.onnx"
-        if encoder_path.exists():
-            yield Model(
-                id=MODEL_ID,
-                created=int(encoder_path.stat().st_mtime),
-                owned_by="snakers4",
-                task="voice-activity-detection",
-            )
+        assets = Path(get_assets_path())
+        if self.active_model_id == MODEL_ID:
+            encoder_path = assets / "silero_encoder_v5.onnx"
+            if encoder_path.exists():
+                yield Model(
+                    id=MODEL_ID,
+                    created=int(encoder_path.stat().st_mtime),
+                    owned_by="snakers4",
+                    task="voice-activity-detection",
+                )
+        elif self.active_model_id == MODEL_ID_V6:
+            v6_path = assets / "silero_vad_v6.onnx"
+            if v6_path.exists():
+                yield Model(
+                    id=MODEL_ID_V6,
+                    created=int(v6_path.stat().st_mtime),
+                    owned_by="snakers4",
+                    task="voice-activity-detection",
+                )
 
-    def get_model_files(self, model_id: str) -> SileroVADModelFiles:
-        assert model_id == MODEL_ID, f"Only '{MODEL_ID}' model is supported"
-        encoder_path = Path(get_assets_path()) / "silero_encoder_v5.onnx"
-        decoder_path = Path(get_assets_path()) / "silero_decoder_v5.onnx"
-        return SileroVADModelFiles(encoder=encoder_path, decoder=decoder_path)
+    def get_model_files(self, model_id: str) -> SileroVADModelFiles | SileroVADModelFilesV6:
+        assets = Path(get_assets_path())
+        if model_id == MODEL_ID_V6:
+            return SileroVADModelFilesV6(model=assets / "silero_vad_v6.onnx")
+        assert model_id == MODEL_ID, f"Unknown VAD model: {model_id!r}"
+        return SileroVADModelFiles(encoder=assets / "silero_encoder_v5.onnx", decoder=assets / "silero_decoder_v5.onnx")
 
 
-silero_vad_model_registry = SileroVADModelRegistry(
-    hf_model_filter=HfModelFilter(library_name="onnx", task="voice-activity-detection")
-)
-
-
-class SileroVADModelManager(BaseModelManager[SileroVADModel]):
-    def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
+class SileroVADModelManager(BaseModelManager[VadModel]):
+    def __init__(self, ttl: int, ort_opts: OrtOptions, model_registry: SileroVADModelRegistry) -> None:
         super().__init__(ttl)
         self.ort_opts = ort_opts
+        self._model_registry = model_registry
 
-    def _load_fn(self, model_id: str) -> SileroVADModel:
-        model_files = silero_vad_model_registry.get_model_files(model_id)
+    def _load_fn(self, model_id: str) -> VadModel:
+        model_files = self._model_registry.get_model_files(model_id)
         providers = get_ort_providers_with_options(self.ort_opts)
-        return SileroVADModel(model_files.encoder, model_files.decoder, providers)
+        sess_options = build_session_options(self.ort_opts)
+        if isinstance(model_files, SileroVADModelFilesV6):
+            from speaches.executors.silero_vad_v6 import SileroVADModelV6
+
+            sess_options.inter_op_num_threads = 1
+            sess_options.intra_op_num_threads = 1
+            return SileroVADModelV6(model_files.model, providers, sess_options=sess_options)
+        return SileroVADModel(model_files.encoder, model_files.decoder, providers, sess_options=sess_options)
 
     @traced()
     def handle_vad_request(self, request: VadRequest, **_kwargs) -> list[SpeechTimestamp]:
@@ -191,7 +187,7 @@ def get_speech_timestamps(
     audio: np.ndarray,
     vad_options: VadOptions,
     model_manager: SileroVADModelManager,
-    model_id: str = MODEL_ID,
+    model_id: str = MODEL_ID_V6,
     sampling_rate: int = SAMPLE_RATE,
 ) -> list[SpeechTimestamp]:
     """This method is used for splitting long audios into speech chunks using silero VAD.

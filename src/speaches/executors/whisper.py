@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import gc
 import logging
+import threading
 import time
 from typing import TYPE_CHECKING
 
@@ -20,7 +22,8 @@ from speaches.executors.shared.handler_protocol import (  # noqa: TC001
     TranslationRequest,
     TranslationResponse,
 )
-from speaches.executors.silero_vad_v5 import merge_segments
+from speaches.executors.shared.vad_types import SpeechTimestamp, VadOptions  # noqa: TC001
+from speaches.executors.silero_vad_v5 import SAMPLE_RATE, merge_segments
 from speaches.hf_utils import (
     HfModelFilter,
     extract_language_list,
@@ -31,6 +34,7 @@ from speaches.hf_utils import (
 from speaches.model_registry import ModelRegistry
 from speaches.text_utils import format_as_srt, format_as_vtt
 from speaches.tracing import traced, traced_generator
+from speaches.utils import CudaOutOfMemoryError
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
@@ -44,6 +48,53 @@ if TYPE_CHECKING:
 
 LIBRARY_NAME = "ctranslate2"
 TASK_NAME_TAG = "automatic-speech-recognition"
+
+
+def _is_cuda_oom(exc: RuntimeError) -> bool:
+    return "out of memory" in str(exc).lower() and "CUDA" in str(exc)
+
+
+def _try_clear_cuda_cache() -> None:
+    try:
+        import torch
+
+        torch.cuda.empty_cache()
+    except ImportError:
+        pass
+    gc.collect()
+
+
+def _transcribe_with_oom_retry(
+    whisper_model: BatchedInferencePipeline,
+    batch_size: int,
+    audio_duration: float | None,
+    **transcribe_kwargs,
+) -> tuple[list[faster_whisper.transcribe.Segment], faster_whisper.transcribe.TranscriptionInfo]:
+    batch_sizes = [batch_size] if batch_size <= 1 else [batch_size, 1]
+    for i, bs in enumerate(batch_sizes):
+        try:
+            segments, info = whisper_model.transcribe(batch_size=bs, **transcribe_kwargs)
+            return list(segments), info
+        except RuntimeError as e:
+            if not _is_cuda_oom(e):
+                raise
+            _try_clear_cuda_cache()
+            if i == len(batch_sizes) - 1:
+                logger.exception(f"CUDA OOM during transcription of {audio_duration}s audio (batch_size={bs})")
+                raise CudaOutOfMemoryError(audio_duration) from e
+            logger.warning(f"CUDA OOM with batch_size={bs} for {audio_duration}s audio, retrying with batch_size=1")
+    raise AssertionError("unreachable")
+
+
+def build_clip_timestamps(
+    speech_segments: list[SpeechTimestamp],
+    vad_options: VadOptions,
+) -> list[dict[str, float]] | None:
+    if not speech_segments:
+        return None
+    merged = merge_segments(speech_segments, vad_options)
+    return [{"start": seg["start"] / SAMPLE_RATE, "end": seg["end"] / SAMPLE_RATE} for seg in merged]
+
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -125,20 +176,25 @@ class WhisperModelRegistry(ModelRegistry[Model, WhisperModelFiles]):
 whisper_model_registry = WhisperModelRegistry(hf_model_filter=hf_model_filter)
 
 
-class WhisperModelManager(BaseModelManager[WhisperModel]):
+class WhisperModelManager(BaseModelManager[BatchedInferencePipeline]):
     def __init__(self, ttl: int, whisper_config: WhisperConfig) -> None:
         super().__init__(ttl)
         self.whisper_config = whisper_config
+        self._inference_semaphore = threading.Semaphore(whisper_config.max_concurrency)
 
-    def _load_fn(self, model_id: str) -> WhisperModel:
-        return WhisperModel(
+    def _load_fn(self, model_id: str) -> BatchedInferencePipeline:
+        model = WhisperModel(
             model_id,
             device=self.whisper_config.inference_device,
             device_index=self.whisper_config.device_index,
             compute_type=self.whisper_config.compute_type,
             cpu_threads=self.whisper_config.cpu_threads,
             num_workers=self.whisper_config.num_workers,
+            flash_attention=self.whisper_config.flash_attention,
+            max_queued_batches=self.whisper_config.max_queued_batches,
+            tensor_parallel=self.whisper_config.tensor_parallel,
         )
+        return BatchedInferencePipeline(model=model)
 
     @traced()
     def handle_non_streaming_transcription_request(
@@ -151,27 +207,23 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 f"'{request.response_format}' response format is not supported for '{request.model}' model."
             )
         timelog_start = time.perf_counter()
-        with self.load_model(request.model) as whisper:
-            whisper_model = BatchedInferencePipeline(model=whisper)
-
-            clip_timestamps = merge_segments(
-                request.speech_segments,
-                request.vad_options,
-            )
-            segments, transcription_info = whisper_model.transcribe(
-                request.audio.data,
+        with self._inference_semaphore, self.load_model(request.model) as whisper_model:
+            clip_timestamps = build_clip_timestamps(request.speech_segments, request.vad_options)
+            segments, transcription_info = _transcribe_with_oom_retry(
+                whisper_model,
+                batch_size=self.whisper_config.batch_size,
+                audio_duration=request.audio.duration,
+                audio=request.audio.data,
                 task="transcribe",
                 language=request.language,
                 initial_prompt=request.prompt,
                 word_timestamps="word" in request.timestamp_granularities,
                 temperature=request.temperature,
-                vad_filter=False,
+                vad_filter=clip_timestamps is None,
                 clip_timestamps=clip_timestamps,  # pyrefly: ignore[bad-argument-type]
                 hotwords=request.hotwords,
                 without_timestamps=request.without_timestamps,
             )
-
-            segments = list(segments)
 
             res = segments_to_transcription_response(
                 segments,
@@ -190,34 +242,40 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         **_kwargs,
     ) -> Generator[StreamingTranscriptionEvent]:
         timelog_start = time.perf_counter()
-        with self.load_model(request.model) as whisper:
-            whisper_model = BatchedInferencePipeline(model=whisper)
-
-            clip_timestamps = merge_segments(
-                request.speech_segments,
-                request.vad_options,
-            )
-            segments, _transcription_info = whisper_model.transcribe(
-                request.audio.data,
-                task="transcribe",
-                language=request.language,
-                initial_prompt=request.prompt,
-                word_timestamps="word" in request.timestamp_granularities,
-                temperature=request.temperature,
-                vad_filter=False,
-                clip_timestamps=clip_timestamps,  # pyrefly: ignore[bad-argument-type]
-                hotwords=request.hotwords,
-                without_timestamps=request.without_timestamps,
-            )
-
-            for segment in segments:
-                yield openai.types.audio.TranscriptionTextDeltaEvent(
-                    type="transcript.text.delta", delta=segment.text, logprobs=None
+        with self._inference_semaphore, self.load_model(request.model) as whisper_model:
+            clip_timestamps = build_clip_timestamps(request.speech_segments, request.vad_options)
+            # Streaming cannot retry mid-stream, so use batch_size=1 for safety
+            try:
+                segments, _transcription_info = whisper_model.transcribe(
+                    request.audio.data,
+                    batch_size=1,
+                    task="transcribe",
+                    language=request.language,
+                    initial_prompt=request.prompt,
+                    word_timestamps="word" in request.timestamp_granularities,
+                    temperature=request.temperature,
+                    vad_filter=clip_timestamps is None,
+                    clip_timestamps=clip_timestamps,  # pyrefly: ignore[bad-argument-type]
+                    hotwords=request.hotwords,
+                    without_timestamps=request.without_timestamps,
                 )
 
-            yield openai.types.audio.TranscriptionTextDoneEvent(
-                type="transcript.text.done", text="".join(segment.text for segment in segments), logprobs=None
-            )
+                all_text = []
+                for segment in segments:
+                    all_text.append(segment.text)
+                    yield openai.types.audio.TranscriptionTextDeltaEvent(
+                        type="transcript.text.delta", delta=segment.text, logprobs=None
+                    )
+
+                yield openai.types.audio.TranscriptionTextDoneEvent(
+                    type="transcript.text.done", text="".join(all_text), logprobs=None
+                )
+            except RuntimeError as e:
+                if _is_cuda_oom(e):
+                    logger.exception(f"CUDA OOM during streaming transcription of {request.audio.duration}s audio")
+                    _try_clear_cuda_cache()
+                    raise CudaOutOfMemoryError(request.audio.duration) from e
+                raise
         logger.info(
             f"Transcribed {request.audio.duration} seconds of audio in {time.perf_counter() - timelog_start} seconds"
         )
@@ -240,17 +298,16 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
             raise NotImplementedError(
                 f"'{request.response_format}' response format is not supported for '{request.model}' model."
             )
-        with self.load_model(request.model) as whisper:
-            whisper_model = BatchedInferencePipeline(model=whisper)
-
-            segments, transcription_info = whisper_model.transcribe(
-                request.audio.data,
+        with self._inference_semaphore, self.load_model(request.model) as whisper_model:
+            segments, transcription_info = _transcribe_with_oom_retry(
+                whisper_model,
+                batch_size=self.whisper_config.batch_size,
+                audio_duration=request.audio.duration,
+                audio=request.audio.data,
                 task="translate",
                 initial_prompt=request.prompt,
                 temperature=request.temperature,
             )
-
-            segments = list(segments)
 
             return segments_to_translation_response(
                 segments,

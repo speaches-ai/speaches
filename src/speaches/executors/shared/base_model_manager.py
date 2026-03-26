@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from onnxruntime import SessionOptions
+
     from speaches.config import OrtOptions
 
 logger = logging.getLogger(__name__)
@@ -30,8 +32,24 @@ def get_ort_providers_with_options(ort_opts: OrtOptions) -> list[tuple[str, dict
     available_providers_with_opts = [
         (provider, ort_opts.provider_opts.get(provider, {})) for provider in available_providers
     ]
+    if ort_opts.gpu_mem_limit is not None:
+        available_providers_with_opts = [
+            (provider, {**opts, "gpu_mem_limit": ort_opts.gpu_mem_limit})
+            if provider == "CUDAExecutionProvider"
+            else (provider, opts)
+            for provider, opts in available_providers_with_opts
+        ]
     logger.debug(f"Using ONNX Runtime providers: {available_providers_with_opts}")
     return available_providers_with_opts
+
+
+def build_session_options(ort_opts: OrtOptions) -> SessionOptions:
+    from onnxruntime import SessionOptions as _SessionOptions  # pyright: ignore[reportAttributeAccessIssue]
+
+    opts = _SessionOptions()
+    opts.enable_cpu_mem_arena = ort_opts.enable_cpu_mem_arena
+    opts.enable_mem_pattern = ort_opts.enable_mem_pattern
+    return opts
 
 
 class SelfDisposingModel[T]:
@@ -95,7 +113,7 @@ class SelfDisposingModel[T]:
                     logger.info(f"Model {self.model_id} is idle, unloading immediately")
                     self.unload()
                 else:
-                    logger.info(f"Model {self.model_id} is idle, not unloading")
+                    logger.debug(f"Model {self.model_id} is idle, not unloading")
 
     def __enter__(self) -> T:
         with self.rlock:

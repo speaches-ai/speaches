@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 from speaches.api_types import TimestampGranularities
 from speaches.audio import Audio
-from speaches.executors.silero_vad_v5 import SpeechTimestamp, VadOptions
+from speaches.executors.shared.vad_types import SpeechTimestamp, VadOptions
 
 MimeType = str
 
@@ -35,7 +35,7 @@ class SpeechRequest(BaseModel):
     speed: float
 
 
-SpeechResponse = Generator[Audio]
+SpeechResponse = Generator[Audio, None, None]
 
 
 class SpeechHandler(Protocol):
@@ -45,7 +45,7 @@ class SpeechHandler(Protocol):
 class VadRequest(BaseModel):
     audio: Audio
     vad_options: VadOptions
-    model_id: str = "silero_vad_v5"
+    model_id: str = "silero_vad_v6"
     sampling_rate: int = 16000
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -87,11 +87,11 @@ class TranscriptionHandler(Protocol):
 
     def handle_streaming_transcription_request(
         self, request: TranscriptionRequest, **kwargs
-    ) -> Generator[StreamingTranscriptionEvent]: ...
+    ) -> Generator[StreamingTranscriptionEvent, None, None]: ...
 
     def handle_transcription_request(
         self, request: TranscriptionRequest, **kwargs
-    ) -> NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent]:
+    ) -> NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent, None, None]:
         if request.stream:
             return self.handle_streaming_transcription_request(request, **kwargs)
         else:

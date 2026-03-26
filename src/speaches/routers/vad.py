@@ -12,8 +12,11 @@ from fastapi import (
 
 from speaches.dependencies import AudioFileDependency, ExecutorRegistryDependency
 from speaches.executors.shared.handler_protocol import VadRequest
-from speaches.executors.silero_vad_v5 import MODEL_ID, SAMPLE_RATE, SpeechTimestamp, VadOptions, to_ms_speech_timestamps
+from speaches.executors.shared.vad_types import SpeechTimestamp, VadOptions
+from speaches.executors.silero_vad_v5 import MODEL_ID, MODEL_ID_V6, SAMPLE_RATE, to_ms_speech_timestamps
 from speaches.model_aliases import ModelId
+
+SUPPORTED_VAD_MODELS = {MODEL_ID, MODEL_ID_V6}
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +28,7 @@ router = APIRouter(tags=["voice-activity-detection"])
 def detect_speech_timestamps(
     audio: AudioFileDependency,
     executor_registry: ExecutorRegistryDependency,
-    model: Annotated[ModelId, Form()] = MODEL_ID,
+    model: Annotated[ModelId | None, Form()] = None,
     threshold: Annotated[
         float,
         Form(
@@ -70,7 +73,9 @@ def detect_speech_timestamps(
         int, Form(ge=0, description="""Final speech chunks are padded by speech_pad_ms each side""")
     ] = 0,
 ) -> list[SpeechTimestamp]:
-    assert model == MODEL_ID, f"Only '{MODEL_ID}' model is supported"
+    if model is None:
+        model = executor_registry.vad_model_id
+    assert model in SUPPORTED_VAD_MODELS, f"Unsupported VAD model: {model!r}. Supported: {SUPPORTED_VAD_MODELS}"
 
     vad_options = VadOptions(
         threshold=threshold,

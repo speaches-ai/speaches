@@ -1,6 +1,7 @@
 from collections.abc import Generator
 import logging
 from pathlib import Path
+import re
 import time
 from typing import Literal
 
@@ -15,7 +16,11 @@ from speaches.api_types import (
 )
 from speaches.audio import Audio
 from speaches.config import OrtOptions
-from speaches.executors.shared.base_model_manager import BaseModelManager, get_ort_providers_with_options
+from speaches.executors.shared.base_model_manager import (
+    BaseModelManager,
+    build_session_options,
+    get_ort_providers_with_options,
+)
 from speaches.executors.shared.handler_protocol import SpeechRequest, SpeechResponse
 from speaches.hf_utils import (
     HfModelFilter,
@@ -31,9 +36,50 @@ from speaches.tracing import traced_generator
 from speaches.utils import async_to_sync_generator
 
 SAMPLE_RATE = 24000  # the default sample rate for Kokoro
+MAX_CHUNK_CHARS = 400  # conservative limit to stay well under 510 phoneme limit
 LIBRARY_NAME = "onnx"
 TASK_NAME_TAG = "text-to-speech"
 TAGS = {"speaches", "kokoro"}
+
+
+def normalize_text_for_tts(text: str) -> str:
+    text = re.sub(r"[\r\n]+", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def split_text_into_chunks(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
+    if len(text) <= max_chars:
+        return [text] if text else []
+
+    chunks: list[str] = []
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+
+    current_chunk = ""
+    for sentence in sentences:
+        if len(sentence) > max_chars:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+                current_chunk = ""
+            words = sentence.split()
+            for word in words:
+                if len(current_chunk) + len(word) + 1 <= max_chars:
+                    current_chunk = f"{current_chunk} {word}" if current_chunk else word
+                else:
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                    current_chunk = word
+        elif len(current_chunk) + len(sentence) + 1 <= max_chars:
+            current_chunk = f"{current_chunk} {sentence}" if current_chunk else sentence
+        else:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            current_chunk = sentence
+
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+
+    return chunks
 
 
 class KokoroModelFiles(BaseModel):
@@ -169,8 +215,15 @@ class KokoroModelRegistry(ModelRegistry):
     def get_model_files(self, model_id: str) -> KokoroModelFiles:
         model_files = list(list_model_files(model_id))
 
-        model_file_path = next(file_path for file_path in model_files if file_path.name == "model.onnx")
-        voices_file_path = next(file_path for file_path in model_files if file_path.name == "voices.bin")
+        model_file_path = next((file_path for file_path in model_files if file_path.name == "model.onnx"), None)
+        if model_file_path is None:
+            msg = f"'model.onnx' not found for model '{model_id}'. Available files: {[f.name for f in model_files]}"
+            raise FileNotFoundError(msg)
+
+        voices_file_path = next((file_path for file_path in model_files if file_path.name == "voices.bin"), None)
+        if voices_file_path is None:
+            msg = f"'voices.bin' not found for model '{model_id}'. Available files: {[f.name for f in model_files]}"
+            raise FileNotFoundError(msg)
 
         return KokoroModelFiles(
             model=model_file_path,
@@ -194,7 +247,8 @@ class KokoroModelManager(BaseModelManager[Kokoro]):
     def _load_fn(self, model_id: str) -> Kokoro:
         model_files = kokoro_model_registry.get_model_files(model_id)
         providers = get_ort_providers_with_options(self.ort_opts)
-        inf_sess = InferenceSession(model_files.model, providers=providers)
+        sess_options = build_session_options(self.ort_opts)
+        inf_sess = InferenceSession(model_files.model, providers=providers, sess_options=sess_options)
         return Kokoro.from_session(inf_sess, str(model_files.voices))
 
     @traced_generator()
@@ -216,18 +270,36 @@ class KokoroModelManager(BaseModelManager[Kokoro]):
                 msg = f"Voice '{request.voice}' is not supported. Supported voices: {VOICES}"
                 raise ValueError(msg)
 
+        normalized_text = normalize_text_for_tts(request.text)
+        chunks = split_text_into_chunks(normalized_text)
+
+        if not chunks:
+            return
+
         voice_language = next(v.language for v in VOICES if v.name == request.voice)
         with self.load_model(request.model) as tts:
             start = time.perf_counter()
-            async_stream = tts.create_stream(
-                request.text,
-                request.voice,
-                lang=voice_language,
-                speed=request.speed,
-            )
-            # HACK: converting an async generator to a sync generator
-            sync_stream = async_to_sync_generator(async_stream)
-            for audio_data, _ in sync_stream:
-                yield Audio(audio_data, sample_rate=SAMPLE_RATE)
+            for chunk in chunks:
+                try:
+                    async_stream = tts.create_stream(
+                        chunk,
+                        request.voice,
+                        lang=voice_language,
+                        speed=request.speed,
+                    )
+                    # HACK: converting an async generator to a sync generator
+                    sync_stream = async_to_sync_generator(async_stream)
+                    for audio_data, _ in sync_stream:
+                        yield Audio(audio_data, sample_rate=SAMPLE_RATE)
+                except RuntimeError as e:
+                    if "number of lines" in str(e):
+                        logger.warning(f"Phonemizer error for chunk, skipping: {e}")
+                        continue
+                    raise
+                except IndexError as e:
+                    if "out of bounds" in str(e):
+                        logger.warning(f"Phoneme limit exceeded for chunk, skipping: {e}")
+                        continue
+                    raise
 
         logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")
