@@ -85,8 +85,15 @@ async def test_model_cant_be_unloaded_when_used(aclient_factory: AclientFactory)
                 "/v1/audio/transcriptions", files={"file": ("audio.wav", data, "audio/wav")}, data={"model": MODEL_ID}
             )
         )
-        # wait for the server to start processing the request. NOTE: this used to be 0.1 but I had to increase it to 0.25 since now a VAD model is loader prior to STT
-        await asyncio.sleep(0.25)
+        # Poll until the model appears in loaded models before attempting to unload it.
+        # A fixed sleep is unreliable: VAD runs before Whisper loads, so the delay varies
+        # based on hardware speed and whether models are cached.
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + 10.0
+        while loop.time() < deadline:
+            if MODEL_ID in (await aclient.get("/api/ps")).json().get("models", []):
+                break
+            await asyncio.sleep(0.05)
         res = await aclient.delete(f"/api/ps/{MODEL_ID}")
         assert res.status_code == 409, res.text
 
