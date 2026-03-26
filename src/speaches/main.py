@@ -193,14 +193,28 @@ def create_app() -> FastAPI:
 
         setup_telemetry(config.otel_exporter_otlp_endpoint, config.otel_service_name)
 
-        # Auto-instrument common libraries
-        from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-        from opentelemetry.instrumentation.logging import LoggingInstrumentor
+        # Auto-instrument common libraries (best-effort: version mismatches between
+        # instrumentation packages and opentelemetry-util-http can cause ImportErrors)
+        try:
+            from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 
-        AsyncioInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
-        HTTPXClientInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
-        LoggingInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
+            AsyncioInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
+        except ImportError:
+            logger.warning("Failed to instrument asyncio (package version mismatch)")
+
+        try:
+            from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+            HTTPXClientInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
+        except ImportError:
+            logger.warning("Failed to instrument httpx (package version mismatch)")
+
+        try:
+            from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
+            LoggingInstrumentor().instrument()  # pyrefly: ignore[missing-attribute]
+        except ImportError:
+            logger.warning("Failed to instrument logging (package version mismatch)")
 
     # Create main app WITHOUT global authentication
     app = FastAPI(
@@ -213,9 +227,12 @@ def create_app() -> FastAPI:
 
     # Instrument FastAPI app if telemetry is enabled
     if config.otel_exporter_otlp_endpoint:
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        try:
+            from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-        FastAPIInstrumentor.instrument_app(app)
+            FastAPIInstrumentor.instrument_app(app)
+        except ImportError:
+            logger.warning("Failed to instrument FastAPI (package version mismatch)")
 
     # Register global exception handler for APIProxyError
     @app.exception_handler(APIProxyError)
