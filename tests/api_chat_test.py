@@ -1,4 +1,5 @@
 import base64
+import os
 from pathlib import Path
 from typing import Self
 
@@ -19,7 +20,7 @@ FILE_PATH = Path("audio.wav")  # transcription: Hello world
 B64_AUDIO_DATA = base64.b64encode(FILE_PATH.read_bytes()).decode("utf-8")
 
 OPENAI_MODEL = "gpt-4o-audio-preview"
-TEXT_ONLY_MODEL = "gpt-4o-mini"
+TEXT_ONLY_MODEL = os.environ.get("CHAT_COMPLETION_MODEL")
 AUDIO_PARAM = ChatCompletionAudioParam(voice="alloy", format="wav")
 
 TRANSCRIPTION_MODEL_ID = "Systran/faster-whisper-tiny.en"
@@ -117,8 +118,13 @@ class AudioChatStreamingSessionArchive(BaseModel):
 
 
 @pytest.mark.asyncio
-@pytest.mark.requires_openai
-@pytest.mark.parametrize("target", ["openai", "speaches"])
+@pytest.mark.parametrize(
+    "target",
+    [
+        pytest.param("openai", marks=pytest.mark.requires_openai),
+        pytest.param("speaches", marks=pytest.mark.requires_chat_backend),
+    ],
+)
 async def test_audio_chat_text(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 
@@ -145,8 +151,13 @@ async def test_audio_chat_text(dynamic_openai_client: AsyncOpenAI, target: str) 
 
 
 @pytest.mark.asyncio
-@pytest.mark.requires_openai
-@pytest.mark.parametrize("target", ["openai", "speaches"])
+@pytest.mark.parametrize(
+    "target",
+    [
+        pytest.param("openai", marks=pytest.mark.requires_openai),
+        pytest.param("speaches", marks=pytest.mark.requires_chat_backend),
+    ],
+)
 async def test_audio_chat_text_audio(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 
@@ -173,8 +184,13 @@ async def test_audio_chat_text_audio(dynamic_openai_client: AsyncOpenAI, target:
 
 
 @pytest.mark.asyncio
-@pytest.mark.requires_openai
-@pytest.mark.parametrize("target", ["openai", "speaches"])
+@pytest.mark.parametrize(
+    "target",
+    [
+        pytest.param("openai", marks=pytest.mark.requires_openai),
+        pytest.param("speaches", marks=pytest.mark.requires_chat_backend),
+    ],
+)
 async def test_audio_chat_text_stream(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 
@@ -204,8 +220,13 @@ async def test_audio_chat_text_stream(dynamic_openai_client: AsyncOpenAI, target
 
 
 @pytest.mark.asyncio
-@pytest.mark.requires_openai
-@pytest.mark.parametrize("target", ["openai", "speaches"])
+@pytest.mark.parametrize(
+    "target",
+    [
+        pytest.param("openai", marks=pytest.mark.requires_openai),
+        pytest.param("speaches", marks=pytest.mark.requires_chat_backend),
+    ],
+)
 async def test_audio_chat_text_audio_stream(dynamic_openai_client: AsyncOpenAI, target: str) -> None:
     openai_client = dynamic_openai_client
 

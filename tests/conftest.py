@@ -24,9 +24,13 @@ DEFAULT_WHISPER_CONFIG = WhisperConfig()
 DEFAULT_STT_TTL = 0
 DEFAULT_TTS_TTL = 0
 DEFAULT_VAD_TTL = 0
-api_key = os.getenv("OPENAI_API_KEY")
-if api_key is None:
-    api_key = "cant-be-empty"  # HACK
+_HAS_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") is not None
+_HAS_HF_TOKEN = os.getenv("HF_TOKEN") is not None
+_HAS_CHAT_BACKEND = (os.getenv("CHAT_COMPLETION_BASE_URL") is not None or _HAS_OPENAI_API_KEY) and os.getenv(
+    "CHAT_COMPLETION_MODEL"
+) is not None
+_CHAT_COMPLETION_BASE_URL = os.getenv("CHAT_COMPLETION_BASE_URL", "https://api.openai.com/v1")
+_CHAT_COMPLETION_API_KEY = os.getenv("CHAT_COMPLETION_API_KEY") or os.getenv("OPENAI_API_KEY") or "cant-be-empty"
 DEFAULT_CONFIG = Config(
     whisper=DEFAULT_WHISPER_CONFIG,
     stt_model_ttl=DEFAULT_STT_TTL,
@@ -34,8 +38,8 @@ DEFAULT_CONFIG = Config(
     vad_model_ttl=DEFAULT_VAD_TTL,
     # disable the UI as it slightly increases the app startup time due to the imports it's doing
     enable_ui=False,
-    chat_completion_base_url="https://api.openai.com/v1",
-    chat_completion_api_key=SecretStr(api_key),
+    chat_completion_base_url=_CHAT_COMPLETION_BASE_URL,
+    chat_completion_api_key=SecretStr(_CHAT_COMPLETION_API_KEY),
     loopback_host_url=None,
 )
 TIMEOUT = httpx.Timeout(15.0)
@@ -45,6 +49,21 @@ def pytest_configure() -> None:
     for logger_name in DISABLE_LOGGERS:
         logger = logging.getLogger(logger_name)
         logger.disabled = True
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    skip_openai = pytest.mark.skip(reason="OPENAI_API_KEY not set")
+    skip_gated = pytest.mark.skip(reason="HF_TOKEN not set (required for gated HuggingFace models)")
+    skip_chat_backend = pytest.mark.skip(
+        reason="No chat backend configured. Set CHAT_COMPLETION_BASE_URL + CHAT_COMPLETION_MODEL (e.g. http://localhost:11434/v1 and llama3) or OPENAI_API_KEY + CHAT_COMPLETION_MODEL"
+    )
+    for item in items:
+        if "requires_openai" in item.keywords and not _HAS_OPENAI_API_KEY:
+            item.add_marker(skip_openai)
+        if "requires_gated_hf_model" in item.keywords and not _HAS_HF_TOKEN:
+            item.add_marker(skip_gated)
+        if "requires_chat_backend" in item.keywords and not _HAS_CHAT_BACKEND:
+            item.add_marker(skip_chat_backend)
 
 
 # NOTE: not being used. Keeping just in case. Needs to be modified to work similarly to `aclient_factory`

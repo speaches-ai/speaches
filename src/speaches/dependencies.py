@@ -7,6 +7,7 @@ from typing import Annotated, cast
 import av.error
 from fastapi import (
     Depends,
+    FastAPI,
     Form,
     HTTPException,
     UploadFile,
@@ -150,8 +151,10 @@ def get_speech_client() -> AsyncSpeech:
             router as speech_router,
         )
 
+        speech_app = FastAPI()
+        speech_app.include_router(speech_router)
         http_client = AsyncClient(
-            transport=ASGITransport(speech_router),
+            transport=ASGITransport(speech_app),
             base_url="http://test/v1",
         )  # NOTE: "test" can be replaced with any other value
     else:
@@ -183,8 +186,10 @@ def get_transcription_client() -> AsyncTranscriptions:
             router as stt_router,
         )
 
+        stt_app = FastAPI()
+        stt_app.include_router(stt_router)
         http_client = AsyncClient(
-            transport=ASGITransport(stt_router),
+            transport=ASGITransport(stt_app),
             base_url="http://test/v1",
         )  # NOTE: "test" can be replaced with any other value
     else:

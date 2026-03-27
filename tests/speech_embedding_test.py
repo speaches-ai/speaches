@@ -5,6 +5,8 @@ import numpy as np
 import pytest
 import soundfile as sf
 
+pytest.importorskip("torch", reason="torch is required for speaker embedding tests")
+
 EMBEDDING_MODEL_ID = "pyannote/wespeaker-voxceleb-resnet34-LM"
 
 

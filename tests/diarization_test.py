@@ -6,6 +6,8 @@ import numpy as np
 import pytest
 import soundfile as sf
 
+pytest.importorskip("torch", reason="torch is required for diarization tests")
+
 from speaches.routers.diarization import DiarizationResponse
 
 DIARIZATION_MODEL_ID = "pyannote/speaker-diarization-community-1"

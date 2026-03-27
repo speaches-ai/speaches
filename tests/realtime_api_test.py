@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock
 
-from fastapi.testclient import TestClient
 from pydantic import SecretStr
 import pytest
 from pytest_mock import MockerFixture
@@ -217,12 +216,9 @@ class TestRealtimeWebSocketEndpoint:
         mocker.patch("speaches.dependencies.get_config", return_value=config)
 
         app = create_app()
-        client = TestClient(app)
 
-        # Test that the endpoint exists (will fail auth but endpoint should be found)
-        with client.websocket_connect("/v1/realtime?model=test-model") as _:
-            # Connection should be closed due to auth failure, but endpoint exists
-            pass
+        ws_paths = [r.path for r in app.routes if hasattr(r, "path")]
+        assert "/v1/realtime" in ws_paths
 
     @pytest.mark.asyncio
     async def test_websocket_parameter_parsing(self) -> None:
