@@ -179,3 +179,7 @@ Thumbs.db
 scratchpad.md
 .claude/commands
 *.rttm
+
+# nix
+result
+result-*

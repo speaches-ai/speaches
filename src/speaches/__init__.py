@@ -3,7 +3,7 @@ import warnings
 
 warnings.filterwarnings("ignore", message="\ntorchcodec is not installed correctly.*", module="pyannote")
 
-DEFAULT_GPU_MEM_LIMIT = 536870912
+DEFAULT_GPU_MEM_LIMIT = 1073741824
 
 # Must be set before ctranslate2 is imported (transitively via faster_whisper).
 # CT2_CUDA_CACHING_ALLOCATOR_CONFIG format: bin_growth,min_bin,max_bin,max_cached_bytes

@@ -8,9 +8,15 @@ from typing import Literal
 import huggingface_hub
 from onnxruntime import InferenceSession
 from opentelemetry import trace
-from piper.config import PiperConfig, SynthesisConfig
-from piper.voice import PiperVoice
 from pydantic import BaseModel, computed_field
+
+try:
+    from piper.config import PiperConfig, SynthesisConfig
+    from piper.voice import PiperVoice
+
+    PIPER_AVAILABLE = True
+except ImportError:
+    PIPER_AVAILABLE = False
 
 from speaches.api_types import Model
 from speaches.audio import Audio
@@ -174,32 +180,35 @@ class PiperModelRegistry(ModelRegistry):
 
 piper_model_registry = PiperModelRegistry(hf_model_filter=hf_model_filter)
 
+if PIPER_AVAILABLE:
 
-class PiperModelManager(BaseModelManager["PiperVoice"]):
-    def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
-        super().__init__(ttl)
-        self.ort_opts = ort_opts
+    class PiperModelManager(BaseModelManager["PiperVoice"]):
+        def __init__(self, ttl: int, ort_opts: OrtOptions) -> None:
+            super().__init__(ttl)
+            self.ort_opts = ort_opts
 
-    def _load_fn(self, model_id: str) -> PiperVoice:
-        model_files = piper_model_registry.get_model_files(model_id)
-        providers = get_ort_providers_with_options(self.ort_opts)
-        sess_options = build_session_options(self.ort_opts)
-        inf_sess = InferenceSession(model_files.model, providers=providers, sess_options=sess_options)
-        conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
-        return PiperVoice(session=inf_sess, config=conf)
+        def _load_fn(self, model_id: str) -> PiperVoice:
+            model_files = piper_model_registry.get_model_files(model_id)
+            providers = get_ort_providers_with_options(self.ort_opts)
+            sess_options = build_session_options(self.ort_opts)
+            inf_sess = InferenceSession(model_files.model, providers=providers, sess_options=sess_options)
+            conf = PiperConfig.from_dict(json.loads(model_files.config.read_text()))
+            return PiperVoice(session=inf_sess, config=conf)
 
-    @traced_generator()
-    def handle_speech_request(
-        self,
-        request: SpeechRequest,
-        **_kwargs,
-    ) -> SpeechResponse:
-        if request.speed < 0.25 or request.speed > 4.0:
-            msg = (f"Speed must be between 0.25 and 4.0, got {request.speed}",)
-            raise ValueError(msg)
-        # TODO: maybe check voice
-        with self.load_model(request.model) as piper_tts:
-            start = time.perf_counter()
-            for audio_chunk in piper_tts.synthesize(request.text, SynthesisConfig(length_scale=1.0 / request.speed)):
-                yield Audio(audio_chunk.audio_float_array, sample_rate=piper_tts.config.sample_rate)
-        logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")
+        @traced_generator()
+        def handle_speech_request(
+            self,
+            request: SpeechRequest,
+            **_kwargs,
+        ) -> SpeechResponse:
+            if request.speed < 0.25 or request.speed > 4.0:
+                msg = (f"Speed must be between 0.25 and 4.0, got {request.speed}",)
+                raise ValueError(msg)
+            # TODO: maybe check voice
+            with self.load_model(request.model) as piper_tts:
+                start = time.perf_counter()
+                for audio_chunk in piper_tts.synthesize(
+                    request.text, SynthesisConfig(length_scale=1.0 / request.speed)
+                ):
+                    yield Audio(audio_chunk.audio_float_array, sample_rate=piper_tts.config.sample_rate)
+            logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")

@@ -1,6 +1,6 @@
 services:
   opentelemetry-collector:
-    image: otel/opentelemetry-collector-contrib:0.136.0
+    image: otel/opentelemetry-collector-contrib:0.147.0
     command: ["--config=/etc/opentelemetry-collector.yaml"]
     volumes:
       - ./configuration/opentelemetry-collector.yaml:/etc/opentelemetry-collector.yaml
@@ -13,7 +13,7 @@ services:
       # - 13133:13133 # health_check extension
     # NOTE: `healthcheck` can't be set up, as the container doesn't have a shell to run the healthcheck command.
   loki:
-    image: grafana/loki:3.5.5
+    image: grafana/loki:3.6.7
     command: ["-config.file=/etc/loki.yaml"]
     volumes:
       - ./configuration/loki.yaml:/etc/loki.yaml

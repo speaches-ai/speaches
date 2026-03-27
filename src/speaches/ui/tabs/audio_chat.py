@@ -271,7 +271,6 @@ def create_audio_chat_tab(config: Config, api_key_input: gr.Textbox) -> None:
         )
         stream_checkbox = gr.Checkbox(label="Stream", value=True)
         gr.ChatInterface(
-            type="messages",
             multimodal=True,  # I don't think this does anything according to https://www.gradio.app/guides/creating-a-chatbot-fast#multimodal-chat-interface
             fn=create_reply,
             textbox=gr.MultimodalTextbox(

@@ -1,4 +1,5 @@
-from collections.abc import Generator
+import asyncio
+from collections.abc import AsyncGenerator, Generator
 import logging
 from pathlib import Path
 import re
@@ -7,6 +8,7 @@ from typing import Literal
 
 import huggingface_hub
 from kokoro_onnx import Kokoro
+import numpy as np
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
@@ -33,7 +35,7 @@ from speaches.model_registry import (
     ModelRegistry,
 )
 from speaches.tracing import traced_generator
-from speaches.utils import async_to_sync_generator
+from speaches.utils import CudaOutOfMemoryError, async_to_sync_generator
 
 SAMPLE_RATE = 24000  # the default sample rate for Kokoro
 MAX_CHUNK_CHARS = 400  # conservative limit to stay well under 510 phoneme limit
@@ -180,6 +182,39 @@ hf_model_filter = HfModelFilter(
 logger = logging.getLogger(__name__)
 
 
+def _is_ort_cuda_oom(exc: RuntimeError) -> bool:
+    msg = str(exc).lower()
+    return ("smaller than requested bytes" in msg and "available memory" in msg) or (
+        "out of memory" in msg and "cuda" in msg
+    )
+
+
+async def _kokoro_create_stream(
+    tts: Kokoro,
+    text: str,
+    voice: str,
+    lang: str,
+    speed: float,
+) -> AsyncGenerator[tuple[np.ndarray, int]]:
+    from kokoro_onnx.trim import trim as trim_audio
+
+    voice_style = tts.get_voice_style(voice)
+    phonemes = tts.tokenizer.phonemize(text, lang)
+    batched_phonemes = tts._split_phonemes(phonemes)  # noqa: SLF001
+
+    loop = asyncio.get_event_loop()
+    for batch in batched_phonemes:
+        audio_part, sample_rate = await loop.run_in_executor(
+            None,
+            tts._create_audio,  # noqa: SLF001
+            batch,
+            voice_style,
+            speed,
+        )
+        audio_part, _ = trim_audio(audio_part)
+        yield audio_part, sample_rate
+
+
 class KokoroModelRegistry(ModelRegistry):
     def list_remote_models(self) -> Generator[KokoroModel]:
         models = huggingface_hub.list_models(**self.hf_model_filter.list_model_kwargs(), cardData=True)
@@ -281,23 +316,24 @@ class KokoroModelManager(BaseModelManager[Kokoro]):
             start = time.perf_counter()
             for chunk in chunks:
                 try:
-                    async_stream = tts.create_stream(
+                    async_stream = _kokoro_create_stream(
+                        tts,
                         chunk,
                         request.voice,
                         lang=voice_language,
                         speed=request.speed,
                     )
-                    # HACK: converting an async generator to a sync generator
                     sync_stream = async_to_sync_generator(async_stream)
                     for audio_data, _ in sync_stream:
                         yield Audio(audio_data, sample_rate=SAMPLE_RATE)
-                except RuntimeError as e:
-                    if "number of lines" in str(e):
+                except Exception as e:
+                    if _is_ort_cuda_oom(e):
+                        logger.exception(f"CUDA OOM during TTS for chunk of {len(chunk)} chars")
+                        raise CudaOutOfMemoryError from e
+                    if isinstance(e, RuntimeError) and "number of lines" in str(e):
                         logger.warning(f"Phonemizer error for chunk, skipping: {e}")
                         continue
-                    raise
-                except IndexError as e:
-                    if "out of bounds" in str(e):
+                    if isinstance(e, IndexError) and "out of bounds" in str(e):
                         logger.warning(f"Phoneme limit exceeded for chunk, skipping: {e}")
                         continue
                     raise

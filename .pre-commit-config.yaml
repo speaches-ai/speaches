@@ -10,11 +10,11 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=500'] # default: 500
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.34.0
+    rev: 0.37.0
     hooks:
       - id: check-taskfile
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.7
+    rev: v1.7.11
     hooks:
       - id: actionlint
   - repo: https://github.com/IamTheFij/docker-pre-commit
@@ -26,7 +26,7 @@ repos:
     hooks:
       - id: hadolint
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.2
+    rev: v0.15.6
     hooks:
       - id: ruff
         args: [--fix]

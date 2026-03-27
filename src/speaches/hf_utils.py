@@ -1,4 +1,5 @@
 from collections.abc import Generator
+import glob as glob_module
 import logging
 from pathlib import Path
 import shutil
@@ -69,7 +70,11 @@ class HfModelFilter(BaseModel):
 
 
 def get_cached_model_repos_info() -> list[huggingface_hub.CachedRepoInfo]:
-    hf_cache_info = huggingface_hub.scan_cache_dir()
+    try:
+        hf_cache_info = huggingface_hub.scan_cache_dir()
+    except huggingface_hub.errors.CacheNotFound:
+        logger.debug("HuggingFace cache directory not found, no cached models available")
+        return []
     cache_repos_info = [repo for repo in list(hf_cache_info.repos) if repo.repo_type == "model"]
     return cache_repos_info
 
@@ -115,7 +120,10 @@ def extract_language_list(card_data: huggingface_hub.ModelCardData) -> list[str]
 
 
 def list_local_model_ids() -> list[str]:
-    model_dirs = list(Path(HF_HUB_CACHE).glob("models--*"))
+    cache_dir = Path(HF_HUB_CACHE)
+    if not cache_dir.exists():
+        return []
+    model_dirs = list(cache_dir.glob("models--*"))
     return [model_id_from_path(model_dir) for model_dir in model_dirs]
 
 
@@ -183,7 +191,10 @@ def list_model_files(
     snapshots_path = repo_path / "snapshots"
     if not snapshots_path.exists():
         return None
-    yield from list(snapshots_path.glob(glob_pattern))
+    # Use glob.glob() instead of Path.glob() because Path.glob() in Python 3.13+
+    # doesn't follow symlinks, which breaks Nix buildCache that uses symlinked snapshot directories.
+    full_pattern = f"{glob_module.escape(str(snapshots_path))}/{glob_pattern}"
+    yield from (Path(p) for p in glob_module.glob(full_pattern, recursive=True))  # noqa: PTH207
 
 
 def delete_local_model_repo(model_id: str) -> None:

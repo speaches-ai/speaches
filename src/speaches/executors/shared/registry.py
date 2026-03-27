@@ -24,8 +24,11 @@ if TYPE_CHECKING:
 
 from speaches.executors.kokoro import KokoroModelManager, kokoro_model_registry
 from speaches.executors.parakeet import ParakeetModelManager, parakeet_model_registry
-from speaches.executors.piper import PiperModelManager, piper_model_registry
+from speaches.executors.piper import PIPER_AVAILABLE
 from speaches.executors.shared.executor import Executor
+
+if PIPER_AVAILABLE:
+    from speaches.executors.piper import PiperModelManager, piper_model_registry
 from speaches.executors.silero_vad_v5 import SileroVADModelManager
 from speaches.executors.wespeaker_speaker_embedding import (
     WespeakerSpeakerEmbeddingModelManager,
@@ -71,12 +74,14 @@ class ExecutorRegistry:
             model_registry=parakeet_model_registry,
             task="automatic-speech-recognition",
         )
-        self._piper_executor = Executor[PiperModelManager, PiperModelRegistry](
-            name="piper",
-            model_manager=PiperModelManager(config.tts_model_ttl, gpu_ort_opts),
-            model_registry=piper_model_registry,
-            task="text-to-speech",
-        )
+        self._piper_executor: Executor | None = None
+        if PIPER_AVAILABLE:
+            self._piper_executor = Executor[PiperModelManager, PiperModelRegistry](
+                name="piper",
+                model_manager=PiperModelManager(config.tts_model_ttl, gpu_ort_opts),
+                model_registry=piper_model_registry,
+                task="text-to-speech",
+            )
         self._kokoro_executor = Executor[KokoroModelManager, KokoroModelRegistry](
             name="kokoro",
             model_manager=KokoroModelManager(config.tts_model_ttl, gpu_ort_opts),
@@ -121,7 +126,11 @@ class ExecutorRegistry:
 
     @property
     def text_to_speech(self) -> tuple[Executor, ...]:
-        return (self._piper_executor, self._kokoro_executor)
+        executors: list[Executor] = []
+        if self._piper_executor is not None:
+            executors.append(self._piper_executor)
+        executors.append(self._kokoro_executor)
+        return tuple(executors)
 
     @property
     def speaker_embedding(self) -> tuple[Executor, ...]:
@@ -140,15 +149,21 @@ class ExecutorRegistry:
         return self._vad_executor
 
     def all_executors(self) -> tuple[Executor, ...]:
-        return (
+        executors: list[Executor] = [
             self._whisper_executor,
             self._parakeet_executor,
-            self._piper_executor,
-            self._kokoro_executor,
-            self._wespeaker_speaker_embedding_executor,
-            self._pyannote_diarization_executor,
-            self._vad_executor,
+        ]
+        if self._piper_executor is not None:
+            executors.append(self._piper_executor)
+        executors.extend(
+            [
+                self._kokoro_executor,
+                self._wespeaker_speaker_embedding_executor,
+                self._pyannote_diarization_executor,
+                self._vad_executor,
+            ]
         )
+        return tuple(executors)
 
     def download_model_by_id(self, model_id: str) -> bool:
         for executor in self.all_executors():
