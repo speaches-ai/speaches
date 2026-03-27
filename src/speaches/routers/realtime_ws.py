@@ -91,7 +91,9 @@ async def realtime(
     await ws.accept()
     logger.info(f"Accepted websocket connection with intent: {intent}")
 
-    session = create_session_object_configuration(model, intent, language, transcription_model)
+    session = create_session_object_configuration(
+        model, intent, language, transcription_model, config.default_realtime_stt_model
+    )
     if instructions is not None:
         session.instructions = instructions
     ctx = SessionContext(

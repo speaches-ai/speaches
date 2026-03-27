@@ -54,9 +54,9 @@ def convert_audio_format(
     subtype: str = "PCM_16",
     endian: str = "LITTLE",
 ) -> bytes:
-    # NOTE: the default dtype is float64. Should something else be used? Would that improve performance?
     data, _ = sf.read(
         io.BytesIO(audio_bytes),
+        dtype="float32",
         samplerate=sample_rate,
         format=input_audio_format,
         channels=channels,
@@ -91,24 +91,34 @@ class Audio:
         sample_rate: int,
         name: str | None = None,
     ) -> None:
-        self.data = data
+        self._buffer: np.typing.NDArray[np.float32] = data
+        self._size: int = len(data)
         self.sample_rate = sample_rate
         self.name = name
 
+    @property
+    def data(self) -> np.typing.NDArray[np.float32]:
+        return self._buffer[: self._size]
+
+    @data.setter
+    def data(self, value: np.typing.NDArray[np.float32]) -> None:
+        self._buffer = value
+        self._size = len(value)
+
     def __repr__(self) -> str:
-        return f"Audio(duration={self.duration:.2f}s, sample_rate={self.sample_rate}Hz, samples={len(self.data)})"
+        return f"Audio(duration={self.duration:.2f}s, sample_rate={self.sample_rate}Hz, samples={self._size})"
 
     @property
     def duration(self) -> float:
-        return len(self.data) / self.sample_rate
+        return self._size / self.sample_rate
 
     @property
     def size_in_bits(self) -> int:
-        return self.data.nbytes * 8
+        return self._size * self._buffer.itemsize * 8
 
     @property
     def size_in_bytes(self) -> int:
-        return self.data.nbytes
+        return self._size * self._buffer.itemsize
 
     @property
     def size_in_kb(self) -> float:
@@ -118,8 +128,16 @@ class Audio:
     def size_in_mb(self) -> float:
         return self.size_in_bytes / (1024.0 * 1024.0)
 
-    def extend(self, data: np.typing.NDArray[np.float32]) -> None:
-        self.data = np.append(self.data, data)
+    def extend(self, chunk: np.typing.NDArray[np.float32]) -> None:
+        chunk_len = len(chunk)
+        required = self._size + chunk_len
+        if required > len(self._buffer):
+            new_capacity = max(required, len(self._buffer) * 2)
+            new_buffer = np.empty(new_capacity, dtype=np.float32)
+            new_buffer[: self._size] = self._buffer[: self._size]
+            self._buffer = new_buffer
+        self._buffer[self._size : required] = chunk
+        self._size = required
 
     def as_bytes(self) -> bytes:
         out = np.empty(len(self.data), dtype=np.int16)

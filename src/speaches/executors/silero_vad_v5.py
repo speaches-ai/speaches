@@ -70,8 +70,6 @@ class SileroVADModel:
             providers=providers,
             sess_options=sess_options,
         )
-        self._state = np.zeros((2, 1, 128), dtype=np.float32)
-        self._state_batch_size = 1
 
     def __call__(
         self, audio: np.ndarray, num_samples: int = 512, context_size_samples: int = 64
@@ -82,11 +80,7 @@ class SileroVADModel:
 
         batch_size = audio.shape[0]
 
-        if batch_size == self._state_batch_size:
-            self._state.fill(0)
-            state = self._state
-        else:
-            state = np.zeros((2, batch_size, 128), dtype=np.float32)
+        state = np.zeros((2, batch_size, 128), dtype=np.float32)
 
         batched_audio = audio.reshape(batch_size, -1, num_samples)
         context = batched_audio[..., -context_size_samples:]

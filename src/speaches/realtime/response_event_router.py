@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import concurrent.futures
 from contextlib import contextmanager
 import logging
 import threading
@@ -67,6 +68,7 @@ logger = logging.getLogger(__name__)
 event_router = EventRouter()
 
 _RESPONSE_EXCLUDE_FIELDS = frozenset({"conversation", "input", "output_audio_format", "metadata"})
+_tts_executor = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="tts")
 
 
 def _build_response_update(event_response: OAIResponseConfig) -> dict:
@@ -316,7 +318,7 @@ class ResponseHandler:
             finally:
                 loop.call_soon_threadsafe(q.put_nowait, None)
 
-        loop.run_in_executor(None, _produce)
+        loop.run_in_executor(_tts_executor, _produce)
         try:
             while True:
                 chunk = await q.get()
@@ -340,9 +342,9 @@ class ResponseHandler:
                 return
 
     async def generate_response(self) -> None:
-        self.pre_response_item_id = next(reversed(self.conversation.items), None)
+        self.pre_response_item_id = next(reversed(list(self.conversation.items)), None)
         try:
-            messages = list(items_to_chat_messages(self.conversation.items.values()))
+            messages = list(items_to_chat_messages(list(self.conversation.items.values())))
             completion_params = create_completion_params(self.model, messages, self.configuration)
             chunk_stream = await self.completion_client.create(**completion_params)
             async for chunk in chunk_stream:

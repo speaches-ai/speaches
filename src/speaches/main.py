@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 import logging
 import os
@@ -161,15 +162,19 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     if config.preload_models:
         logger.info(f"Preloading {len(config.preload_models)} models on startup")
 
-        for model_id in config.preload_models:
-            logger.info(f"Downloading model: {model_id}")
-            executor_registry.download_model_by_id(model_id)
-            logger.info(f"Successfully downloaded model: {model_id}")
+        async def _download(mid: str) -> None:
+            logger.info(f"Downloading model: {mid}")
+            await asyncio.to_thread(executor_registry.download_model_by_id, mid)
+            logger.info(f"Successfully downloaded model: {mid}")
 
-        for model_id in config.preload_models:
-            logger.info(f"Warming up model: {model_id}")
-            await executor_registry.warmup_model(model_id)
-            logger.info(f"Model '{model_id}' is warm")
+        await asyncio.gather(*[_download(mid) for mid in config.preload_models])
+
+        async def _warmup(mid: str) -> None:
+            logger.info(f"Warming up model: {mid}")
+            await executor_registry.warmup_model(mid)
+            logger.info(f"Model '{mid}' is warm")
+
+        await asyncio.gather(*[_warmup(mid) for mid in config.preload_models])
 
     if config.warmup_all_local_models:
         await executor_registry.warmup_local_models()

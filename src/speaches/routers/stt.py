@@ -137,7 +137,7 @@ def transcription_response_to_http_response(
     "/v1/audio/transcriptions",
     response_model=str | openai.types.audio.Transcription | openai.types.audio.TranscriptionVerbose,
 )
-def transcribe_file(
+async def transcribe_file(
     executor_registry: ExecutorRegistryDependency,
     config: ConfigDependency,
     request: Request,
@@ -158,7 +158,7 @@ def transcribe_file(
     without_timestamps: Annotated[bool, Form()] = True,
     vad_filter: Annotated[bool | None, Form()] = None,
 ) -> Response | StreamingResponse:
-    timestamp_granularities = asyncio.run(get_timestamp_granularities(request))
+    timestamp_granularities = await get_timestamp_granularities(request)
     if timestamp_granularities != DEFAULT_TIMESTAMP_GRANULARITIES and response_format != "verbose_json":
         logger.warning(
             "It only makes sense to provide `timestamp_granularities[]` when `response_format` is set to `verbose_json`. See https://platform.openai.com/docs/api-reference/audio/createTranscription#audio-createtranscription-timestamp_granularities."
@@ -169,7 +169,7 @@ def transcribe_file(
         model, transcription_model_card_data, executor_registry.transcription
     )
 
-    speech_segments = _get_speech_segments(vad_filter, config, executor_registry, audio)
+    speech_segments = await asyncio.to_thread(_get_speech_segments, vad_filter, config, executor_registry, audio)
 
     transcription_request = TranscriptionRequest(
         audio=audio,
@@ -185,6 +185,18 @@ def transcribe_file(
         vad_options=DEFAULT_VAD_OPTIONS,
         without_timestamps=without_timestamps,
     )
-    res = transcription_executor.model_manager.handle_transcription_request(transcription_request)
+    if stream:
+        # Streaming: return the sync generator directly without asyncio.to_thread().
+        # asyncio.to_thread() would return the generator object immediately without
+        # consuming it, causing blocking __next__() calls on the event loop.
+        # Starlette's StreamingResponse handles sync generators correctly by using
+        # run_in_threadpool for each __next__() call.
+        res = transcription_executor.model_manager.handle_transcription_request(transcription_request)
+    else:
+        # Non-streaming: the entire blocking computation happens in the thread
+        # and a fully-formed response is returned.
+        res = await asyncio.to_thread(
+            transcription_executor.model_manager.handle_transcription_request, transcription_request
+        )
     http_res = transcription_response_to_http_response(res)
     return http_res

@@ -203,6 +203,13 @@ class Config(BaseSettings):
     Set via GPU_MEM_LIMIT environment variable.
     """
 
+    default_realtime_stt_model: str = "Systran/faster-distil-whisper-small.en"
+    """
+    Default speech-to-text model used for the realtime WebSocket/WebRTC API
+    when no explicit transcription_model is provided by the client.
+    Set via DEFAULT_REALTIME_STT_MODEL environment variable.
+    """
+
     warmup_all_local_models: bool = True
     """
     Whether to automatically load all locally cached models into memory at startup.

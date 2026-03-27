@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 import logging
+import threading
 import time
 from typing import Annotated, Self
 from uuid import uuid4
@@ -53,6 +54,7 @@ AUDIO_TRANSCRIPTION_TTL_SECONDS = 60 * 60
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["voice-chat"])
 cache: TTLCache[str, str] = TTLCache(maxsize=AUDIO_TRANSCRIPTION_CACHE_SIZE, ttl=AUDIO_TRANSCRIPTION_TTL_SECONDS)
+_cache_lock: threading.Lock = threading.Lock()
 
 
 # NOTE: OpenAI doesn't use UUIDs
@@ -112,7 +114,8 @@ async def transform_choice(speech_client: AsyncSpeech, choice: Choice, body: Com
     )
     audio_bytes = res.read()
     audio_id = generate_audio_id()
-    cache[audio_id] = choice.message.content
+    with _cache_lock:
+        cache[audio_id] = choice.message.content
     choice.message.audio = ChatCompletionAudio(
         id=audio_id,
         data=base64.b64encode(audio_bytes).decode("utf-8"),
@@ -254,7 +257,8 @@ async def handle_completions(
                     logger.info(f"Transcript for message {i} content part {j}: {transcript}")
 
         elif message.role == "assistant" and message.audio is not None:
-            transcript = cache[message.audio.id]
+            with _cache_lock:
+                transcript = cache[message.audio.id]
             body.messages[i] = ChatCompletionAssistantMessageParam(
                 role="assistant",
                 content=transcript,

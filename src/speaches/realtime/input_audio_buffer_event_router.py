@@ -22,6 +22,7 @@ from speaches.realtime.input_audio_buffer import (
     InputAudioBuffer,
     InputAudioBufferTranscriber,
 )
+from speaches.realtime.utils import task_done_callback
 from speaches.types.realtime import (
     ConversationState,
     InputAudioBufferAppendEvent,
@@ -139,7 +140,7 @@ def handle_input_audio_buffer_commit(ctx: SessionContext, _event: InputAudioBuff
         input_audio_buffer.consolidate()
         ctx.pubsub.publish_nowait(
             InputAudioBufferCommittedEvent(
-                previous_item_id=next(reversed(ctx.conversation.items), None),  # FIXME
+                previous_item_id=next(reversed(list(ctx.conversation.items)), None),  # FIXME
                 item_id=input_audio_buffer_id,
             )
         )
@@ -224,6 +225,7 @@ def handle_speech_started_interruption(ctx: SessionContext, event: InputAudioBuf
                     response_to_cancel.stop()
 
             ctx.barge_in_task = asyncio.create_task(_delayed_barge_in(), name="barge_in_delay")
+            ctx.barge_in_task.add_done_callback(task_done_callback)
         else:
             logger.info("Barge-in detected: cancelling active response")
             response_to_cancel.stop()
@@ -239,6 +241,7 @@ def handle_speech_started_interruption(ctx: SessionContext, event: InputAudioBuf
         _partial_transcription_loop(ctx, input_audio_buffer, event.item_id),
         name="partial_transcription",
     )
+    ctx.partial_transcription_task.add_done_callback(task_done_callback)
 
 
 @event_router.register("input_audio_buffer.speech_stopped")
@@ -261,7 +264,7 @@ def handle_input_audio_buffer_speech_stopped(ctx: SessionContext, event: InputAu
     ctx.input_audio_buffers[input_audio_buffer.id] = input_audio_buffer
     ctx.pubsub.publish_nowait(
         InputAudioBufferCommittedEvent(
-            previous_item_id=next(reversed(ctx.conversation.items), None),  # FIXME
+            previous_item_id=next(reversed(list(ctx.conversation.items)), None),  # FIXME
             item_id=event.item_id,
         )
     )

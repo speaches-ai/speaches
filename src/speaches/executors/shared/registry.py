@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import threading
 from typing import TYPE_CHECKING, Any
 
 from speaches.config import OrtOptions
@@ -60,6 +61,8 @@ class ExecutorRegistry:
         self._pinned_model_ids: set[str] = set()
         self._tts_cache: dict[str, SpeechHandler] = {}
         self._stt_cache: dict[str, TranscriptionHandler] = {}
+        self._tts_resolve_lock: threading.Lock = threading.Lock()
+        self._stt_resolve_lock: threading.Lock = threading.Lock()
         gpu_ort_opts = config.unstable_ort_opts.model_copy(update={"gpu_mem_limit": config.gpu_mem_limit})
         cpu_ort_opts = _cpu_only_ort_opts(config.unstable_ort_opts)
         self._whisper_executor = Executor[WhisperModelManager, WhisperModelRegistry](
@@ -194,36 +197,52 @@ class ExecutorRegistry:
         return None
 
     def resolve_tts_model_manager(self, model_id: str) -> SpeechHandler:
-        if model_id in self._tts_cache:
-            return self._tts_cache[model_id]
-        for executor in self.text_to_speech:
-            try:
-                model_ids = [m.id for m in executor.model_registry.list_local_models()]
-                if not model_ids:
-                    model_ids = [m.id for m in executor.model_registry.list_remote_models()]
-            except (OSError, ValueError):
-                logger.debug(f"Failed to list models for executor '{executor.name}', skipping")
-                continue
-            if model_id in model_ids:
-                self._tts_cache[model_id] = executor.model_manager
-                return executor.model_manager
-        raise ValueError(f"No TTS executor found for model '{model_id}'")
+        # Fast path: cache hit (no lock needed for dict reads in CPython)
+        cached = self._tts_cache.get(model_id)
+        if cached is not None:
+            return cached
+        # Slow path: resolve and populate cache under lock
+        with self._tts_resolve_lock:
+            # Double-check after acquiring lock
+            cached = self._tts_cache.get(model_id)
+            if cached is not None:
+                return cached
+            for executor in self.text_to_speech:
+                try:
+                    model_ids = [m.id for m in executor.model_registry.list_local_models()]
+                    if not model_ids:
+                        model_ids = [m.id for m in executor.model_registry.list_remote_models()]
+                except (OSError, ValueError):
+                    logger.debug(f"Failed to list models for executor '{executor.name}', skipping")
+                    continue
+                if model_id in model_ids:
+                    self._tts_cache[model_id] = executor.model_manager
+                    return executor.model_manager
+            raise ValueError(f"No TTS executor found for model '{model_id}'")
 
     def resolve_stt_model_manager(self, model_id: str) -> TranscriptionHandler:
-        if model_id in self._stt_cache:
-            return self._stt_cache[model_id]
-        for executor in self.transcription:
-            try:
-                model_ids = [m.id for m in executor.model_registry.list_local_models()]
-                if not model_ids:
-                    model_ids = [m.id for m in executor.model_registry.list_remote_models()]
-            except (OSError, ValueError):
-                logger.debug(f"Failed to list models for executor '{executor.name}', skipping")
-                continue
-            if model_id in model_ids:
-                self._stt_cache[model_id] = executor.model_manager
-                return executor.model_manager
-        raise ValueError(f"No STT executor found for model '{model_id}'")
+        # Fast path: cache hit (no lock needed for dict reads in CPython)
+        cached = self._stt_cache.get(model_id)
+        if cached is not None:
+            return cached
+        # Slow path: resolve and populate cache under lock
+        with self._stt_resolve_lock:
+            # Double-check after acquiring lock
+            cached = self._stt_cache.get(model_id)
+            if cached is not None:
+                return cached
+            for executor in self.transcription:
+                try:
+                    model_ids = [m.id for m in executor.model_registry.list_local_models()]
+                    if not model_ids:
+                        model_ids = [m.id for m in executor.model_registry.list_remote_models()]
+                except (OSError, ValueError):
+                    logger.debug(f"Failed to list models for executor '{executor.name}', skipping")
+                    continue
+                if model_id in model_ids:
+                    self._stt_cache[model_id] = executor.model_manager
+                    return executor.model_manager
+            raise ValueError(f"No STT executor found for model '{model_id}'")
 
     # Pinned models are held via ExitStack to keep a reference alive,
     # bypassing the TTL-based eviction in the model manager. The model

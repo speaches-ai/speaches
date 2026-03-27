@@ -11,7 +11,11 @@ OPENAI_REALTIME_INSTRUCTIONS = "Your knowledge cutoff is 2023-10. You are a help
 
 
 def create_session_object_configuration(
-    model: str, intent: str = "conversation", language: str | None = None, transcription_model: str | None = None
+    model: str,
+    intent: str = "conversation",
+    language: str | None = None,
+    transcription_model: str | None = None,
+    default_realtime_stt_model: str = "Systran/faster-distil-whisper-small.en",
 ) -> Session:
     """Create session configuration with OpenAI Realtime API compatibility.
 
@@ -41,7 +45,7 @@ def create_session_object_configuration(
     else:
         # Standard OpenAI behavior: model param is conversation model
         conversation_model = model
-        final_transcription_model = transcription_model or "Systran/faster-distil-whisper-small.en"
+        final_transcription_model = transcription_model or default_realtime_stt_model
         logger.info(
             f"Conversation mode (OpenAI standard): using {conversation_model} for conversation, {final_transcription_model} for transcription"
         )
