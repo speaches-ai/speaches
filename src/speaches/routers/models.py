@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -18,6 +20,7 @@ from speaches.executors.piper import PiperModel
 from speaches.hf_utils import delete_local_model_repo
 from speaches.model_aliases import ModelId
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["models"])
 
 # TODO: should model aliases be listed?
@@ -114,5 +117,8 @@ def get_remote_models(executor_registry: ExecutorRegistryDependency, task: Model
     models: list[Model] = []
     for executor in executor_registry.all_executors():
         if task is None or executor.task == task:
-            models.extend(list(executor.model_registry.list_remote_models()))
+            try:
+                models.extend(list(executor.model_registry.list_remote_models()))
+            except OSError:
+                logger.debug(f"Failed to list remote models for executor '{executor.name}', skipping")
     return JSONResponse(content={"data": [model.model_dump() for model in models], "object": "list"})

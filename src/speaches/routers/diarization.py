@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Hashable, Iterator
 import logging
 from typing import TYPE_CHECKING, Annotated, Literal, cast
@@ -5,10 +7,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, cast
 from fastapi import APIRouter, Form, Response
 from fastapi.responses import JSONResponse
 import numpy as np
-from pyannote.audio.core.pipeline import Pipeline
-from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
 from pydantic import BaseModel
-import torch
 
 from speaches.audio import Audio
 from speaches.dependencies import AudioFileDependency, ExecutorRegistryDependency
@@ -18,8 +17,11 @@ from speaches.routers.utils import find_executor_for_model_or_raise, get_model_c
 from speaches.utils import parse_data_url_to_audio
 
 if TYPE_CHECKING:
+    from pyannote.audio.core.pipeline import Pipeline
+    from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
     from pyannote.core.segment import Segment
     from pyannote.core.utils.types import TrackName
+    import torch
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -49,6 +51,7 @@ def _map_to_known_speakers(
     known_speakers: list[KnownSpeaker],
 ) -> dict[Hashable, str]:
     from pyannote.audio import Inference
+    import torch as _torch
 
     inference = Inference(pipeline._embedding, window="whole")  # noqa: SLF001
     main_audio = {"waveform": waveform, "sample_rate": sample_rate}
@@ -56,7 +59,7 @@ def _map_to_known_speakers(
     # Compute embeddings for reference speakers
     known_embeddings: dict[str, np.ndarray] = {}
     for ks in known_speakers:
-        ref_waveform = torch.from_numpy(ks.audio.data).unsqueeze(0).float()
+        ref_waveform = _torch.from_numpy(ks.audio.data).unsqueeze(0).float()
         known_embeddings[ks.name] = np.asarray(
             inference({"waveform": ref_waveform, "sample_rate": ks.audio.sample_rate})
         )
@@ -123,13 +126,16 @@ def diarize_audio(
             for name, ref in zip(known_speaker_names, known_speaker_references, strict=True)
         ]
 
+    from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput as _DiarizeOutput
+    import torch as _torch
+
     model_card_data = get_model_card_data_or_raise(model)
     executor = find_executor_for_model_or_raise(model, model_card_data, executor_registry.diarization)
 
     with executor.model_manager.load_model(model) as pipeline:
-        waveform = torch.from_numpy(audio.data).unsqueeze(0).float()
+        waveform = _torch.from_numpy(audio.data).unsqueeze(0).float()
         diarization = pipeline({"waveform": waveform, "sample_rate": audio.sample_rate})
-        assert isinstance(diarization, DiarizeOutput), f"Expected DiarizeOutput, got {type(diarization)}"
+        assert isinstance(diarization, _DiarizeOutput), f"Expected DiarizeOutput, got {type(diarization)}"
 
         speaker_mapping: dict[Hashable, str] | None = None
         if known_speakers:

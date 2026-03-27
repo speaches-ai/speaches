@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Generator
 import logging
 from pathlib import Path
@@ -6,7 +8,6 @@ from typing import Any
 import huggingface_hub
 import numpy as np
 from pydantic import BaseModel
-import torch
 
 from speaches.api_types import Model
 from speaches.executors.shared.base_model_manager import BaseModelManager
@@ -75,18 +76,21 @@ class WespeakerSpeakerEmbeddingModelManager(BaseModelManager):
 
     def _load_fn(self, model_id: str) -> Any:  # pyannote.audio.Inference
         from pyannote.audio import Inference, Model
+        import torch as _torch
 
         logger.info(f"Loading speaker embedding model: {model_id}")
         model = Model.from_pretrained(model_id)
         assert model is not None, f"Failed to load speaker embedding model '{model_id}'"
-        if torch.cuda.is_available():
-            model.to(torch.device("cuda"))
+        if _torch.cuda.is_available():
+            model.to(_torch.device("cuda"))
         return Inference(model, window="whole")
 
     @traced()
     def handle_speaker_embedding_request(self, request: SpeakerEmbeddingRequest, **_kwargs) -> SpeakerEmbeddingResponse:
+        import torch as _torch
+
         with self.load_model(request.model_id) as inference:
-            waveform = torch.from_numpy(request.audio.data).unsqueeze(0).float()
+            waveform = _torch.from_numpy(request.audio.data).unsqueeze(0).float()
             embedding = np.asarray(inference({"waveform": waveform, "sample_rate": request.audio.sample_rate}))
             if embedding.ndim == 2:
                 embedding = embedding.squeeze()

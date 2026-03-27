@@ -158,7 +158,11 @@ class ExecutorRegistry:
                 local_ids = set()
             if model_id in local_ids:
                 return True
-            if model_id in {m.id for m in executor.model_registry.list_remote_models()}:
+            try:
+                remote_ids = {m.id for m in executor.model_registry.list_remote_models()}
+            except (OSError, ValueError):
+                remote_ids = set()
+            if model_id in remote_ids:
                 return executor.model_registry.download_model_files_if_not_exist(model_id)
         raise ValueError(f"Model '{model_id}' not found")
 
