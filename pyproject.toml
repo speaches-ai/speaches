@@ -41,6 +41,7 @@ dependencies = [
     "opentelemetry-instrumentation-threading>=0.61b0",
     "opentelemetry-instrumentation-urllib>=0.61b0",
     "opentelemetry-instrumentation-urllib3>=0.61b0",
+    "opentelemetry-instrumentation-system-metrics>=0.61b0",
 ]
 
 [dependency-groups]
