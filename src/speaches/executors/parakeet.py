@@ -6,7 +6,11 @@ from typing import TypedDict
 import huggingface_hub
 import onnx_asr
 from onnx_asr.adapters import TextResultsAsrAdapter
-from onnx_asr.models import NemoConformerTdt
+
+try:
+    from onnx_asr.models import NemoConformerTdt
+except ImportError:
+    from onnx_asr.models.nemo import NemoConformerTdt
 import openai.types.audio
 from opentelemetry import trace
 
