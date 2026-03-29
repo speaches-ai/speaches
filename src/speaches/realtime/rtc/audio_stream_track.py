@@ -6,7 +6,7 @@ import logging
 from aiortc import MediaStreamTrack
 from av.audio.frame import AudioFrame
 import numpy as np
-from openai.types.beta.realtime import ResponseAudioDeltaEvent
+from openai.types.realtime import ResponseAudioDeltaEvent
 
 from speaches.audio import audio_samples_from_file, resample_audio_data
 from speaches.realtime.context import SessionContext

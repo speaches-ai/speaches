@@ -4,7 +4,6 @@ import logging
 from typing import Literal
 
 import openai
-from openai.types.beta.realtime.error_event import Error
 
 from speaches.audio import audio_samples_from_file, resample_audio_data
 from speaches.executors.silero_vad_v5 import VadOptions, get_speech_timestamps, to_ms_speech_timestamps
@@ -17,6 +16,7 @@ from speaches.realtime.input_audio_buffer import (
     InputAudioBufferTranscriber,
 )
 from speaches.types.realtime import (
+    Error,
     InputAudioBufferAppendEvent,
     InputAudioBufferClearedEvent,
     InputAudioBufferClearEvent,

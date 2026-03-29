@@ -3,11 +3,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from openai.types.beta.realtime.error_event import Error
-
 from speaches.realtime.event_router import EventRouter
 from speaches.types.realtime import (
     NOT_GIVEN,
+    Error,
     ErrorEvent,
     Session,
     SessionUpdatedEvent,

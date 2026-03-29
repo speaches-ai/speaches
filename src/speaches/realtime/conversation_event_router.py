@@ -4,8 +4,6 @@ from collections import OrderedDict
 import logging
 from typing import TYPE_CHECKING
 
-from openai.types.beta.realtime.error_event import Error
-
 from speaches.realtime.event_router import EventRouter
 from speaches.realtime.response_event_router import ResponseHandler
 from speaches.realtime.utils import generate_conversation_id
@@ -16,6 +14,7 @@ from speaches.types.realtime import (
     ConversationItemDeletedEvent,
     ConversationItemDeleteEvent,
     ConversationItemInputAudioTranscriptionCompletedEvent,
+    Error,
     ErrorEvent,
     Response,
     ResponseCreatedEvent,
@@ -23,7 +22,7 @@ from speaches.types.realtime import (
 )
 
 if TYPE_CHECKING:
-    from openai.types.beta.realtime import ConversationItemTruncateEvent
+    from openai.types.realtime import ConversationItemTruncateEvent
 
     from speaches.realtime.context import SessionContext
     from speaches.realtime.pubsub import EventPubSub

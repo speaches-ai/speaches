@@ -23,7 +23,6 @@ from fastapi import (
 )
 import numpy as np
 from openai import AsyncOpenAI
-from openai.types.beta.realtime.error_event import Error
 from pydantic import ValidationError
 
 from speaches.dependencies import (
@@ -45,6 +44,7 @@ from speaches.realtime.utils import generate_event_id
 from speaches.routers.realtime_ws import event_listener
 from speaches.types.realtime import (
     SERVER_EVENT_TYPES,
+    Error,
     ErrorEvent,
     FullMessageEvent,
     InputAudioBufferAppendEvent,

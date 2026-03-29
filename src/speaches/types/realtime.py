@@ -1,13 +1,17 @@
 import logging
 from typing import Annotated, Any, Literal
 
-from openai.types.beta.realtime import (
+from openai.types.beta.realtime.error_event import Error
+from openai.types.beta.realtime.error_event import (
+    ErrorEvent as OpenAIErrorEvent,
+)
+from openai.types.realtime import (
     ConversationCreatedEvent as OpenAIConversationCreatedEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ConversationItemDeletedEvent as OpenAIConversationItemDeletedEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ConversationItemDeleteEvent,
     ConversationItemTruncateEvent,
     InputAudioBufferAppendEvent,
@@ -17,52 +21,48 @@ from openai.types.beta.realtime import (
     ResponseCancelEvent,
     ResponseCreateEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ConversationItemInputAudioTranscriptionCompletedEvent as OpenAIConversationItemInputAudioTranscriptionCompletedEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ConversationItemInputAudioTranscriptionFailedEvent as OpenAIConversationItemInputAudioTranscriptionFailedEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ConversationItemTruncatedEvent as OpenAIConversationItemTruncatedEvent,
 )
-from openai.types.beta.realtime import (
-    ErrorEvent as OpenAIErrorEvent,
-)
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     InputAudioBufferClearedEvent as OpenAIInputAudioBufferClearedEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     InputAudioBufferSpeechStartedEvent as OpenAIInputAudioBufferSpeechStartedEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     InputAudioBufferSpeechStoppedEvent as OpenAIInputAudioBufferSpeechStoppedEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseAudioDeltaEvent as OpenAIResponseAudioDeltaEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseAudioDoneEvent as OpenAIResponseAudioDoneEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseAudioTranscriptDeltaEvent as OpenAIResponseAudioTranscriptDeltaEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseAudioTranscriptDoneEvent as OpenAIResponseAudioTranscriptDoneEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseFunctionCallArgumentsDeltaEvent as OpenAIResponseFunctionCallArgumentsDeltaEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseFunctionCallArgumentsDoneEvent as OpenAIResponseFunctionCallArgumentsDoneEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseTextDeltaEvent as OpenAIResponseTextDeltaEvent,
 )
-from openai.types.beta.realtime import (
+from openai.types.realtime import (
     ResponseTextDoneEvent as OpenAIResponseTextDoneEvent,
 )
-from openai.types.beta.realtime.error_event import Error
 from pydantic import BaseModel, Discriminator, Field, model_validator
 from pydantic.type_adapter import TypeAdapter
 
@@ -225,7 +225,7 @@ class ResponseDoneEvent(BaseModel):
     response: RealtimeResponse
 
 
-# Same as openai.types.beta.realtime.session_update_event.SessionTurnDetection but with all the fields made non-nullable
+# Same as openai.types.realtime.session_update_event.SessionTurnDetection but with all the fields made non-nullable
 class TurnDetection(BaseModel):
     create_response: bool
     prefix_padding_ms: int
@@ -340,7 +340,7 @@ class InputAudioBufferCommittedEvent(BaseModel):
     previous_item_id: str | None
 
 
-# The following classes are the same as the ones in openai.types.beta.realtime but with fields assigned some default values. This is to reduce the amount of boilerplate code when creating these events.
+# The following classes are the same as the ones in openai.types.realtime but with fields assigned some default values. This is to reduce the amount of boilerplate code when creating these events.
 
 
 class InputAudioBufferSpeechStartedEvent(OpenAIInputAudioBufferSpeechStartedEvent):
@@ -444,42 +444,42 @@ class ResponseContentPartDoneEvent(BaseModel):
 
 
 class ResponseTextDeltaEvent(OpenAIResponseTextDeltaEvent):
-    type: Literal["response.text.delta"] = "response.text.delta"
+    type: Literal["response.output_text.delta"] = "response.output_text.delta"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
     output_index: int = 0
 
 
 class ResponseTextDoneEvent(OpenAIResponseTextDoneEvent):
-    type: Literal["response.text.done"] = "response.text.done"
+    type: Literal["response.output_text.done"] = "response.output_text.done"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
     output_index: int = 0
 
 
 class ResponseAudioTranscriptDeltaEvent(OpenAIResponseAudioTranscriptDeltaEvent):
-    type: Literal["response.audio_transcript.delta"] = "response.audio_transcript.delta"
+    type: Literal["response.output_audio_transcript.delta"] = "response.output_audio_transcript.delta"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
     output_index: int = 0
 
 
 class ResponseAudioDeltaEvent(OpenAIResponseAudioDeltaEvent):
-    type: Literal["response.audio.delta"] = "response.audio.delta"
+    type: Literal["response.output_audio.delta"] = "response.output_audio.delta"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
     output_index: int = 0
 
 
 class ResponseAudioDoneEvent(OpenAIResponseAudioDoneEvent):
-    type: Literal["response.audio.done"] = "response.audio.done"
+    type: Literal["response.output_audio.done"] = "response.output_audio.done"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
     output_index: int = 0
 
 
 class ResponseAudioTranscriptDoneEvent(OpenAIResponseAudioTranscriptDoneEvent):
-    type: Literal["response.audio_transcript.done"] = "response.audio_transcript.done"
+    type: Literal["response.output_audio_transcript.done"] = "response.output_audio_transcript.done"
     event_id: str = Field(default_factory=generate_event_id)
     content_index: int = 0
     output_index: int = 0

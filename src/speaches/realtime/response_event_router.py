@@ -6,7 +6,6 @@ import logging
 from typing import TYPE_CHECKING
 
 import openai
-from openai.types.beta.realtime.error_event import Error
 from pydantic import BaseModel
 
 from speaches.realtime.chat_utils import (
@@ -21,6 +20,7 @@ from speaches.types.realtime import (
     ConversationItemContentText,
     ConversationItemFunctionCall,
     ConversationItemMessage,
+    Error,
     ErrorEvent,
     RealtimeResponse,
     Response,
@@ -220,7 +220,7 @@ class ResponseHandler:
 
             self.pubsub.publish_nowait(
                 ResponseFunctionCallArgumentsDoneEvent(
-                    arguments=item.arguments, call_id=item.call_id, item_id=item.id, response_id=self.id
+                    name=item.name, arguments=item.arguments, call_id=item.call_id, item_id=item.id, response_id=self.id
                 )
             )
 
@@ -279,7 +279,11 @@ async def handle_response_create_event(ctx: SessionContext, event: ResponseCreat
             ctx.pubsub.publish_nowait(unsupported_field_error("response.conversation"))
         if event.response.input is not None:
             ctx.pubsub.publish_nowait(unsupported_field_error("response.input"))
-        if event.response.output_audio_format is not None:
+        if (
+            event.response.audio is not None
+            and event.response.audio.output is not None
+            and event.response.audio.output.format is not None
+        ):
             ctx.pubsub.publish_nowait(unsupported_field_error("response.output_audio_format"))
         if event.response.metadata is not None:
             ctx.pubsub.publish_nowait(unsupported_field_error("response.metadata"))

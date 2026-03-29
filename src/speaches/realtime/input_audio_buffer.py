@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from openai import omit
-from openai.types.beta.realtime.conversation_item_input_audio_transcription_completed_event import (
+from openai.types.realtime.conversation_item_input_audio_transcription_completed_event import (
     UsageTranscriptTextUsageDuration,
 )
 from pydantic import BaseModel
