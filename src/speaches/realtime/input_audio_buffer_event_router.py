@@ -108,8 +108,7 @@ def handle_input_audio_buffer_append(ctx: SessionContext, event: InputAudioBuffe
     audio_chunk = audio_samples_from_file(BytesIO(base64.b64decode(event.audio)), 24000)
     # convert the audio data from 24kHz (sample rate defined in the API spec) to 16kHz (sample rate used by the VAD and for transcription)
     audio_chunk = resample_audio_data(audio_chunk, 24000, 16000)
-    input_audio_buffer_id = next(reversed(ctx.input_audio_buffers))
-    input_audio_buffer = ctx.input_audio_buffers[input_audio_buffer_id]
+    input_audio_buffer = ctx.audio_buffers.current
     input_audio_buffer.append(audio_chunk)
     if ctx.session.turn_detection is not None:
         vad_event = vad_detection_flow(input_audio_buffer, ctx.session.turn_detection, ctx)
@@ -119,8 +118,7 @@ def handle_input_audio_buffer_append(ctx: SessionContext, event: InputAudioBuffe
 
 @event_router.register("input_audio_buffer.commit")
 def handle_input_audio_buffer_commit(ctx: SessionContext, _event: InputAudioBufferCommitEvent) -> None:
-    input_audio_buffer_id = next(reversed(ctx.input_audio_buffers))
-    input_audio_buffer = ctx.input_audio_buffers[input_audio_buffer_id]
+    input_audio_buffer = ctx.audio_buffers.current
     if input_audio_buffer.duration_ms < MIN_AUDIO_BUFFER_DURATION_MS:
         ctx.pubsub.publish_nowait(
             create_invalid_request_error(
@@ -131,20 +129,17 @@ def handle_input_audio_buffer_commit(ctx: SessionContext, _event: InputAudioBuff
         ctx.pubsub.publish_nowait(
             InputAudioBufferCommittedEvent(
                 previous_item_id=next(reversed(ctx.conversation.items), None),  # FIXME
-                item_id=input_audio_buffer_id,
+                item_id=input_audio_buffer.id,
             )
         )
-        input_audio_buffer = InputAudioBuffer(ctx.pubsub)
-        ctx.input_audio_buffers[input_audio_buffer.id] = input_audio_buffer
+        ctx.audio_buffers.rotate()
 
 
 @event_router.register("input_audio_buffer.clear")
 def handle_input_audio_buffer_clear(ctx: SessionContext, _event: InputAudioBufferClearEvent) -> None:
-    ctx.input_audio_buffers.popitem()
+    ctx.audio_buffers.clear_current()
     # OpenAI's doesn't send an error if the buffer is already empty.
     ctx.pubsub.publish_nowait(InputAudioBufferClearedEvent())
-    input_audio_buffer = InputAudioBuffer(ctx.pubsub)
-    ctx.input_audio_buffers[input_audio_buffer.id] = input_audio_buffer
 
 
 # Server Events
@@ -152,8 +147,7 @@ def handle_input_audio_buffer_clear(ctx: SessionContext, _event: InputAudioBuffe
 
 @event_router.register("input_audio_buffer.speech_stopped")
 def handle_input_audio_buffer_speech_stopped(ctx: SessionContext, event: InputAudioBufferSpeechStoppedEvent) -> None:
-    input_audio_buffer = InputAudioBuffer(ctx.pubsub)
-    ctx.input_audio_buffers[input_audio_buffer.id] = input_audio_buffer
+    ctx.audio_buffers.rotate()
     ctx.pubsub.publish_nowait(
         InputAudioBufferCommittedEvent(
             previous_item_id=next(reversed(ctx.conversation.items), None),  # FIXME
@@ -164,7 +158,7 @@ def handle_input_audio_buffer_speech_stopped(ctx: SessionContext, event: InputAu
 
 @event_router.register("input_audio_buffer.committed")
 async def handle_input_audio_buffer_committed(ctx: SessionContext, event: InputAudioBufferCommittedEvent) -> None:
-    input_audio_buffer = ctx.input_audio_buffers[event.item_id]
+    input_audio_buffer = ctx.audio_buffers.get(event.item_id)
 
     transcriber = InputAudioBufferTranscriber(
         pubsub=ctx.pubsub,
@@ -185,4 +179,3 @@ async def handle_input_audio_buffer_committed(ctx: SessionContext, event: InputA
                 message=e.message,
             )
         )
-    await transcriber.task

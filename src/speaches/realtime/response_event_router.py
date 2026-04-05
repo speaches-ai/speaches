@@ -266,11 +266,52 @@ class ResponseHandler:
         self.task.cancel()
 
 
+class ResponseManager:
+    def __init__(
+        self,
+        *,
+        completion_client: AsyncCompletions,
+        pubsub: EventPubSub,
+    ) -> None:
+        self._completion_client = completion_client
+        self._pubsub = pubsub
+        self._active: ResponseHandler | None = None
+
+    @property
+    def is_active(self) -> bool:
+        return self._active is not None
+
+    def cancel_active(self) -> None:
+        if self._active is not None:
+            self._active.stop()
+            self._active = None
+
+    async def create_and_run(
+        self,
+        *,
+        model: str,
+        configuration: Response,
+        conversation: Conversation,
+    ) -> None:
+        self.cancel_active()
+        self._active = ResponseHandler(
+            completion_client=self._completion_client,
+            model=model,
+            configuration=configuration,
+            conversation=conversation,
+            pubsub=self._pubsub,
+        )
+        self._pubsub.publish_nowait(ResponseCreatedEvent(response=self._active.response))
+        self._active.start()
+        try:
+            assert self._active.task is not None
+            await self._active.task
+        finally:
+            self._active = None
+
+
 @event_router.register("response.create")
 async def handle_response_create_event(ctx: SessionContext, event: ResponseCreateEvent) -> None:
-    if ctx.response is not None:
-        ctx.response.stop()
-
     configuration = Response(
         conversation="auto", input=list(ctx.conversation.items.values()), **ctx.session.model_dump()
     )
@@ -298,18 +339,11 @@ async def handle_response_create_event(ctx: SessionContext, event: ResponseCreat
         logger.debug(f"Response configuration after update: {updated_configuration}")
         configuration = Response(**updated_configuration)
 
-    ctx.response = ResponseHandler(
-        completion_client=ctx.completion_client,
+    await ctx.response_manager.create_and_run(
         model=ctx.session.model,
         configuration=configuration,
         conversation=ctx.conversation,
-        pubsub=ctx.pubsub,
     )
-    ctx.pubsub.publish_nowait(ResponseCreatedEvent(response=ctx.response.response))
-    ctx.response.start()
-    assert ctx.response.task is not None
-    await ctx.response.task
-    ctx.response = None
 
 
 @event_router.register("response.cancel")

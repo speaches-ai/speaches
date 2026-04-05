@@ -5,7 +5,6 @@ import logging
 from typing import TYPE_CHECKING
 
 from speaches.realtime.event_router import EventRouter
-from speaches.realtime.response_event_router import ResponseHandler
 from speaches.realtime.utils import generate_conversation_id
 from speaches.types.realtime import (
     ConversationItem,
@@ -17,7 +16,6 @@ from speaches.types.realtime import (
     Error,
     ErrorEvent,
     Response,
-    ResponseCreatedEvent,
     create_server_error,
 )
 
@@ -114,20 +112,10 @@ async def handle_conversation_item_input_audio_transcription_completed_event(
     if ctx.session.turn_detection is None or not ctx.session.turn_detection.create_response:
         return
 
-    if ctx.response is not None:
-        ctx.response.stop()
-
-    ctx.response = ResponseHandler(
-        completion_client=ctx.completion_client,
+    await ctx.response_manager.create_and_run(
         model=ctx.session.model,
         configuration=Response(
             conversation="auto", input=list(ctx.conversation.items.values()), **ctx.session.model_dump()
         ),
         conversation=ctx.conversation,
-        pubsub=ctx.pubsub,
     )
-    ctx.pubsub.publish_nowait(ResponseCreatedEvent(response=ctx.response.response))
-    ctx.response.start()
-    assert ctx.response.task is not None
-    await ctx.response.task
-    ctx.response = None

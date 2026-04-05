@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
 from io import BytesIO
 import logging
 import time
@@ -85,6 +86,30 @@ class InputAudioBuffer:
             return self.data[
                 self.vad_state.audio_start_ms * MS_SAMPLE_RATE : self.vad_state.audio_end_ms * MS_SAMPLE_RATE
             ]
+
+
+class InputAudioBufferManager:
+    def __init__(self, pubsub: EventPubSub) -> None:
+        self._pubsub = pubsub
+        initial = InputAudioBuffer(pubsub)
+        self._buffers: OrderedDict[str, InputAudioBuffer] = OrderedDict({initial.id: initial})
+
+    @property
+    def current(self) -> InputAudioBuffer:
+        buffer_id = next(reversed(self._buffers))
+        return self._buffers[buffer_id]
+
+    def get(self, buffer_id: str) -> InputAudioBuffer:
+        return self._buffers[buffer_id]
+
+    def rotate(self) -> InputAudioBuffer:
+        new_buffer = InputAudioBuffer(self._pubsub)
+        self._buffers[new_buffer.id] = new_buffer
+        return new_buffer
+
+    def clear_current(self) -> InputAudioBuffer:
+        self._buffers.popitem()
+        return self.rotate()
 
 
 class InputAudioBufferTranscriber:
