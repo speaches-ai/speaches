@@ -12,10 +12,8 @@ from speaches.types.realtime import (
     ConversationItemCreateEvent,
     ConversationItemDeletedEvent,
     ConversationItemDeleteEvent,
-    ConversationItemInputAudioTranscriptionCompletedEvent,
     Error,
     ErrorEvent,
-    Response,
     create_server_error,
 )
 
@@ -100,22 +98,3 @@ def handle_conversation_item_truncate_event(ctx: SessionContext, event: Conversa
 @event_router.register("conversation.item.delete")
 def handle_conversation_item_delete_event(ctx: SessionContext, event: ConversationItemDeleteEvent) -> None:
     ctx.conversation.delete_item(event.item_id)
-
-
-# Server Events
-
-
-@event_router.register("conversation.item.input_audio_transcription.completed")
-async def handle_conversation_item_input_audio_transcription_completed_event(
-    ctx: SessionContext, _event: ConversationItemInputAudioTranscriptionCompletedEvent
-) -> None:
-    if ctx.session.turn_detection is None or not ctx.session.turn_detection.create_response:
-        return
-
-    await ctx.response_manager.create_and_run(
-        model=ctx.session.model,
-        configuration=Response(
-            conversation="auto", input=list(ctx.conversation.items.values()), **ctx.session.model_dump()
-        ),
-        conversation=ctx.conversation,
-    )

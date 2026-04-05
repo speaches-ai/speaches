@@ -24,6 +24,7 @@ from speaches.types.realtime import (
     InputAudioBufferCommittedEvent,
     InputAudioBufferSpeechStartedEvent,
     InputAudioBufferSpeechStoppedEvent,
+    Response,
     TurnDetection,
     create_invalid_request_error,
     create_server_error,
@@ -104,7 +105,7 @@ def vad_detection_flow(
 
 
 @event_router.register("input_audio_buffer.append")
-def handle_input_audio_buffer_append(ctx: SessionContext, event: InputAudioBufferAppendEvent) -> None:
+async def handle_input_audio_buffer_append(ctx: SessionContext, event: InputAudioBufferAppendEvent) -> None:
     audio_chunk = audio_samples_from_file(BytesIO(base64.b64decode(event.audio)), 24000)
     # convert the audio data from 24kHz (sample rate defined in the API spec) to 16kHz (sample rate used by the VAD and for transcription)
     audio_chunk = resample_audio_data(audio_chunk, 24000, 16000)
@@ -114,10 +115,14 @@ def handle_input_audio_buffer_append(ctx: SessionContext, event: InputAudioBuffe
         vad_event = vad_detection_flow(input_audio_buffer, ctx.session.turn_detection, ctx)
         if vad_event is not None:
             ctx.pubsub.publish_nowait(vad_event)
+            if isinstance(vad_event, InputAudioBufferSpeechStoppedEvent):
+                item_id = vad_event.item_id
+                ctx.audio_buffers.rotate()
+                await commit_and_transcribe(ctx, item_id)
 
 
 @event_router.register("input_audio_buffer.commit")
-def handle_input_audio_buffer_commit(ctx: SessionContext, _event: InputAudioBufferCommitEvent) -> None:
+async def handle_input_audio_buffer_commit(ctx: SessionContext, _event: InputAudioBufferCommitEvent) -> None:
     input_audio_buffer = ctx.audio_buffers.current
     if input_audio_buffer.duration_ms < MIN_AUDIO_BUFFER_DURATION_MS:
         ctx.pubsub.publish_nowait(
@@ -126,13 +131,9 @@ def handle_input_audio_buffer_commit(ctx: SessionContext, _event: InputAudioBuff
             )
         )
     else:
-        ctx.pubsub.publish_nowait(
-            InputAudioBufferCommittedEvent(
-                previous_item_id=next(reversed(ctx.conversation.items), None),  # FIXME
-                item_id=input_audio_buffer.id,
-            )
-        )
+        item_id = input_audio_buffer.id
         ctx.audio_buffers.rotate()
+        await commit_and_transcribe(ctx, item_id)
 
 
 @event_router.register("input_audio_buffer.clear")
@@ -142,22 +143,13 @@ def handle_input_audio_buffer_clear(ctx: SessionContext, _event: InputAudioBuffe
     ctx.pubsub.publish_nowait(InputAudioBufferClearedEvent())
 
 
-# Server Events
-
-
-@event_router.register("input_audio_buffer.speech_stopped")
-def handle_input_audio_buffer_speech_stopped(ctx: SessionContext, event: InputAudioBufferSpeechStoppedEvent) -> None:
-    ctx.audio_buffers.rotate()
-    ctx.pubsub.publish_nowait(
-        InputAudioBufferCommittedEvent(
-            previous_item_id=next(reversed(ctx.conversation.items), None),  # FIXME
-            item_id=event.item_id,
-        )
+async def commit_and_transcribe(ctx: SessionContext, item_id: str) -> None:
+    event = InputAudioBufferCommittedEvent(
+        previous_item_id=next(reversed(ctx.conversation.items), None),  # FIXME
+        item_id=item_id,
     )
+    ctx.pubsub.publish_nowait(event)
 
-
-@event_router.register("input_audio_buffer.committed")
-async def handle_input_audio_buffer_committed(ctx: SessionContext, event: InputAudioBufferCommittedEvent) -> None:
     input_audio_buffer = ctx.audio_buffers.get(event.item_id)
 
     transcriber = InputAudioBufferTranscriber(
@@ -179,3 +171,15 @@ async def handle_input_audio_buffer_committed(ctx: SessionContext, event: InputA
                 message=e.message,
             )
         )
+        return
+
+    if ctx.session.turn_detection is None or not ctx.session.turn_detection.create_response:
+        return
+
+    await ctx.response_manager.create_and_run(
+        model=ctx.session.model,
+        configuration=Response(
+            conversation="auto", input=list(ctx.conversation.items.values()), **ctx.session.model_dump()
+        ),
+        conversation=ctx.conversation,
+    )
