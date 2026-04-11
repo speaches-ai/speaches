@@ -70,6 +70,7 @@ test = [
     "pytest-mock>=3.14.1",
     "pytest-xdist>=3.8.0",
     "pytest>=8.4.1",
+    "pytest-timeout>=2.4.0",
     "srt>=3.5.3",
     "webvtt-py>=0.5.1",
 ]
