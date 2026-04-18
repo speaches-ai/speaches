@@ -46,3 +46,5 @@ jobs:
       - run: uv run pytest -m "not requires_openai" tests/
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN_W_PYANNOTE_GATED_MODEL_ACCESS }}
+          CHAT_COMPLETION_BASE_URL: https://api.openai.com/v1
+          CHAT_COMPLETION_API_KEY: ${{ secrets.OPENAI_API_KEY }}
