@@ -14,10 +14,9 @@ from speaches.realtime.utils import task_done_callback
 from speaches.types.realtime import (
     CLIENT_EVENT_TYPES,
     SERVER_EVENT_TYPES,
-    Error,
-    ErrorEvent,
     Event,
     client_event_type_adapter,
+    create_invalid_request_error,
     server_event_type_adapter,
 )
 
@@ -117,9 +116,7 @@ class WsServerMessageManager(BaseMessageManager):
                 event = client_event_type_adapter.validate_json(data)
             except ValidationError as e:
                 logger.exception("Received an invalid client event")
-                await ws.send_text(
-                    ErrorEvent(error=Error(type="invalid_request_error", message=str(e))).model_dump_json()
-                )
+                await ws.send_text(create_invalid_request_error(message=str(e)).model_dump_json())
                 continue
 
             self.event_pubsub.publish_nowait(event)

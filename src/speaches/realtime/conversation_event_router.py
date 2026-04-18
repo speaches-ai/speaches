@@ -14,8 +14,7 @@ from speaches.types.realtime import (
     ConversationItemDeleteEvent,
     ConversationItemDoneEvent,
     ConversationItemRetrievedEvent,
-    Error,
-    ErrorEvent,
+    create_invalid_request_error,
     create_server_error,
 )
 
@@ -45,12 +44,9 @@ class Conversation:
         if item.id in self.items:
             # NOTE: OpenAI allows creating an item with an already existing ID without returning an error. Speaches intentionally deviates from this behavior and returns an error instead.
             self.pubsub.publish_nowait(
-                ErrorEvent(
-                    error=Error(
-                        type="invalid_request_error",
-                        message=f"Error adding item: the item with id '{item.id}' already exists.",
-                        code="item_create_duplicate_id",
-                    )
+                create_invalid_request_error(
+                    message=f"Error adding item: the item with id '{item.id}' already exists.",
+                    code="item_create_duplicate_id",
                 )
             )
             return
@@ -64,12 +60,10 @@ class Conversation:
             self.items = new_items
         elif previous_item_id is not None:
             if previous_item_id not in self.items:
+                # NOTE: should `code` be included in this error?
                 self.pubsub.publish_nowait(
-                    ErrorEvent(
-                        error=Error(
-                            type="invalid_request_error",
-                            message=f"Error adding item: the previous item with id '{previous_item_id}' does not exist.",
-                        )
+                    create_invalid_request_error(
+                        message=f"Error adding item: the previous item with id '{previous_item_id}' does not exist."
                     )
                 )
                 return
@@ -91,12 +85,9 @@ class Conversation:
     def delete_item(self, item_id: str) -> None:
         if item_id not in self.items:
             self.pubsub.publish_nowait(
-                ErrorEvent(
-                    error=Error(
-                        type="invalid_request_error",
-                        message=f"Error deleting item: the item with id '{item_id}' does not exist.",
-                        code="item_delete_invalid_item_id",
-                    )
+                create_invalid_request_error(
+                    message=f"Error deleting item: the item with id '{item_id}' does not exist.",
+                    code="item_delete_invalid_item_id",
                 )
             )
         else:
@@ -117,12 +108,9 @@ def handle_conversation_item_retrieve_event(ctx: SessionContext, event: Conversa
     item = ctx.conversation.items.get(event.item_id)
     if item is None:
         ctx.pubsub.publish_nowait(
-            ErrorEvent(
-                error=Error(
-                    type="invalid_request_error",
-                    message=f"Error retrieving item: the item with id '{event.item_id}' does not exist.",
-                    code="item_retrieve_invalid_item_id",
-                )
+            create_invalid_request_error(
+                message=f"Error retrieving item: the item with id '{event.item_id}' does not exist.",
+                code="item_retrieve_invalid_item_id",
             )
         )
     else:

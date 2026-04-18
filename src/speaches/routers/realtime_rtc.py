@@ -44,13 +44,12 @@ from speaches.realtime.utils import generate_event_id
 from speaches.routers.realtime_ws import event_listener
 from speaches.types.realtime import (
     SERVER_EVENT_TYPES,
-    Error,
-    ErrorEvent,
     FullMessageEvent,
     InputAudioBufferAppendEvent,
     PartialMessageEvent,
     SessionCreatedEvent,
     client_event_type_adapter,
+    create_invalid_request_error,
     server_event_type_adapter,
 )
 
@@ -159,7 +158,7 @@ def message_handler(ctx: SessionContext, message: str) -> None:
     try:
         event = client_event_type_adapter.validate_json(message)
     except ValidationError as e:
-        ctx.pubsub.publish_nowait(ErrorEvent(error=Error(type="invalid_request_error", message=str(e))))
+        ctx.pubsub.publish_nowait(create_invalid_request_error(message=str(e)))
         logger.exception(f"Received an invalid client event: {message}")
         return
 

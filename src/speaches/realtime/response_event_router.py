@@ -21,7 +21,6 @@ from speaches.types.realtime import (
     ConversationItemFunctionCall,
     ConversationItemMessage,
     Error,
-    ErrorEvent,
     RealtimeResponse,
     Response,
     # TODO: RealtimeResponseStatus,
@@ -251,9 +250,7 @@ class ResponseHandler:
             await handler(merge_chunks_and_chunk_stream(chunk, chunk_stream=chunk_stream))
         except openai.APIError as e:
             logger.exception("Error while generating response")
-            self.pubsub.publish_nowait(
-                ErrorEvent(error=Error(type="server_error", message=f"{type(e).__name__}: {e.message}"))
-            )
+            self.pubsub.publish_nowait(create_server_error(message=f"{type(e).__name__}: {e.message}"))
             raise
 
     def start(self) -> None:
