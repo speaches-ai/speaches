@@ -13,6 +13,7 @@ from openai.types.realtime import (
 )
 from openai.types.realtime import (
     ConversationItemDeleteEvent,
+    ConversationItemRetrieveEvent,
     ConversationItemTruncateEvent,
     InputAudioBufferAppendEvent,
     InputAudioBufferClearEvent,
@@ -79,12 +80,12 @@ NOT_GIVEN = NotGiven()
 
 
 class PartText(BaseModel):
-    type: Literal["text"] = "text"
+    type: Literal["output_text"] = "output_text"
     text: str
 
 
 class PartAudio(BaseModel):
-    type: Literal["audio"] = "audio"
+    type: Literal["output_audio"] = "output_audio"
     transcript: str
 
 
@@ -93,7 +94,7 @@ type Part = PartText | PartAudio
 
 # TODO: document that this type is fully custom and doesn't exist in the OpenAI API
 class ConversationItemContentAudio(BaseModel):
-    type: Literal["audio"] = "audio"
+    type: Literal["output_audio"] = "output_audio"
     transcript: str
     audio: str
 
@@ -186,6 +187,26 @@ class ConversationItemCreatedEvent(BaseModel):
     event_id: str = Field(default_factory=generate_event_id)
     item: ConversationItem
     previous_item_id: str | None
+
+
+class ConversationItemAddedEvent(BaseModel):
+    type: Literal["conversation.item.added"] = "conversation.item.added"
+    event_id: str = Field(default_factory=generate_event_id)
+    item: ConversationItem
+    previous_item_id: str | None
+
+
+class ConversationItemDoneEvent(BaseModel):
+    type: Literal["conversation.item.done"] = "conversation.item.done"
+    event_id: str = Field(default_factory=generate_event_id)
+    item: ConversationItem
+    previous_item_id: str | None
+
+
+class ConversationItemRetrievedEvent(BaseModel):
+    type: Literal["conversation.item.retrieved"] = "conversation.item.retrieved"
+    event_id: str = Field(default_factory=generate_event_id)
+    item: ConversationItem
 
 
 class ResponseOutputItemAddedEvent(BaseModel):
@@ -512,11 +533,19 @@ type InputAudioBufferServerEvent = (
     | InputAudioBufferSpeechStoppedEvent
 )
 
-type ConversationClientEvent = ConversationItemCreateEvent | ConversationItemTruncateEvent | ConversationItemDeleteEvent
+type ConversationClientEvent = (
+    ConversationItemCreateEvent
+    | ConversationItemTruncateEvent
+    | ConversationItemDeleteEvent
+    | ConversationItemRetrieveEvent
+)
 
 type ConversationServerEvent = (
     ConversationCreatedEvent
     | ConversationItemCreatedEvent
+    | ConversationItemAddedEvent
+    | ConversationItemDoneEvent
+    | ConversationItemRetrievedEvent
     | ConversationItemInputAudioTranscriptionCompletedEvent
     | ConversationItemInputAudioTranscriptionFailedEvent
     | ConversationItemTruncatedEvent
@@ -566,6 +595,7 @@ CLIENT_EVENT_TYPES = {
     "conversation.item.create",
     "conversation.item.truncate",
     "conversation.item.delete",
+    "conversation.item.retrieve",
     "response.create",
     "response.cancel",
 }
@@ -579,6 +609,9 @@ SERVER_EVENT_TYPES = {
     "input_audio_buffer.speech_started",
     "input_audio_buffer.speech_stopped",
     "conversation.item.created",
+    "conversation.item.added",
+    "conversation.item.done",
+    "conversation.item.retrieved",
     "conversation.item.input_audio_transcription.completed",
     "conversation.item.input_audio_transcription.failed",
     "conversation.item.truncated",

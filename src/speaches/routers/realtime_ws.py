@@ -86,8 +86,13 @@ async def realtime(
     await ws.accept()
     logger.info(f"Accepted websocket connection with intent: {intent}")
 
+    if config.loopback_host_url is not None:
+        loopback_base_url = f"{config.loopback_host_url}/v1"
+    else:
+        host = "127.0.0.1" if config.host in ("0.0.0.0", "::") else config.host
+        loopback_base_url = f"http://{host}:{config.port}/v1"
     completion_client = AsyncOpenAI(
-        base_url=f"http://{config.host}:{config.port}/v1",
+        base_url=loopback_base_url,
         api_key=config.api_key.get_secret_value() if config.api_key else "cant-be-empty",
         max_retries=0,
     ).chat.completions
