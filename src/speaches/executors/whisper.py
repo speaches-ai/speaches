@@ -160,6 +160,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
             )
             segments, transcription_info = whisper_model.transcribe(
                 request.audio.data,
+                batch_size=1,
                 task="transcribe",
                 language=request.language,
                 initial_prompt=request.prompt,
@@ -199,6 +200,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
             )
             segments, _transcription_info = whisper_model.transcribe(
                 request.audio.data,
+                batch_size=1,
                 task="transcribe",
                 language=request.language,
                 initial_prompt=request.prompt,
@@ -245,6 +247,7 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
 
             segments, transcription_info = whisper_model.transcribe(
                 request.audio.data,
+                batch_size=1,
                 task="translate",
                 initial_prompt=request.prompt,
                 temperature=request.temperature,
