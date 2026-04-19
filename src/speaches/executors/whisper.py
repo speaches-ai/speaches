@@ -151,13 +151,36 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 f"'{request.response_format}' response format is not supported for '{request.model}' model."
             )
         timelog_start = time.perf_counter()
+
+        clip_timestamps = merge_segments(
+            request.speech_segments,
+            request.vad_options,
+        )
+
+        # Handle case when VAD detects no speech in audio (silence, hold music, noise, etc.)
+        # Return empty transcription instead of raising "No clip timestamps found" error
+        if not clip_timestamps:
+            logger.info(
+                f"VAD detected no speech in {request.audio.duration} seconds of audio, returning empty transcription"
+            )
+            empty_transcription_info = faster_whisper.transcribe.TranscriptionInfo(
+                language=request.language or "en",
+                language_probability=0.0,
+                duration=request.audio.duration,
+                duration_after_vad=0.0,
+                all_language_probs=None,
+                transcription_options=faster_whisper.transcribe.TranscriptionOptions(),
+                vad_options=request.vad_options,
+            )
+            return segments_to_transcription_response(
+                [],
+                empty_transcription_info,
+                request.response_format,
+            )
+
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
-            clip_timestamps = merge_segments(
-                request.speech_segments,
-                request.vad_options,
-            )
             segments, transcription_info = whisper_model.transcribe(
                 request.audio.data,
                 task="transcribe",
@@ -190,13 +213,26 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         **_kwargs,
     ) -> Generator[StreamingTranscriptionEvent]:
         timelog_start = time.perf_counter()
+
+        clip_timestamps = merge_segments(
+            request.speech_segments,
+            request.vad_options,
+        )
+
+        # Handle case when VAD detects no speech in audio (silence, hold music, noise, etc.)
+        # Return empty transcription instead of raising "No clip timestamps found" error
+        if not clip_timestamps:
+            logger.info(
+                f"VAD detected no speech in {request.audio.duration} seconds of audio, returning empty transcription"
+            )
+            yield openai.types.audio.TranscriptionTextDoneEvent(
+                type="transcript.text.done", text="", logprobs=None
+            )
+            return
+
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
-            clip_timestamps = merge_segments(
-                request.speech_segments,
-                request.vad_options,
-            )
             segments, _transcription_info = whisper_model.transcribe(
                 request.audio.data,
                 task="transcribe",
