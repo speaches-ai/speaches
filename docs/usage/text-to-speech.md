@@ -8,13 +8,14 @@
 export SPEACHES_BASE_URL="http://localhost:8000"
 
 # Listing all available TTS models
-uvx speaches-cli registry ls --task text-to-speech | jq '.data | [].id'
+uvx speaches-cli registry ls --task text-to-speech | jq -r '.data[]?.id'
 
 # Downloading a TTS model
 uvx speaches-cli model download speaches-ai/Kokoro-82M-v1.0-ONNX
 
 # Check that the model has been installed
-uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == "speaches-ai/Kokoro-82M-v1.0-ONNX"))'
+uvx speaches-cli model ls --task text-to-speech \
+  | jq -r '.data[]? | select(.id | contains("Kokoro-82M-v1.0-ONNX")) | .id'
 ```
 
 ## Usage
