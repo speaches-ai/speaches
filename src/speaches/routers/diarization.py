@@ -41,6 +41,59 @@ class DiarizationResponse(BaseModel):
     """Diarization segments annotated with timestamps and speaker labels."""
 
 
+def _to_3d(waveform: torch.Tensor) -> torch.Tensor:
+    """Ensure waveform is [batch, channels, samples] as required by
+    PyannoteAudioPretrainedSpeakerEmbedding / wespeaker models."""
+    if waveform.dim() == 1:
+        # [samples] -> [1, 1, samples]
+        return waveform.unsqueeze(0).unsqueeze(0)
+    if waveform.dim() == 2:
+        # [channels, samples] -> [1, channels, samples]
+        return waveform.unsqueeze(0)
+    return waveform  # already 3D
+
+
+def _embed(embedding_model, waveform: torch.Tensor, sample_rate: int) -> np.ndarray:
+    """Compute a 1-D speaker embedding vector.
+
+    Handles both standard nn.Module (via pyannote Inference) and
+    PyannoteAudioPretrainedSpeakerEmbedding (which has no .eval() and
+    expects a 3-D tensor [batch, channels, samples]).
+
+    Always returns a flat 1-D array so that np.dot / cosine similarity work.
+    """
+    audio_dict = {"waveform": waveform, "sample_rate": sample_rate}
+    try:
+        # Standard pyannote path: wrap in Inference
+        from pyannote.audio import Inference
+        inference = Inference(embedding_model, window="whole")
+        return np.asarray(inference(audio_dict)).flatten()
+    except AttributeError:
+        # PyannoteAudioPretrainedSpeakerEmbedding: call directly with 3-D tensor.
+        # Returns [batch, embedding_dim] → flatten to 1-D.
+        logger.debug("Falling back to direct embedding call (no .eval() on model)")
+        return np.asarray(embedding_model(_to_3d(waveform))).flatten()
+
+
+def _embed_crop(embedding_model, main_audio: dict, turn) -> np.ndarray:
+    """Crop a turn from main audio and return a flat embedding vector."""
+    try:
+        from pyannote.audio import Inference
+        inference = Inference(embedding_model, window="whole")
+        return np.asarray(inference.crop(main_audio, turn)).flatten()
+    except AttributeError:
+        # Crop manually: slice waveform to the turn's time range.
+        # main_audio["waveform"] is [1, samples] (2-D) as built in diarize_audio.
+        waveform: torch.Tensor = main_audio["waveform"]
+        sample_rate: int = main_audio["sample_rate"]
+        start_sample = int(turn.start * sample_rate)
+        end_sample = int(turn.end * sample_rate)
+        cropped = waveform[:, start_sample:end_sample]  # [1, samples]
+        if cropped.shape[-1] == 0:
+            raise ValueError(f"Empty crop for turn {turn}")
+        return _embed(embedding_model, cropped, sample_rate)
+
+
 def _map_to_known_speakers(
     pipeline: Pipeline,
     waveform: torch.Tensor,
@@ -48,18 +101,14 @@ def _map_to_known_speakers(
     diarization: DiarizeOutput,
     known_speakers: list[KnownSpeaker],
 ) -> dict[Hashable, str]:
-    from pyannote.audio import Inference
-
-    inference = Inference(pipeline._embedding, window="whole")  # noqa: SLF001
+    embedding_model = pipeline._embedding  # noqa: SLF001
     main_audio = {"waveform": waveform, "sample_rate": sample_rate}
 
     # Compute embeddings for reference speakers
     known_embeddings: dict[str, np.ndarray] = {}
     for ks in known_speakers:
         ref_waveform = torch.from_numpy(ks.audio.data).unsqueeze(0).float()
-        known_embeddings[ks.name] = np.asarray(
-            inference({"waveform": ref_waveform, "sample_rate": ks.audio.sample_rate})
-        )
+        known_embeddings[ks.name] = _embed(embedding_model, ref_waveform, ks.audio.sample_rate)
 
     # Collect embeddings per diarized speaker across all their turns
     speaker_embeddings: dict[str, list[np.ndarray]] = {}
@@ -67,7 +116,7 @@ def _map_to_known_speakers(
     speaker_track_gen = cast("Iterator[tuple[Segment, TrackName, Hashable]]", speaker_track_gen)
     for turn, _, speaker in speaker_track_gen:
         try:
-            emb = np.asarray(inference.crop(main_audio, turn))
+            emb = _embed_crop(embedding_model, main_audio, turn)
             speaker_embeddings.setdefault(speaker, []).append(emb)  # pyrefly: ignore[no-matching-overload]
         except Exception:
             logger.exception(f"Failed to extract embedding for speaker {speaker} turn {turn}")
