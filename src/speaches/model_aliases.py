@@ -5,18 +5,32 @@ from typing import Annotated
 
 from pydantic import BeforeValidator, Field
 
-MODEL_ID_ALIASES_PATH = Path("model_aliases.json")  # TODO: make configurable
-
+MODEL_ID_ALIASES_PATH = Path(__file__).resolve().parent / "model_aliases.json"
 
 @lru_cache
-def load_model_id_aliases() -> dict[str, str]:
-    return json.loads(MODEL_ID_ALIASES_PATH.read_text())
+def load_model_id_aliases():
+    if not MODEL_ID_ALIASES_PATH.exists():
+        return {}
 
+    text = MODEL_ID_ALIASES_PATH.read_text().strip()
+
+    if not text:
+        return {}
+
+    try:
+        return json.loads(text)
+    except Exception:
+        return {}
 
 def resolve_model_id_alias(model_id: str) -> str:
     model_id_aliases = load_model_id_aliases()
-    return model_id_aliases.get(model_id, model_id)
 
+    if not isinstance(model_id, str):
+        return str(model_id)
+
+    model_id = model_id.strip()
+
+    return model_id_aliases.get(model_id, model_id)
 
 ModelId = Annotated[
     str,
