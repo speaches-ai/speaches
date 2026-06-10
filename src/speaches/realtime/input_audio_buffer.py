@@ -82,9 +82,9 @@ class InputAudioBuffer:
         if self.vad_state.audio_start_ms is None:
             return self.data
         else:
-            assert self.vad_state.audio_end_ms is not None
+            
             return self.data[
-                self.vad_state.audio_start_ms * MS_SAMPLE_RATE : self.vad_state.audio_end_ms * MS_SAMPLE_RATE
+                self.vad_state.audio_start_ms * MS_SAMPLE_RATE : (self.vad_state.audio_end_ms * MS_SAMPLE_RATE if self.vad_state.audio_end_ms is not None else len(self.data))
             ]
 
 
