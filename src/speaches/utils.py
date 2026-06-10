@@ -110,7 +110,14 @@ def async_to_sync_generator[T](async_gen: AsyncGenerator[T]) -> Generator[T]:
 
 
 # TODO: maybe add length validation. gte 2s lte 10s
-def parse_data_url_to_audio(data_url: str) -> np.typing.NDArray[np.float32]:
+def parse_data_url_to_audio(data_url: str) -> tuple[np.typing.NDArray[np.float32], int]:
+    """Decode a data: URL into mono float32 PCM and its sample rate.
+
+    Returns ``(audio_data, sample_rate)``. For raw/PCM payloads the rate is
+    unknown and assumed to be 16000 Hz (the project-wide convention); for
+    encoded files (wav/flac/...) the real sample rate from the container is
+    returned so callers can resample correctly.
+    """
     if not data_url.startswith("data:"):
         msg = f"Invalid data URL format: {data_url[:50]}..."
         raise ValueError(msg)
@@ -124,13 +131,14 @@ def parse_data_url_to_audio(data_url: str) -> np.typing.NDArray[np.float32]:
         if mime_type in ("audio/pcm", "audio/raw"):
             audio_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
             audio_data = audio_int16.astype(np.float32) / 32768.0
+            sample_rate = 16000
         else:
-            audio_data, _sample_rate = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+            audio_data, sample_rate = sf.read(io.BytesIO(audio_bytes), dtype="float32")
 
             if len(audio_data.shape) > 1:
                 audio_data = audio_data.mean(axis=1)
 
-        return audio_data  # pyrefly: ignore[bad-return]
+        return audio_data, int(sample_rate)  # pyrefly: ignore[bad-return]
     except Exception as e:
         logger.exception("Failed to parse data URL to audio")
         msg = f"Failed to parse audio data URL: {e}"

@@ -1,5 +1,6 @@
 from collections.abc import Generator
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -68,6 +69,55 @@ class PyannoteDiarizationModelRegistry(ModelRegistry):
 pyannote_diarization_model_registry = PyannoteDiarizationModelRegistry(hf_model_filter=hf_model_filter)
 
 
+def _maybe_override_clustering_threshold(pipeline: "Pipeline") -> None:
+    """Override the agglomerative clustering threshold from the environment.
+
+    Lower threshold  -> speakers are split more aggressively (more speakers, less
+                        chance that two distinct voices end up in one cluster).
+    Higher threshold -> fewer speakers (more merging).
+
+    Set DIARIZATION_CLUSTERING_THRESHOLD (e.g. "0.6") to take effect. The parameter
+    lives at different paths depending on the pyannote pipeline/version
+    (nested `clustering.threshold` on 3.x, flat `clustering_threshold` on
+    community-1), so we patch whichever key actually exists.
+    """
+    raw = os.getenv("DIARIZATION_CLUSTERING_THRESHOLD")
+    if raw is None:
+        return
+    try:
+        threshold = float(raw)
+    except ValueError:
+        logger.warning("Ignoring invalid DIARIZATION_CLUSTERING_THRESHOLD=%r (not a float)", raw)
+        return
+
+    try:
+        params = pipeline.parameters(instantiated=True)
+    except Exception:
+        logger.exception("Could not read pipeline parameters; clustering threshold not overridden")
+        return
+
+    updated = False
+    if isinstance(params.get("clustering"), dict) and "threshold" in params["clustering"]:
+        params["clustering"]["threshold"] = threshold
+        updated = True
+    if "clustering_threshold" in params:
+        params["clustering_threshold"] = threshold
+        updated = True
+
+    if not updated:
+        logger.warning(
+            "No clustering threshold parameter found to override. Available top-level params: %s",
+            list(params.keys()),
+        )
+        return
+
+    try:
+        pipeline.instantiate(params)
+        logger.info("Overrode clustering threshold to %.3f", threshold)
+    except Exception:
+        logger.exception("Failed to re-instantiate pipeline with overridden clustering threshold")
+
+
 class PyannoteDiarizationModelManager(BaseModelManager["Pipeline"]):
     def __init__(self, ttl: int) -> None:
         super().__init__(ttl)
@@ -79,6 +129,7 @@ class PyannoteDiarizationModelManager(BaseModelManager["Pipeline"]):
         logger.info(f"Loading pyannote diarization pipeline: {model_id}")
         pipeline = Pipeline.from_pretrained(model_id)
         assert pipeline is not None, f"Failed to load pyannote diarization pipeline for model '{model_id}'"
+        _maybe_override_clustering_threshold(pipeline)
         if torch.cuda.is_available():
             logger.info("CUDA available, moving diarization pipeline to GPU")
             pipeline.to(torch.device("cuda"))
