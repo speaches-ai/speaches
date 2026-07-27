@@ -151,13 +151,41 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
                 f"'{request.response_format}' response format is not supported for '{request.model}' model."
             )
         timelog_start = time.perf_counter()
+
+        clip_timestamps = merge_segments(
+            request.speech_segments,
+            request.vad_options,
+        )
+
+        # `merge_segments` returns an empty list when the VAD detects no speech
+        # (silence, hold music, background noise only). Passing empty
+        # `clip_timestamps` together with `vad_filter=False` makes
+        # faster-whisper raise `RuntimeError: No clip timestamps found` for any
+        # audio longer than `chunk_length`, surfacing as a 500. Shorter audio
+        # survives only because faster-whisper falls back to the whole clip.
+        # Return an empty transcription instead, and skip loading the model
+        # since there is nothing to transcribe.
+        if not clip_timestamps:
+            logger.info(
+                f"VAD detected no speech in {request.audio.duration} seconds of audio, returning an empty transcription"
+            )
+            return segments_to_transcription_response(
+                [],
+                faster_whisper.transcribe.TranscriptionInfo(
+                    language=request.language or "en",
+                    language_probability=0.0,
+                    duration=request.audio.duration,
+                    duration_after_vad=0.0,
+                    all_language_probs=None,
+                    transcription_options=None,  # pyrefly: ignore[bad-argument-type]
+                    vad_options=request.vad_options,
+                ),
+                response_format=request.response_format,
+            )
+
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
-            clip_timestamps = merge_segments(
-                request.speech_segments,
-                request.vad_options,
-            )
             segments, transcription_info = whisper_model.transcribe(
                 request.audio.data,
                 task="transcribe",
@@ -190,13 +218,24 @@ class WhisperModelManager(BaseModelManager[WhisperModel]):
         **_kwargs,
     ) -> Generator[StreamingTranscriptionEvent]:
         timelog_start = time.perf_counter()
+
+        clip_timestamps = merge_segments(
+            request.speech_segments,
+            request.vad_options,
+        )
+
+        # See `handle_non_streaming_transcription_request`: no speech detected
+        # means faster-whisper would raise instead of returning an empty result.
+        if not clip_timestamps:
+            logger.info(
+                f"VAD detected no speech in {request.audio.duration} seconds of audio, returning an empty transcription"
+            )
+            yield openai.types.audio.TranscriptionTextDoneEvent(type="transcript.text.done", text="", logprobs=None)
+            return
+
         with self.load_model(request.model) as whisper:
             whisper_model = BatchedInferencePipeline(model=whisper)
 
-            clip_timestamps = merge_segments(
-                request.speech_segments,
-                request.vad_options,
-            )
             segments, _transcription_info = whisper_model.transcribe(
                 request.audio.data,
                 task="transcribe",
@@ -305,7 +344,11 @@ def segments_to_transcription_response(
                     for segment in segments
                     for word in (segment.words or [])
                 ]
-                if transcription_info.transcription_options.word_timestamps
+                # `transcription_options` is None when the response is built
+                # without running the model (no speech detected by the VAD),
+                # in which case there are no segments and no words either.
+                if transcription_info.transcription_options is not None
+                and transcription_info.transcription_options.word_timestamps
                 else None,
             )
 
