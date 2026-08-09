@@ -16,7 +16,7 @@ def test_zero_duration_audio_does_not_crash(monkeypatch: pytest.MonkeyPatch) -> 
     # crashed with ZeroDivisionError — even when debug logging was disabled.
     monkeypatch.setattr(
         "speaches.dependencies.decode_audio",
-        lambda *args, **kwargs: np.array([], dtype=np.float32),
+        lambda _file, **_kwargs: np.array([], dtype=np.float32),
     )
     upload_file = UploadFile(file=io.BytesIO(b""), filename="empty.wav")
 
