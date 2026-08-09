@@ -120,5 +120,4 @@ def synthesize(
     except ValueError as e:
         if "speed must be between" in str(e):
             logger.warning("Unsupported speed value requested for speech synthesis")
-            raise HTTPException(status_code=422, detail=str(e)) from e
-        raise
+        raise HTTPException(status_code=422, detail=str(e)) from e

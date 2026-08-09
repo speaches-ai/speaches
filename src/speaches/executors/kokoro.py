@@ -219,12 +219,18 @@ class KokoroModelManager(BaseModelManager[Kokoro]):
         voice_language = next(v.language for v in VOICES if v.name == request.voice)
         with self.load_model(request.model) as tts:
             start = time.perf_counter()
-            async_stream = tts.create_stream(
-                request.text,
-                request.voice,
-                lang=voice_language,
-                speed=request.speed,
-            )
+            try:
+                async_stream = tts.create_stream(
+                    request.text,
+                    request.voice,
+                    lang=voice_language,
+                    speed=request.speed,
+                )
+            except RuntimeError as e:
+                if "not supported" in str(e):
+                    msg = f"Language '{voice_language}' is not supported by the phonemizer backend for voice '{request.voice}'. {e}"
+                    raise ValueError(msg) from e
+                raise
             # HACK: converting an async generator to a sync generator
             sync_stream = async_to_sync_generator(async_stream)
             for audio_data, _ in sync_stream:
