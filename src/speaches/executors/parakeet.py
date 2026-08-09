@@ -98,7 +98,16 @@ class NemoConformerTdtModelRegistry(ModelRegistry[Model, NemoConformerTdtModelFi
         )
 
     def download_model_files(self, model_id: str) -> None:
+        # Mirror onnx-asr's loader (onnx_asr/loader.py) so the snapshot contains everything the
+        # model needs at load time: config.json is required by get_model_files() above, and ONNX
+        # external-data sidecars (e.g. encoder-model.onnx.data) are required by onnxruntime.
+        # Without them, offline (HF_HUB_OFFLINE=1) loading fails despite the download reporting success.
         allow_patterns = list(NemoConformerTdt._get_model_files(quantization=None).values())  # noqa: SLF001
+        allow_patterns = [
+            "config.json",
+            *allow_patterns,
+            *(str(path.with_suffix(".onnx?data")) for file in allow_patterns if (path := Path(file)).suffix == ".onnx"),
+        ]
 
         _model_repo_path_str = huggingface_hub.snapshot_download(
             repo_id=model_id, repo_type="model", allow_patterns=[*allow_patterns, "README.md"]
