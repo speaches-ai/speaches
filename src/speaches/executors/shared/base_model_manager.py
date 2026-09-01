@@ -129,7 +129,12 @@ class BaseModelManager[T](ABC):
             model = self.loaded_models.get(model_id)
             if model is None:
                 raise KeyError(f"Model {model_id} not found")
-            del self.loaded_models[model_id]
+        # Removing the entry is `unload()`'s job, via `model_unloaded_callback`.
+        # Doing it here instead meant a refused unload -- `SelfDisposingModel.unload()`
+        # raises while `ref_count > 0` -- left the model absent from `loaded_models`,
+        # and therefore from `GET /api/ps`, while its weights were still resident and
+        # no longer reachable by `DELETE /api/ps/{model_id}`. `self._lock` is released
+        # before `unload()` runs, so the callback can re-acquire it.
         model.unload()
 
     def load_model(self, model_id: str) -> SelfDisposingModel[T]:
