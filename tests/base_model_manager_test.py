@@ -62,6 +62,19 @@ def test_unload_model_keeps_the_entry_when_the_model_is_in_use(manager: FakeMode
     assert "m" not in manager.loaded_models
 
 
+def test_zero_ttl_unloads_and_deregisters_on_exit() -> None:
+    # ttl=0 tears the model down inside the `__exit__` lock hold, so the
+    # registry entry is gone by the time the with-block returns.
+    manager = FakeModelManager(ttl=0)
+    handle = manager.load_model("m")
+    with handle:
+        pass
+    assert handle.model is None
+    assert "m" not in manager.loaded_models
+    with pytest.raises(ValueError, match="has been unloaded"), handle:
+        pass
+
+
 def test_load_model_waits_out_an_in_flight_unload(manager: FakeModelManager) -> None:
     # While `unload_model` holds the registry lock across `unload()`, a
     # concurrent `load_model` must wait for the entry to be removed rather

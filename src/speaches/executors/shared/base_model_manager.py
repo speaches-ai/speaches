@@ -59,21 +59,26 @@ class SelfDisposingModel[T]:
                 raise ValueError(f"Model {self.model_id} is not loaded. {self.ref_count=}")
             if self.ref_count > 0:
                 raise ValueError(f"Model {self.model_id} is still in use. {self.ref_count=}")
-            if self.expire_timer:
-                self.expire_timer.cancel()
-            self.model = None
-            # Mark the handle dead while `rlock` is still held, so a thread
-            # already holding it cannot enter `__enter__` afterwards and
-            # reload weights the registry no longer tracks.
-            self.unloaded = True
-            gc.collect()
-            logger.info(f"Model {self.model_id} unloaded")
+            self._unload_locked()
         # The callback takes the manager's `_lock`, and `unload_model` holds
         # that lock across `unload()`. Running the callback inside `rlock`
         # would hold the locks in the opposite order and could deadlock, so
         # it fires only after `rlock` is released.
         if self.model_unloaded_callback is not None:
             self.model_unloaded_callback(self)
+
+    def _unload_locked(self) -> None:
+        # Caller holds `rlock` and has already checked the model is resident
+        # and unused.
+        if self.expire_timer:
+            self.expire_timer.cancel()
+        self.model = None
+        # Mark the handle dead while `rlock` is still held, so a thread
+        # already holding it cannot enter `__enter__` afterwards and
+        # reload weights the registry no longer tracks.
+        self.unloaded = True
+        gc.collect()
+        logger.info(f"Model {self.model_id} unloaded")
 
     def _load(self) -> None:
         with self.rlock:
@@ -92,7 +97,7 @@ class SelfDisposingModel[T]:
             logger.debug(f"Incremented ref count for {self.model_id}, {self.ref_count=}")
 
     def _decrement_ref(self) -> None:
-        unload_now = False
+        unloaded = False
         with self.rlock:
             self.ref_count -= 1
             logger.debug(f"Decremented ref count for {self.model_id}, {self.ref_count=}")
@@ -103,14 +108,20 @@ class SelfDisposingModel[T]:
                     self.expire_timer.start()
                 elif self.ttl == 0:
                     logger.info(f"Model {self.model_id} is idle, unloading immediately")
-                    unload_now = True
+                    if self.model is not None:
+                        # Tear down inside this `rlock` hold. Releasing it
+                        # first would let another request enter the handle and
+                        # bump `ref_count`, turning this request's `__exit__`
+                        # into a 500 for a call that succeeded.
+                        self._unload_locked()
+                        unloaded = True
                 else:
                     logger.info(f"Model {self.model_id} is idle, not unloading")
-        # `unload()` must not run while `rlock` is still held: its callback
-        # takes the manager `_lock`, and `unload_model` already runs
-        # `_lock` -> `rlock`, so nesting the other order can deadlock.
-        if unload_now:
-            self.unload()
+        # The callback takes the manager `_lock`, so it must not run while
+        # `rlock` is held: `unload_model` already runs `_lock` -> `rlock`,
+        # and nesting the other order can deadlock.
+        if unloaded and self.model_unloaded_callback is not None:
+            self.model_unloaded_callback(self)
 
     def __enter__(self) -> T:
         with self.rlock:
