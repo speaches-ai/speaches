@@ -78,7 +78,8 @@ def get_model_card_data_from_cached_repo_info(
     cached_repo_info: huggingface_hub.CachedRepoInfo,
 ) -> huggingface_hub.ModelCardData | None:
     revisions = list(cached_repo_info.revisions)
-    revision = revisions[0] if len(revisions) == 1 else next(rev for rev in revisions if "main" in rev.refs)
+    # Pinned downloads can contain several revisions without a "main" ref.
+    revision = next((rev for rev in revisions if "main" in rev.refs), max(revisions, key=lambda rev: rev.last_modified))
     files = list(revision.files)
     # Sort by path depth to prefer the root README.md over subdirectory ones (e.g. embedding/README.md,
     # plda/README.md). _scan_cached_repo uses only the basename for file_name, so all README.md files
