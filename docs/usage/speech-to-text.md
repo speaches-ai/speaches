@@ -26,6 +26,20 @@ uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == 
 
 ## Usage
 
+### Orukeet
+
+Orukeet is an optional, local 25-language recognizer based on Parakeet TDT v3. Install it through the model registry:
+
+```bash
+uvx speaches-cli model download oruk/orukeet
+curl "$SPEACHES_BASE_URL/v1/audio/transcriptions" \
+  -F "file=@audio.wav" -F "model=oruk/orukeet" -F "response_format=json"
+```
+
+The server downloads the pinned INT8 ONNX export and its license files from [Hugging Face](https://huggingface.co/oruk/orukeet/tree/1751fce6ecde442f14543cf1804800c49b3e415c/onnx/combined-v0.1.0-int8), verifies SHA-256 hashes, and reuses the Hugging Face cache. The required `config.json` download participates in Hugging Face's normal model download accounting. Audio stays on your server; transcription does not contact a hosted inference service.
+
+Use `json` or `text` responses. This executor transcribes complete recordings; streaming, translation, subtitle formats and language forcing are not supported. The weights use CC BY-SA 4.0; the downloaded notices include the converter and preprocessor terms.
+
 ### Curl
 
 ```bash
