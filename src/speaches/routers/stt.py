@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from fastapi import (
     APIRouter,
     Form,
+    HTTPException,
     Request,
     Response,
 )
@@ -17,6 +18,7 @@ from speaches.api_types import (
     TIMESTAMP_GRANULARITIES_COMBINATIONS,
     TimestampGranularities,
 )
+from speaches.audio import Audio, clip_audio
 from speaches.dependencies import (
     AudioFileDependency,
     ExecutorRegistryDependency,
@@ -46,6 +48,9 @@ DEFAULT_RESPONSE_FORMAT: ResponseFormat = "json"
 
 # NOTE: copied from `faster_whisper.transcribe`
 DEFAULT_VAD_OPTIONS = VadOptions(min_silence_duration_ms=160, max_speech_duration_s=30)
+# Upper bound for the `duration` form parameter. Clipping is meant for re-transcribing short, problematic
+# parts of a recording; anything longer should simply be transcribed in full.
+MAX_CLIP_DURATION_S = 600.0
 
 
 def translation_response_to_http_response(res: TranslationResponse) -> Response:  # noqa: RET503
@@ -99,6 +104,28 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
     return timestamp_granularities  # pyright: ignore[reportReturnType]
 
 
+def clip_audio_or_raise(audio: Audio, start: float | None, duration: float | None) -> Audio:
+    """Apply the optional `start`/`duration` form parameters, rejecting invalid ranges with HTTP 400."""
+    if start is not None and start < 0:
+        raise HTTPException(status_code=400, detail=f"`start` must not be negative, got {start}.")
+    if duration is not None and duration <= 0:
+        raise HTTPException(status_code=400, detail=f"`duration` must be positive, got {duration}.")
+    if duration is not None and duration > MAX_CLIP_DURATION_S:
+        raise HTTPException(
+            status_code=400, detail=f"`duration` must not exceed {MAX_CLIP_DURATION_S:.0f} seconds, got {duration}."
+        )
+    if start is not None and start >= audio.duration:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`start` ({start}s) is past the end of the audio ({audio.duration:.2f}s).",
+        )
+    clipped = clip_audio(audio, start, duration)
+    if len(clipped.data) == 0:
+        raise HTTPException(status_code=400, detail="The requested clip contains no audio.")
+    logger.debug(f"Clipped audio to start={start}, duration={duration}: {clipped}")
+    return clipped
+
+
 def transcription_response_to_http_response(
     res: NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent],
 ) -> Response | StreamingResponse:
@@ -139,8 +166,13 @@ def transcribe_file(
     # non standard parameters
     hotwords: Annotated[str | None, Form()] = None,
     without_timestamps: Annotated[bool, Form()] = True,
+    # Transcribe only a part of the audio. Timestamps in the response are relative to the clip (start at 0).
+    start: Annotated[float | None, Form(description="Start of the clip to transcribe, in seconds.")] = None,
+    duration: Annotated[float | None, Form(description="Length of the clip to transcribe, in seconds.")] = None,
 ) -> Response | StreamingResponse:
     timestamp_granularities = asyncio.run(get_timestamp_granularities(request))
+    if start is not None or duration is not None:
+        audio = clip_audio_or_raise(audio, start, duration)
     if timestamp_granularities != DEFAULT_TIMESTAMP_GRANULARITIES and response_format != "verbose_json":
         logger.warning(
             "It only makes sense to provide `timestamp_granularities[]` when `response_format` is set to `verbose_json`. See https://platform.openai.com/docs/api-reference/audio/createTranscription#audio-createtranscription-timestamp_granularities."
