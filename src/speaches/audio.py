@@ -142,6 +142,20 @@ class Audio:
         return Audio(concatenated_data, sample_rate=sample_rate)
 
 
+def clip_audio(audio: Audio, start: float | None = None, duration: float | None = None) -> Audio:
+    """Return the part of `audio` starting at `start` seconds and lasting `duration` seconds.
+
+    Either bound may be omitted: `start=None` means from the beginning, `duration=None` means until the end.
+    A clip reaching past the end of the audio is truncated. Timestamps of anything computed on the
+    returned `Audio` are relative to the clip, i.e. they start at 0.
+    """
+    first_sample = 0 if start is None else int(round(start * audio.sample_rate))
+    last_sample = len(audio.data)
+    if duration is not None:
+        last_sample = min(last_sample, first_sample + int(round(duration * audio.sample_rate)))
+    return Audio(audio.data[first_sample:last_sample], audio.sample_rate, name=audio.name)
+
+
 def stream_audio_as_formatted_bytes(
     audio_generator: Generator[Audio],
     audio_format: Literal["aac", "pcm", "opus", "mp3", "flac", "wav"],
