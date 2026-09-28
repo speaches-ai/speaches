@@ -38,7 +38,8 @@ from speaches.hf_utils import (
     get_model_repo_path,
 )
 from speaches.model_registry import ModelRegistry
-from speaches.tracing import traced, traced_generator
+from speaches.tracing import traced
+from speaches.utils import APIProxyError
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -146,8 +147,10 @@ class FunasrModelManager(BaseModelManager["AutoModel"]):
         **_kwargs,
     ) -> NonStreamingTranscriptionResponse:
         if request.response_format not in ("text", "json"):
-            raise ValueError(
-                f"'{request.response_format}' response format is not supported for '{request.model}' model."
+            raise APIProxyError(
+                f"'{request.response_format}' response format is not supported for '{request.model}' model.",
+                hint="Use response_format='text' or response_format='json'.",
+                status_code=400,
             )
         from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
@@ -173,13 +176,17 @@ class FunasrModelManager(BaseModelManager["AutoModel"]):
                 case "json":
                     return openai.types.audio.Transcription(text=text)
 
-    @traced_generator()
+    @traced()
     def handle_streaming_transcription_request(
         self,
         request: TranscriptionRequest,
         **_kwargs,
     ) -> Generator[StreamingTranscriptionEvent]:
-        raise NotImplementedError(f"'{request.model}' model doesn't support streaming transcription.")
+        raise APIProxyError(
+            f"'{request.model}' model doesn't support streaming transcription.",
+            hint="Set stream=false to receive a complete transcription.",
+            status_code=400,
+        )
 
     def handle_transcription_request(
         self, request: TranscriptionRequest, **kwargs
