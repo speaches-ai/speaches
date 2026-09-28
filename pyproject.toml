@@ -44,6 +44,13 @@ dependencies = [
     "opentelemetry-instrumentation-system-metrics>=0.61b0",
 ]
 
+[project.optional-dependencies]
+funasr = [
+    "funasr>=1.1.0",
+    "torch>=2.1.0",
+    "torchaudio>=2.1.0",
+]
+
 [dependency-groups]
 dev = [
   {include-group = "docs"},

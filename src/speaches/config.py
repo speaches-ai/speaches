@@ -21,6 +21,12 @@ class WhisperConfig(BaseModel):
     num_workers: int = 1
 
 
+class FunasrConfig(BaseModel):
+    """Configuration for FunASR models (SenseVoice, Paraformer, ...)."""
+
+    inference_device: Device = "auto"
+
+
 class OrtOptions(BaseModel):
     exclude_providers: list[str] = ["TensorrtExecutionProvider"]
     """
@@ -98,6 +104,7 @@ class Config(BaseSettings):
     """
 
     whisper: WhisperConfig = WhisperConfig()
+    funasr: FunasrConfig = FunasrConfig()
 
     # TODO: remove the underscore prefix from the field name
     _unstable_vad_filter: bool = True

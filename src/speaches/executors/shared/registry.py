@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from speaches.executors.funasr import FunasrModelRegistry
 from speaches.executors.kokoro import KokoroModelRegistry
 from speaches.executors.parakeet import NemoConformerTdtModelRegistry
 from speaches.executors.piper import PiperModelRegistry
@@ -17,6 +18,7 @@ from speaches.executors.whisper import WhisperModelRegistry
 if TYPE_CHECKING:
     from speaches.config import Config
 
+from speaches.executors.funasr import FunasrModelManager, funasr_model_registry
 from speaches.executors.kokoro import KokoroModelManager, kokoro_model_registry
 from speaches.executors.parakeet import ParakeetModelManager, parakeet_model_registry
 from speaches.executors.piper import PiperModelManager, piper_model_registry
@@ -41,6 +43,12 @@ class ExecutorRegistry:
             name="parakeet",
             model_manager=ParakeetModelManager(config.stt_model_ttl, config.unstable_ort_opts),
             model_registry=parakeet_model_registry,
+            task="automatic-speech-recognition",
+        )
+        self._funasr_executor = Executor[FunasrModelManager, FunasrModelRegistry](
+            name="funasr",
+            model_manager=FunasrModelManager(config.stt_model_ttl, config.funasr),
+            model_registry=funasr_model_registry,
             task="automatic-speech-recognition",
         )
         self._piper_executor = Executor[PiperModelManager, PiperModelRegistry](
@@ -80,7 +88,7 @@ class ExecutorRegistry:
 
     @property
     def transcription(self):  # noqa: ANN201
-        return (self._whisper_executor, self._parakeet_executor)
+        return (self._whisper_executor, self._parakeet_executor, self._funasr_executor)
 
     @property
     def translation(self):  # noqa: ANN201
@@ -106,6 +114,7 @@ class ExecutorRegistry:
         return (
             self._whisper_executor,
             self._parakeet_executor,
+            self._funasr_executor,
             self._piper_executor,
             self._kokoro_executor,
             self._wespeaker_speaker_embedding_executor,
