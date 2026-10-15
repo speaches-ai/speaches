@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+import ctypes
 import gc
 import logging
+import sys
 import threading
 import time
 from typing import TYPE_CHECKING
@@ -34,6 +36,19 @@ def get_ort_providers_with_options(ort_opts: OrtOptions) -> list[tuple[str, dict
     return available_providers_with_opts
 
 
+# glibc keeps freed heap memory mapped to the process, so without trimming RSS stays high after a model is unloaded.
+# See https://github.com/speaches-ai/speaches/issues/638
+def release_freed_memory_to_os() -> None:
+    if sys.platform != "linux":
+        return
+    try:
+        malloc_trim = ctypes.CDLL("libc.so.6").malloc_trim
+    except (OSError, AttributeError):
+        logger.debug("malloc_trim is not available (non-glibc libc), skipping")
+        return
+    malloc_trim(0)
+
+
 class SelfDisposingModel[T]:
     def __init__(
         self,
@@ -62,6 +77,7 @@ class SelfDisposingModel[T]:
                 self.expire_timer.cancel()
             self.model = None
             gc.collect()
+            release_freed_memory_to_os()
             logger.info(f"Model {self.model_id} unloaded")
             if self.model_unloaded_callback is not None:
                 self.model_unloaded_callback(self.model_id)
