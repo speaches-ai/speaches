@@ -91,7 +91,11 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
             executor_registry.download_model_by_id(model_id)
             logger.info(f"Successfully downloaded model: {model_id}")
 
-    yield
+    try:
+        yield
+    finally:
+        if config.model_process_isolation:
+            get_executor_registry().shutdown()
 
 
 def create_app() -> FastAPI:

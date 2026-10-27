@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from speaches.executors.kokoro import KokoroModelRegistry
 from speaches.executors.parakeet import NemoConformerTdtModelRegistry
@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 from speaches.executors.kokoro import KokoroModelManager, kokoro_model_registry
 from speaches.executors.parakeet import ParakeetModelManager, parakeet_model_registry
 from speaches.executors.piper import PiperModelManager, piper_model_registry
+from speaches.executors.shared.base_model_manager import BaseModelManager
 from speaches.executors.shared.executor import Executor
+from speaches.executors.shared.isolated_model_manager import IsolatedModelManager
 from speaches.executors.silero_vad_v5 import SileroVADModelManager, silero_vad_model_registry
 from speaches.executors.wespeaker_speaker_embedding import (
     WespeakerSpeakerEmbeddingModelManager,
@@ -29,29 +31,45 @@ from speaches.executors.wespeaker_speaker_embedding import (
 from speaches.executors.whisper import WhisperModelManager, whisper_model_registry
 
 
+def _build_model_manager[M: BaseModelManager](
+    config: Config, name: str, manager_cls: type[M], ttl: int, *ctor_args: Any
+) -> M | IsolatedModelManager:
+    if name in config.model_process_isolation:
+        return IsolatedModelManager(ttl, manager_cls, ctor_args, config.log_level)
+    return manager_cls(ttl, *ctor_args)
+
+
 class ExecutorRegistry:
     def __init__(self, config: Config) -> None:
-        self._whisper_executor = Executor[WhisperModelManager, WhisperModelRegistry](
+        self._whisper_executor = Executor[WhisperModelManager | IsolatedModelManager, WhisperModelRegistry](
             name="whisper",
-            model_manager=WhisperModelManager(config.stt_model_ttl, config.whisper),
+            model_manager=_build_model_manager(
+                config, "whisper", WhisperModelManager, config.stt_model_ttl, config.whisper
+            ),
             model_registry=whisper_model_registry,
             task="automatic-speech-recognition",
         )
-        self._parakeet_executor = Executor[ParakeetModelManager, NemoConformerTdtModelRegistry](
+        self._parakeet_executor = Executor[ParakeetModelManager | IsolatedModelManager, NemoConformerTdtModelRegistry](
             name="parakeet",
-            model_manager=ParakeetModelManager(config.stt_model_ttl, config.unstable_ort_opts),
+            model_manager=_build_model_manager(
+                config, "parakeet", ParakeetModelManager, config.stt_model_ttl, config.unstable_ort_opts
+            ),
             model_registry=parakeet_model_registry,
             task="automatic-speech-recognition",
         )
-        self._piper_executor = Executor[PiperModelManager, PiperModelRegistry](
+        self._piper_executor = Executor[PiperModelManager | IsolatedModelManager, PiperModelRegistry](
             name="piper",
-            model_manager=PiperModelManager(config.tts_model_ttl, config.unstable_ort_opts),
+            model_manager=_build_model_manager(
+                config, "piper", PiperModelManager, config.tts_model_ttl, config.unstable_ort_opts
+            ),
             model_registry=piper_model_registry,
             task="text-to-speech",
         )
-        self._kokoro_executor = Executor[KokoroModelManager, KokoroModelRegistry](
+        self._kokoro_executor = Executor[KokoroModelManager | IsolatedModelManager, KokoroModelRegistry](
             name="kokoro",
-            model_manager=KokoroModelManager(config.tts_model_ttl, config.unstable_ort_opts),
+            model_manager=_build_model_manager(
+                config, "kokoro", KokoroModelManager, config.tts_model_ttl, config.unstable_ort_opts
+            ),
             model_registry=kokoro_model_registry,
             task="text-to-speech",
         )
@@ -118,3 +136,8 @@ class ExecutorRegistry:
             if model_id in [model.id for model in executor.model_registry.list_remote_models()]:
                 return executor.model_registry.download_model_files_if_not_exist(model_id)
         raise ValueError(f"Model '{model_id}' not found")
+
+    def shutdown(self) -> None:
+        for executor in self.all_executors():
+            if isinstance(executor.model_manager, IsolatedModelManager):
+                executor.model_manager.shutdown()
