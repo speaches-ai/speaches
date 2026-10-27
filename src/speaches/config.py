@@ -69,6 +69,15 @@ class Config(BaseSettings):
     0: Unload the model immediately after usage.
     """
 
+    model_process_isolation: list[Literal["kokoro", "piper", "whisper", "parakeet"]] = []
+    """
+    Executors whose models run in a dedicated child process.
+    Unloading a model terminates the process and returns all CPU and GPU memory, which an in-process unload cannot do for CUDA.
+    Costs a process start on every model load and one CUDA context per loaded model.
+    Empty: all models run in the server process.
+    For example: MODEL_PROCESS_ISOLATION='["kokoro"]'
+    """
+
     api_key: SecretStr | None = None
     """
     If set, the API key will be required for all API requests.
