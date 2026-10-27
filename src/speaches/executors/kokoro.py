@@ -6,6 +6,7 @@ from typing import Literal
 
 import huggingface_hub
 from kokoro_onnx import Kokoro
+from kokoro_onnx.trim import trim as trim_audio
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, computed_field
 
@@ -28,7 +29,6 @@ from speaches.model_registry import (
     ModelRegistry,
 )
 from speaches.tracing import traced_generator
-from speaches.utils import async_to_sync_generator
 
 SAMPLE_RATE = 24000  # the default sample rate for Kokoro
 LIBRARY_NAME = "onnx"
@@ -219,15 +219,17 @@ class KokoroModelManager(BaseModelManager[Kokoro]):
         voice_language = next(v.language for v in VOICES if v.name == request.voice)
         with self.load_model(request.model) as tts:
             start = time.perf_counter()
-            async_stream = tts.create_stream(
-                request.text,
-                request.voice,
-                lang=voice_language,
-                speed=request.speed,
-            )
-            # HACK: converting an async generator to a sync generator
-            sync_stream = async_to_sync_generator(async_stream)
-            for audio_data, _ in sync_stream:
-                yield Audio(audio_data, sample_rate=SAMPLE_RATE)
+            try:
+                # Drive synthesis batch by batch instead of using `Kokoro.create_stream`. Its background task has no
+                # error path: if inference raises, the consumer waits on its queue forever and the request hangs.
+                phonemes = tts.tokenizer.phonemize(request.text, voice_language)
+                style = tts.get_voice_style(request.voice)
+                for batch in tts._split_phonemes(phonemes):  # noqa: SLF001
+                    audio_data, _ = tts._create_audio(batch, style, request.speed)  # noqa: SLF001
+                    audio_data, _ = trim_audio(audio_data)
+                    yield Audio(audio_data, sample_rate=SAMPLE_RATE)
+            except Exception:
+                logger.exception(f"Kokoro speech synthesis failed for model '{request.model}'")
+                raise
 
         logger.info(f"Generated audio for {len(request.text)} characters in {time.perf_counter() - start}s")
