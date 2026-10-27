@@ -41,11 +41,13 @@ class SelfDisposingModel[T]:
         load_fn: Callable[[], T],
         ttl: int,
         model_unloaded_callback: Callable[[str], None] | None = None,
+        close_fn: Callable[[T], None] | None = None,
     ) -> None:
         self.model_id = model_id
         self.load_fn = load_fn
         self.ttl = ttl
         self.model_unloaded_callback = model_unloaded_callback
+        self.close_fn = close_fn
 
         self.ref_count: int = 0
         self.rlock = threading.RLock()
@@ -60,11 +62,28 @@ class SelfDisposingModel[T]:
                 raise ValueError(f"Model {self.model_id} is still in use. {self.ref_count=}")
             if self.expire_timer:
                 self.expire_timer.cancel()
-            self.model = None
+            try:
+                if self.close_fn is not None:
+                    self.close_fn(self.model)
+            finally:
+                self.model = None
             gc.collect()
             logger.info(f"Model {self.model_id} unloaded")
             if self.model_unloaded_callback is not None:
                 self.model_unloaded_callback(self.model_id)
+
+    def shutdown(self) -> None:
+        with self.rlock:
+            if self.expire_timer:
+                self.expire_timer.cancel()
+            if self.model is None:
+                return
+            try:
+                if self.close_fn is not None:
+                    self.close_fn(self.model)
+            finally:
+                self.model = None
+            logger.info(f"Model {self.model_id} shut down")
 
     def _load(self) -> None:
         with self.rlock:
@@ -119,10 +138,22 @@ class BaseModelManager[T](ABC):
     def _load_fn(self, model_id: str) -> T:
         pass
 
-    def _handle_model_unloaded(self, model_id: str) -> None:
+    def _close_fn(self, model: T) -> None:  # noqa: B027
+        pass
+
+    def _handle_model_unloaded(self, model_id: str, unloaded: SelfDisposingModel[T] | None = None) -> None:
         with self._lock:
-            if model_id in self.loaded_models:
+            current = self.loaded_models.get(model_id)
+            # A stale instance that unloads late must not remove the entry that replaced it.
+            if current is not None and (unloaded is None or current is unloaded):
                 del self.loaded_models[model_id]
+
+    def shutdown(self) -> None:
+        with self._lock:
+            models = list(self.loaded_models.values())
+            self.loaded_models.clear()
+        for model in models:
+            model.shutdown()
 
     def unload_model(self, model_id: str) -> None:
         with self._lock:
@@ -137,10 +168,12 @@ class BaseModelManager[T](ABC):
             if model_id in self.loaded_models:
                 logger.debug(f"{model_id} model already loaded")
                 return self.loaded_models[model_id]
-            self.loaded_models[model_id] = SelfDisposingModel[T](
+            entry = SelfDisposingModel[T](
                 model_id,
                 load_fn=lambda: self._load_fn(model_id),
                 ttl=self.ttl,
-                model_unloaded_callback=self._handle_model_unloaded,
+                close_fn=self._close_fn,
             )
-            return self.loaded_models[model_id]
+            entry.model_unloaded_callback = lambda unloaded_id: self._handle_model_unloaded(unloaded_id, entry)
+            self.loaded_models[model_id] = entry
+            return entry

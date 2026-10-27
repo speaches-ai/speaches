@@ -4,6 +4,7 @@ import anyio
 import pytest
 
 from speaches.config import Config
+from speaches.executors.shared.base_model_manager import BaseModelManager
 from tests.conftest import AclientFactory
 
 MODEL_ID = "Systran/faster-whisper-tiny.en"
@@ -133,3 +134,45 @@ async def test_model_is_unloaded_after_request_when_ttl_is_zero(aclient_factory:
         )
         res = (await aclient.get("/api/ps")).json()
         assert len(res["models"]) == 0
+
+
+class _CountingModelManager(BaseModelManager[object]):
+    def __init__(self, ttl: int) -> None:
+        super().__init__(ttl)
+        self.closed: list[object] = []
+
+    def _load_fn(self, model_id: str) -> object:  # noqa: ARG002
+        return object()
+
+    def _close_fn(self, model: object) -> None:
+        self.closed.append(model)
+
+
+def test_close_fn_called_on_unload() -> None:
+    manager = _CountingModelManager(ttl=0)
+    with manager.load_model("a") as model:
+        assert manager.closed == []
+    assert manager.closed == [model]
+    assert "a" not in manager.loaded_models
+
+
+def test_stale_instance_unload_keeps_replacement() -> None:
+    manager = _CountingModelManager(ttl=-1)
+    with manager.load_model("a"):
+        pass
+    stale = manager.loaded_models["a"]
+    with manager._lock:  # noqa: SLF001
+        del manager.loaded_models["a"]
+    replacement = manager.load_model("a")
+    assert replacement is not stale
+    stale.unload()
+    assert manager.loaded_models["a"] is replacement
+
+
+def test_shutdown_closes_loaded_models_even_when_in_use() -> None:
+    manager = _CountingModelManager(ttl=-1)
+    entry = manager.load_model("a")
+    with entry as model:
+        manager.shutdown()
+        assert manager.closed == [model]
+    assert manager.loaded_models == {}
