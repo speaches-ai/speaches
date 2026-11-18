@@ -197,6 +197,15 @@ def stream_audio_as_formatted_bytes(
 
     output_queue: queue_module.Queue[bytes | None] = queue_module.Queue(maxsize=10)
     error_queue: queue_module.Queue[Exception] = queue_module.Queue()
+    stopped = threading.Event()
+
+    def enqueue_output(chunk: bytes | None) -> None:
+        while not stopped.is_set():
+            try:
+                output_queue.put(chunk, timeout=0.1)
+                return
+            except queue_module.Full:
+                continue
 
     def write_to_stdin() -> None:
         try:
@@ -204,27 +213,38 @@ def stream_audio_as_formatted_bytes(
                 raise RuntimeError("ffmpeg stdin is None")
             process.stdin.write(first_audio.as_bytes())
             for audio in audio_generator:
+                if stopped.is_set():
+                    break
                 if audio.sample_rate != source_sample_rate:
                     raise ValueError(
                         f"Inconsistent sample rate: expected {source_sample_rate}, got {audio.sample_rate}"
                     )
                 process.stdin.write(audio.as_bytes())
-            process.stdin.close()
         except Exception as e:  # noqa: BLE001
             error_queue.put(e)
+        finally:
+            if process.stdin is not None:
+                try:
+                    process.stdin.close()
+                except OSError as e:
+                    if not stopped.is_set():
+                        error_queue.put(e)
 
     def read_from_stdout() -> None:
         try:
             if process.stdout is None:
                 raise RuntimeError("ffmpeg stdout is None")
-            while True:
+            while not stopped.is_set():
                 chunk = process.stdout.read(4096)
                 if not chunk:
                     break
-                output_queue.put(chunk)
-            output_queue.put(None)
+                enqueue_output(chunk)
+            enqueue_output(None)
         except Exception as e:  # noqa: BLE001
             error_queue.put(e)
+        finally:
+            if process.stdout is not None:
+                process.stdout.close()
 
     writer_thread = threading.Thread(target=write_to_stdin, daemon=True)
     reader_thread = threading.Thread(target=read_from_stdout, daemon=True)
@@ -255,7 +275,17 @@ def stream_audio_as_formatted_bytes(
             stderr_output = process.stderr.read().decode() if process.stderr else ""
             raise RuntimeError(f"ffmpeg failed with return code {return_code}: {stderr_output}")
 
-    except Exception:
-        process.kill()
-        process.wait()
-        raise
+    finally:
+        stopped.set()
+        try:
+            if process.poll() is None:
+                process.kill()
+            process.wait(timeout=5.0)
+        finally:
+            # Workers own stdin/stdout; a blocked producer may outlive this generator.
+            writer_thread.join(timeout=5.0)
+            reader_thread.join(timeout=5.0)
+            if writer_thread.is_alive():
+                logger.warning("Audio producer is still running after stream cleanup timeout")
+            if process.stderr is not None:
+                process.stderr.close()
