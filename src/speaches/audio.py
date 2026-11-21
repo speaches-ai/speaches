@@ -110,12 +110,9 @@ class Audio:
         self.data = np.append(self.data, data)
 
     def as_bytes(self) -> bytes:
-        # NOTE: a more correct approach would be to normalize the audio data first but I'd rather avoid doing that to not introduce any performance overhead given that I expect the data to already be in the [-1.0, 1.0] range
-        # Clip to [-1.0, 1.0] to avoid overflow
-        # audio = np.clip(self.data, -1.0, 1.0)
-
-        # Scale to int16 range and convert
-        audio = (self.data * 32767).astype(np.int16)
+        # Saturate out-of-range samples before casting so they cannot wrap around.
+        pcm_limits = np.iinfo(np.int16)
+        audio = np.clip(self.data * pcm_limits.max, pcm_limits.min, pcm_limits.max).astype(np.int16)
 
         return audio.tobytes()
 
