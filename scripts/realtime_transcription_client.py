@@ -18,7 +18,8 @@ from speaches.logger import setup_logger
 SAMPLE_RATE = 24000
 SAMPLE_WIDTH = 2
 BYTERATE = SAMPLE_RATE * SAMPLE_WIDTH  # like "bitrate" but in bytes
-MINIMUM_AUDIO_CHUNK_SIZE = 1024
+MAX_AUDIO_CHUNK_SIZE = 1024
+AUDIO_POLL_INTERVAL_SECONDS = 0.01
 DTYPE = "int16"
 CHANNELS = 1
 TRANSCRIPTION_MODEL = "Systran/faster-distil-whisper-small.en"
@@ -51,22 +52,22 @@ async def send_mic_audio(
     stream = sd.InputStream(channels=CHANNELS, samplerate=SAMPLE_RATE, dtype=DTYPE)
     stream.start()
 
-    last_audio_time = asyncio.get_event_loop().time()
+    loop = asyncio.get_running_loop()
+    last_audio_time = loop.time()
 
     try:
         while True:
-            if stream.read_available < MINIMUM_AUDIO_CHUNK_SIZE:
-                if stream.read_available == 0:
-                    if no_audio_timeout_seconds is not None:
-                        elapsed = asyncio.get_event_loop().time() - last_audio_time
-                        if elapsed >= no_audio_timeout_seconds:
-                            logger.warning(f"No audio for {elapsed:.2f} seconds, exiting.")
-                            break
-                await asyncio.sleep(0)
+            frames = min(stream.read_available, MAX_AUDIO_CHUNK_SIZE)
+            if frames == 0:
+                elapsed = loop.time() - last_audio_time
+                if no_audio_timeout_seconds is not None and elapsed >= no_audio_timeout_seconds:
+                    logger.warning(f"No audio for {elapsed:.2f} seconds, exiting.")
+                    break
+                await asyncio.sleep(AUDIO_POLL_INTERVAL_SECONDS)
                 continue
 
-            data, _ = stream.read(MINIMUM_AUDIO_CHUNK_SIZE)
-            last_audio_time = asyncio.get_event_loop().time()
+            data, _ = stream.read(frames)
+            last_audio_time = loop.time()
 
             bytes_data = data.tobytes()
             assert len(bytes_data) == len(data) * SAMPLE_WIDTH
