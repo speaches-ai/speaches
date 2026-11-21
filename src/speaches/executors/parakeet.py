@@ -100,8 +100,11 @@ class NemoConformerTdtModelRegistry(ModelRegistry[Model, NemoConformerTdtModelFi
     def download_model_files(self, model_id: str) -> None:
         allow_patterns = list(NemoConformerTdt._get_model_files(quantization=None).values())  # noqa: SLF001
 
-        _model_repo_path_str = huggingface_hub.snapshot_download(
-            repo_id=model_id, repo_type="model", allow_patterns=[*allow_patterns, "README.md"]
+        # The model file list omits metadata and ONNX external weights.
+        huggingface_hub.snapshot_download(
+            repo_id=model_id,
+            repo_type="model",
+            allow_patterns=[*allow_patterns, "config.json", "encoder-model.onnx.data", "nemo128.onnx", "README.md"],
         )
 
 
