@@ -17,6 +17,22 @@ uvx speaches-cli model download speaches-ai/Kokoro-82M-v1.0-ONNX
 uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == "speaches-ai/Kokoro-82M-v1.0-ONNX"))'
 ```
 
+### When running in Docker
+
+After the container is running, request the model download from your host. The server downloads the model into its own cache. You can do this without installing the CLI inside the container.
+
+```bash
+export SPEACHES_BASE_URL="http://localhost:8000"
+export SPEECH_MODEL_ID="speaches-ai/Kokoro-82M-v1.0-ONNX"
+
+curl --fail --show-error --request POST "$SPEACHES_BASE_URL/v1/models/$SPEECH_MODEL_ID"
+curl --fail --show-error "$SPEACHES_BASE_URL/v1/models/$SPEECH_MODEL_ID"
+```
+
+Use the host port you published if it differs from `8000`. If the server is configured with an API key, include the same Bearer authorization header you use for inference requests. After the model is listed, use the speech request examples below.
+
+The published Docker image uses `/home/ubuntu/.cache/huggingface/hub` as its default model cache. The supplied CPU and CUDA Compose configurations and the [Docker commands in the installation guide](../installation.md#docker) mount the named volume `hf-hub-cache` at that path. Keep the same volume when recreating the container to reuse downloaded models. With Compose, keep the same project name to reuse its project-scoped volume, and omit `--volumes` when running `docker compose down`. If you set `HF_HUB_CACHE` to a custom path in the container, mount your cache volume at that path.
+
 ## Usage
 
 ### Curl
