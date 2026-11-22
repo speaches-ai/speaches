@@ -57,6 +57,21 @@ docker compose up --detach
     docker compose --file compose.cpu.yaml build
     ```
 
+### Download models at startup
+
+To download models before serving requests, add `PRELOAD_MODELS` to the `.env`
+file next to `compose.yaml` before starting the service. The Compose
+configuration passes this file to the `speaches` container.
+
+```dotenv
+PRELOAD_MODELS='["Systran/faster-whisper-tiny","speaches-ai/Kokoro-82M-v1.0-ONNX"]'
+```
+
+Use a JSON array of model IDs. Speaches checks each model in order and downloads
+its files if they are missing from the cache. Startup fails if a model ID is
+unknown or its download fails. If you add or change this setting on an existing
+installation, run `docker compose up --detach` again to apply it.
+
 ## Docker
 
 === "CUDA"
