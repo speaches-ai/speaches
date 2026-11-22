@@ -35,6 +35,25 @@ export TRANSCRIPTION_MODEL_ID="Systran/faster-distil-whisper-small.en"
 curl -s "$SPEACHES_BASE_URL/v1/audio/transcriptions" -F "file=@audio.wav" -F "model=$TRANSCRIPTION_MODEL_ID"
 ```
 
+### Word-level timestamps
+
+For a Faster Whisper model, request `verbose_json` and include the multipart
+field `timestamp_granularities[]` with the value `word`. Using the variables
+from the previous example:
+
+```bash
+curl -fsS "$SPEACHES_BASE_URL/v1/audio/transcriptions" \
+  -F "file=@audio.wav" \
+  -F "model=$TRANSCRIPTION_MODEL_ID" \
+  -F "response_format=verbose_json" \
+  -F "timestamp_granularities[]=word"
+```
+
+Read the top-level `words` array for each word's `word`, `start`, and `end`
+values. Start and end times are in seconds. If `words` is `null`, check that the
+multipart field name includes the square brackets and that the server is
+using a Faster Whisper model.
+
 ### Python
 
 === "httpx"
