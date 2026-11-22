@@ -16,7 +16,7 @@ from speaches.api_types import (
     SpeechResponseFormat,
 )
 from speaches.audio import Audio, stream_audio_as_formatted_bytes
-from speaches.dependencies import ExecutorRegistryDependency
+from speaches.dependencies import ConfigDependency, ExecutorRegistryDependency
 from speaches.executors.shared.handler_protocol import SpeechRequest
 from speaches.model_aliases import ModelId
 from speaches.routers.utils import find_executor_for_model_or_raise, get_model_card_data_or_raise
@@ -62,7 +62,7 @@ class CreateSpeechRequestBody(BaseModel):
     stream_format: Literal["audio", "sse"] = "audio"
     """The format to stream the audio in. Supported formats are sse and audio"""
     sample_rate: int | None = Field(None, ge=MIN_SPEECH_SAMPLE_RATE, le=MAX_SPEECH_SAMPLE_RATE)
-    """Desired sample rate to convert the generated audio to. If not provided, the model's default sample rate will be used."""
+    """Desired sample rate to convert the generated audio to. If omitted, audio responses use the server default or the model's native sample rate."""
 
 
 def audio_gen_to_speech_audio_events(
@@ -86,6 +86,7 @@ def speech_audio_events_to_sse(
 def synthesize(
     executor_registry: ExecutorRegistryDependency,
     body: CreateSpeechRequestBody,
+    config: ConfigDependency,
 ) -> StreamingResponse:
     model_card_data = get_model_card_data_or_raise(body.model)
     executor = find_executor_for_model_or_raise(body.model, model_card_data, executor_registry.text_to_speech)
@@ -113,7 +114,7 @@ def synthesize(
             stream_audio_as_formatted_bytes(
                 audio_generator,
                 audio_format=body.response_format,
-                sample_rate=body.sample_rate,
+                sample_rate=body.sample_rate if body.sample_rate is not None else config.tts_default_sample_rate,
             ),
             media_type=response_format_to_mime_type(body.response_format),
         )
