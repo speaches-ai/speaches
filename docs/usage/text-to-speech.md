@@ -17,6 +17,15 @@ uvx speaches-cli model download speaches-ai/Kokoro-82M-v1.0-ONNX
 uvx speaches-cli model ls --task text-to-speech | jq '.data | map(select(.id == "speaches-ai/Kokoro-82M-v1.0-ONNX"))'
 ```
 
+## Default output sample rate
+
+Set `TTS_DEFAULT_SAMPLE_RATE=44100` in the server environment to request
+44.1 kHz audio from `/v1/audio/speech` when the client omits `sample_rate`.
+The setting accepts 8,000 to 48,000 Hz, subject to the selected audio format's
+supported rates. A `sample_rate` in the request takes precedence. When both
+are omitted, audio uses the model's native sample rate. This setting applies
+to `stream_format="audio"`.
+
 ## Usage
 
 ### Curl

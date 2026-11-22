@@ -3,6 +3,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from speaches.api_types import MAX_SPEECH_SAMPLE_RATE, MIN_SPEECH_SAMPLE_RATE
+
 type Device = Literal["cpu", "cuda", "auto"]
 
 # https://github.com/OpenNMT/CTranslate2/blob/master/docs/quantization.md#quantize-on-model-conversion
@@ -61,6 +63,8 @@ class Config(BaseSettings):
     -1: Never unload the model.
     0: Unload the model immediately after usage.
     """
+
+    tts_default_sample_rate: int | None = Field(default=None, ge=MIN_SPEECH_SAMPLE_RATE, le=MAX_SPEECH_SAMPLE_RATE)
 
     vad_model_ttl: int = Field(default=-1, ge=-1)
     """
