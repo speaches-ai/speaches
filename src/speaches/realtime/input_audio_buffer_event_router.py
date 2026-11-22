@@ -63,21 +63,20 @@ def vad_detection_flow(
     if len(speech_timestamps) > 1:
         logger.warning(f"More than one speech timestamp: {speech_timestamps}")
 
-    speech_timestamp = speech_timestamps[-1] if len(speech_timestamps) > 0 else None
-
     # logger.debug(f"Speech timestamps: {speech_timestamps}")
     if input_audio_buffer.vad_state.audio_start_ms is None:
-        if speech_timestamp is None:
+        if not speech_timestamps:
             return None
         input_audio_buffer.vad_state.audio_start_ms = (
-            input_audio_buffer.duration_ms - len(audio_window) // MS_SAMPLE_RATE + speech_timestamp.start
+            input_audio_buffer.duration_ms - len(audio_window) // MS_SAMPLE_RATE + speech_timestamps[0].start
         )
         return InputAudioBufferSpeechStartedEvent(
             item_id=input_audio_buffer.id,
             audio_start_ms=input_audio_buffer.vad_state.audio_start_ms,
         )
 
-    else:  # noqa: PLR5501
+    else:
+        speech_timestamp = speech_timestamps[-1] if speech_timestamps else None
         if speech_timestamp is None:
             # TODO: not quite correct. dependent on window size
             input_audio_buffer.vad_state.audio_end_ms = (
