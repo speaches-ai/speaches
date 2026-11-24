@@ -102,7 +102,6 @@ async def get_timestamp_granularities(request: Request) -> TimestampGranularitie
 def transcription_response_to_http_response(
     res: NonStreamingTranscriptionResponse | Generator[StreamingTranscriptionEvent],
 ) -> Response | StreamingResponse:
-    logger.error(f"Unexpected streaming transcription response type: {type(res)}")
     if isinstance(res, tuple):
         text, media_type = res
         return Response(content=text, media_type=media_type)
