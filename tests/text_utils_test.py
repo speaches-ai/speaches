@@ -50,6 +50,19 @@ def test_strip_markdown_emphasis() -> None:
     assert strip_markdown_emphasis("Nested **bold *with italic* inside**") == "Nested bold with italic inside"
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Call my_function_name with max_retries set to three",
+        "The file is named snake_case_name.txt",
+        "Compute 2 * 3 * 4 for me",
+        "A single _ or * on its own stays",
+    ],
+)
+def test_strip_markdown_emphasis_keeps_non_emphasis_text(text: str) -> None:
+    assert strip_markdown_emphasis(text) == text
+
+
 @pytest.mark.asyncio
 async def test_eof_text_chunker() -> None:
     # Test that the chunker only yields when closed

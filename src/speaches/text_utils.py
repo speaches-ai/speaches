@@ -168,11 +168,11 @@ def strip_markdown_emphasis(text: str) -> str:
     # Remove bold (**text**)
     text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
     # Remove italic (*text*)
-    text = re.sub(r"\*(.*?)\*", r"\1", text)
+    text = re.sub(r"\*(?=\S)(.+?)(?<=\S)\*", r"\1", text)
     # Remove underlined (__text__)
-    text = re.sub(r"__(.*?)__", r"\1", text)
+    text = re.sub(r"(?<!\w)__(?=\S)(.+?)(?<=\S)__(?!\w)", r"\1", text)
     # Remove italic with underscore (_text_)
-    text = re.sub(r"_(.*?)_", r"\1", text)
+    text = re.sub(r"(?<!\w)_(?=\S)(.+?)(?<=\S)_(?!\w)", r"\1", text)
 
     return text
 
