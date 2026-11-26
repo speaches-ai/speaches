@@ -121,3 +121,18 @@ async def test_eof_text_chunker_closed_error() -> None:
 
     with pytest.raises(RuntimeError):
         chunker.add_token("This should fail")
+
+
+@pytest.mark.parametrize(
+    ("ts", "srt", "vtt"),
+    [
+        (1.001, "00:00:01,001", "00:00:01.001"),
+        (1.003, "00:00:01,003", "00:00:01.003"),
+        (1.999, "00:00:01,999", "00:00:01.999"),
+        (1.9996, "00:00:02,000", "00:00:02.000"),
+        (59.9999, "00:01:00,000", "00:01:00.000"),
+    ],
+)
+def test_timestamp_formatting_is_not_off_by_one_millisecond(ts: float, srt: str, vtt: str) -> None:
+    assert srt_format_timestamp(ts) == srt
+    assert vtt_format_timestamp(ts) == vtt

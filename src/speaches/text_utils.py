@@ -26,20 +26,22 @@ def format_as_sse(data: str) -> str:
     return f"data: {data}\n\n"
 
 
+def _split_timestamp(ts: float) -> tuple[int, int, int, int]:
+    total_milliseconds = round(ts * 1000)
+    hours, remainder = divmod(total_milliseconds, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    seconds, milliseconds = divmod(remainder, 1000)
+    return hours, minutes, seconds, milliseconds
+
+
 def srt_format_timestamp(ts: float) -> str:
-    hours = ts // 3600
-    minutes = (ts % 3600) // 60
-    seconds = ts % 60
-    milliseconds = (ts * 1000) % 1000
-    return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d},{int(milliseconds):03d}"
+    hours, minutes, seconds, milliseconds = _split_timestamp(ts)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
 
 
 def vtt_format_timestamp(ts: float) -> str:
-    hours = ts // 3600
-    minutes = (ts % 3600) // 60
-    seconds = ts % 60
-    milliseconds = (ts * 1000) % 1000
-    return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}.{int(milliseconds):03d}"
+    hours, minutes, seconds, milliseconds = _split_timestamp(ts)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
 
 def format_as_vtt(text: str, start: float, end: float, i: int) -> str:
